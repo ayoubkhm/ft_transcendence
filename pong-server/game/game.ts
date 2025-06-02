@@ -4,7 +4,7 @@ import {
   PADDLE_H, PADDLE_W, BALL_R,
   GameState, ClientInput
 } from './types';
-import { aiPaddleMove } from './ai/index';
+import { aiPaddleMove } from './ai';
 
 export class Game {
   private state: GameState;

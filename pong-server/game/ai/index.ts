@@ -1,5 +1,5 @@
-import { PADDLE_H, GAME_HEIGHT } from './types';
-import type { Paddle, Ball } from './types';
+import { PADDLE_H, GAME_HEIGHT } from '../types';
+import type { Paddle, Ball } from '../types';
 
 /**
  * Simple AI: move paddle toward ball on Y axis, clamped within game bounds.
