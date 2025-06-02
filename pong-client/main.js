@@ -26,7 +26,8 @@ function initGame(soloMode = false) {
   document.getElementById('menu').style.display = 'none';
   canvas.style.display = 'block';
 
-  ws = new WebSocket('ws://localhost:8080');
+  // connect to WebSocket endpoint
+  ws = new WebSocket('ws://localhost:8080/ws');
 
   ws.onopen = () => {
     // In solo mode, send startSolo first so server recognizes the game start

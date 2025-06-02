@@ -4,6 +4,7 @@ import {
   PADDLE_H, PADDLE_W, BALL_R,
   GameState, ClientInput
 } from './types';
+import { aiPaddleMove } from './ai';
 
 export class Game {
   private state: GameState;
@@ -65,11 +66,7 @@ export class Game {
 
     // 2) IA très simple (raquette droite uniquement)
     if (right.id === 'AI') {
-      const center = right.paddle.y + PADDLE_H / 2;
-      const target = ball.y;
-      const dir    = target > center ? 1 : -1;
-      right.paddle.y += dir * this.aiSpeed * dt;
-      right.paddle.y  = clamp(right.paddle.y, 0, GAME_HEIGHT - PADDLE_H);
+      right.paddle.y = aiPaddleMove(right.paddle, ball, this.aiSpeed, dt);
     }
 
     // 3) Déplacement de la balle
