@@ -46,35 +46,32 @@ const socketId  = new Map<WebSocket, string>(); // socket → playerId
 let waiting: WebSocket | null = null;           // file d’attente multi
 
 wss.on('connection', (ws) => {
-  //
-  // 2-A. On attend de savoir si le client veut « solo » ou « multi ».
-  //
-  ws.once('message', (data) => {
+  ws.on('message', function handleFirstMessage(data: Buffer) {
     let firstMsg: { type: string };
     try {
       firstMsg = JSON.parse(data.toString());
-    } catch { return; }
+    } catch {
+      return;
+    }
 
     // → MODE SOLO
     if (firstMsg.type === 'startSolo') {
       const humanId = crypto.randomUUID();
-      const aiId    = 'AI'; // ID spécial pour l’IA
+      const aiId    = 'AI';
 
-      const game = new Game(humanId, aiId);     // bot à droite
+      const game = new Game(humanId, aiId);
       games.set(ws, game);
       socketId.set(ws, humanId);
 
-      ws.send(JSON.stringify({ type: 'start', side: 'left' })); // humain à gauche
+      ws.send(JSON.stringify({ type: 'start', side: 'left' }));
       attachInGameListeners(ws);
-      return; // fini, pas de file d’attente
+      ws.off('message', handleFirstMessage); // ← important pour éviter les doublons
+      return;
     }
 
-    //
     // → MODE MULTI
-    //
-    // Le message n’est pas "startSolo" : on le traite plus tard comme input,
-    // mais d’abord on gère la mise en attente / association.
-    //
+    ws.off('message', handleFirstMessage);
+
     if (!waiting) {
       waiting = ws;
       ws.send(JSON.stringify({ type: 'waiting' }));
@@ -100,8 +97,7 @@ wss.on('connection', (ws) => {
       attachInGameListeners(right);
     }
 
-    // Le premier message « non-solo » (s’il y en a un) peut être un input :
-    // on le repasse directement au listener « message » qu’on va fixer 👇.
+    // Au cas où c’était aussi un input (par ex. move_up direct)
     ws.emit('message', data);
   });
 });

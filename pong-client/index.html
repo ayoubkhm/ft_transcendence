@@ -5,10 +5,16 @@
   <title>Pong Client</title>
   <style>
     canvas { background: #111; display: block; margin: auto; margin-top: 50px; }
+    #menu { text-align: center; margin-top: 20px; }
+    button { margin: 0 10px; padding: 10px 20px; font-size: 16px; }
   </style>
 </head>
 <body>
-  <canvas id="game" width="800" height="450"></canvas>
+  <div id="menu">
+    <button id="btn-multiplayer">Jouer en multijoueur</button>
+    <button id="btn-solo">Jouer contre l'IA</button>
+  </div>
+  <canvas id="game" width="800" height="450" style="display: none;"></canvas>
   <script src="main.js"></script>
 </body>
 </html>
