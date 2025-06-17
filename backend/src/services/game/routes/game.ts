@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify'
 import { randomUUID } from 'crypto'
-import { Game } from '../services/game/game.js'
-import type { ClientInput, GameState } from '../services/game/types.js'
+import { Game } from '../game.js'
+import type { ClientInput, GameState } from '../types.js'
 
 // In-memory store of active game sessions and their simulation loops
 interface GameSession {
