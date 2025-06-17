@@ -3,8 +3,8 @@ import {
   GAME_WIDTH, GAME_HEIGHT,
   PADDLE_H, PADDLE_W, BALL_R,
   GameState, ClientInput
-} from './types';
-import { aiPaddleMove } from './ai';
+} from './types.js';
+import { aiPaddleMove } from './ai/index.js';
 
 export class Game {
   private state: GameState;
