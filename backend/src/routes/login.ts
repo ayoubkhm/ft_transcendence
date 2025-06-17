@@ -7,8 +7,7 @@ interface LoginBody {
 }
 
 // Login route: basic email/password validation
-export default async function (app: FastifyInstance)
-{
+export default async function (app: FastifyInstance) {
   app.post<{ Body: LoginBody }>('/login', async (request, reply) => {
     const { email, password } = request.body
 
@@ -22,7 +21,6 @@ export default async function (app: FastifyInstance)
       return reply.status(400).send({ error: 'Invalid email or password' })
     }
 
-    // Credentials look valid
     return { ok: true }
   })
 }
