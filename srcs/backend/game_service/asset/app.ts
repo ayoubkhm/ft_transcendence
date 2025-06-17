@@ -36,26 +36,12 @@ app.addHook('onResponse', async (request, reply) => {
 // Expose metrics endpoint (JSON)
 app.get('/metrics', async (_req, reply) => metrics)
 
-// Autoload solo-game routes from service folder
-app.register(autoload, {
-  dir: join(__dirname, 'services', 'game', 'routes'),
-  forceESM: true,
-  scriptPattern: /\.ts$/,
-  options: { prefix: '/api' }
-})
-// Autoload other routes (login, ping) from 'routes'
+// Autoload game routes
 app.register(autoload, {
   dir: join(__dirname, 'routes'),
   forceESM: true,
-  scriptPattern: /\.ts$/,
+  scriptPattern: /\.js$/,
   options: { prefix: '/api' }
-})
-// Autoload OAuth2 (Google) routes and plugin
-app.register(autoload, {
-  dir: join(__dirname, 'services', 'oauth', 'routes'),
-  forceESM: true,
-  scriptPattern: /\.ts$/,
-  options: { prefix: '/api/auth' }
 })
 
 export default app
