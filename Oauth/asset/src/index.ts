@@ -3,7 +3,6 @@ import oauthPlugin from '@fastify/oauth2';
 import cookiesPlugin from '@fastify/cookie';
 import { OAuth2Namespace } from '@fastify/oauth2';
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { metrics, auth_requests_total } from "./metrics";
 
 const server = fastify();
 

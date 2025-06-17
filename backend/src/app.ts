@@ -1,6 +1,6 @@
 import Fastify from 'fastify'
-import autoload from 'fastify-autoload'
-import cors from 'fastify-cors'
+import autoload from '@fastify/autoload'
+import cors from '@fastify/cors'
 import fastifyPlugin from 'fastify-plugin'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
