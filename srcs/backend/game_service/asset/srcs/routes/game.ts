@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify'
 import { randomUUID } from 'crypto'
-import { Game } from '../game.js'
+import { Game } from '../algo.js'
 import type { ClientInput, GameState } from '../types.js'
 
 // In-memory store of active game sessions and their simulation loops
@@ -10,7 +10,7 @@ interface GameSession {
 }
 const sessions = new Map<string, GameSession>()
 
-export default async function (app: FastifyInstance) {
+export default async function gamesRoutes (app: FastifyInstance) {
   // Create a new solo game (player vs AI)
   app.post('/game', async (request, reply) => {
     const playerId = randomUUID()

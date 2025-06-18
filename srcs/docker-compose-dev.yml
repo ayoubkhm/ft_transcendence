@@ -1,0 +1,38 @@
+name: ft_transcendence
+
+services:
+  auth_service:
+    container_name: auth_service
+    restart: no-failure
+    environment:
+      - NODE_ENV: dev
+      - PORT: 3000
+    build:
+      context: ./backend/auth_service
+      dockerfile: Dockerfile
+      args:
+        - NODE_ENV: dev
+    expose:
+      - 3000
+    networks:
+      - router
+  
+  game_service:
+    container_name: game_service
+    restart: no-failure
+    environment:
+      - NODE_ENV: dev
+      - PORT: 3000
+    build:
+      context: ./backend/game_service
+      dockerfile: Dockerfile
+      args:
+        - NODE_ENV: dev
+    expose:
+      - 3000
+    networks:
+      - router
+
+networks:
+  router:
+    driver: bridge

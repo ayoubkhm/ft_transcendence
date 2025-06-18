@@ -22,4 +22,24 @@ export default async function authRoutes(app: FastifyInstance) {
         token: accessToken
       });
   });
+    interface LoginBody {
+    email: string;
+    password: string;
+  }
+    app.post<{ Body: LoginBody }>('/login', async (request, reply) => {
+    const { email, password } = request.body;
+
+    if (
+      !email ||
+      !password ||
+      typeof email !== 'string' ||
+      typeof password !== 'string' ||
+      !email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)
+    ) {
+      return reply.status(400).send({ error: 'Invalid email or password' });
+    }
+
+    // ici tu peux comparer contre ta base, bcrypt, etc.
+    return { ok: true };
+  });
 }

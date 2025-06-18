@@ -1,19 +1,25 @@
-FROM node:debian
+FROM node:lts
 
 WORKDIR /usr/src/auth_service
 
-RUN apk update --no-cache && \
-    apk add sqlite openssl pnpm  prometheus-node-exporter --no-cache
+RUN apt-get update && \
+    apt-get install -y \
+        sqlite3 \
+        openssl \
+        curl \
+        wget && \
+    npm install -g pnpm && \
+    useradd -m node_exporter
 
-ARG ENV
-
-COPY ./asset/package.json .
+ARG NODE_ENV
+ENV NODE_ENV=${NODE_ENV}
+COPY ./assets/package.json .
 COPY ./conf/pnpm_install.sh .
 RUN chmod +x pnpm_install.sh && ./pnpm_install.sh
 
 COPY ./conf/entrypoint.sh .
-COPY ./asset/srcs ./srcs
-COPY ./asset/tsconfig.json .
+COPY ./assets/srcs ./srcs
+COPY ./assets/tsconfig.json .
 
 RUN chmod +x entrypoint.sh 
 
