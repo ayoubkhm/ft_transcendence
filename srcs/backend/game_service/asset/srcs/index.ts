@@ -1,15 +1,16 @@
-import Fastify from 'fastify'
-import autoload from 'fastify-autoload'
+import fastify, { FastifyRequest, FastifyReply } from 'fastify';
 import cors from 'fastify-cors'
 import fastifyPlugin from 'fastify-plugin'
+
 // OAuth2 (Google) plugin is now auto-loaded via services/oauth/routes
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
+import gameRoutes from './routes/game.js'
 
 // Polyfill __dirname in ES module scope
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
-const app = Fastify({ logger: true })
+const app = fastify({ logger: true })
 // Register CORS plugin with compatibility for Fastify v5
 app.register(
   fastifyPlugin(cors, { fastify: '5.x' })
@@ -37,11 +38,12 @@ app.addHook('onResponse', async (request, reply) => {
 app.get('/metrics', async (_req, reply) => metrics)
 
 // Autoload game routes
-app.register(autoload, {
-  dir: join(__dirname, 'routes'),
-  forceESM: true,
-  scriptPattern: /\.js$/,
-  options: { prefix: '/api' }
-})
+app.register(gameRoutes, { prefix: '/api' })
 
-export default app
+app.listen({ port: 3000, host: '0.0.0.0' }, err => {
+  if (err) {
+    app.log.error(err)
+    process.exit(1)
+  }
+  app.log.info('Auth service ready');
+});

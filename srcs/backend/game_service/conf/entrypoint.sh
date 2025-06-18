@@ -3,8 +3,8 @@
 node_exporter &
 
 if [ "$NODE_ENV" = "dev" ]; then
-    exec pnpm dev
+    exec pnpm run dev
 else
-    pnpm build
-    exec pnpm start
+    pnpm run build
+    exec pnpm run start
 fi
