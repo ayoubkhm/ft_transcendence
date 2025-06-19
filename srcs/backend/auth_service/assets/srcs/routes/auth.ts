@@ -1,5 +1,8 @@
 // src/routes/auth.ts
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import 'dotenv/config';
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
 
 export default async function authRoutes(app: FastifyInstance) {
   // callback Google OAuth2
@@ -38,7 +41,50 @@ export default async function authRoutes(app: FastifyInstance) {
     ) {
       return reply.status(400).send({ error: 'Invalid email or password' });
     }
+    const response = await fetch(`http://localhost:3000/api/users/lookup/${email}`, 
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email,
+        credential: process.env.API_CREDENTIAL
+      }),
+    });
+    const data = await response.json()
+    if (response.status !== 200)
+      return reply.status(response.status).send({ error: data.error || 'Unknown error' });
+    const user = data
+    if (!user || !user.password)
+      return reply.status(401).send({ error: 'Invalid email or password' });
+    const isValid = await bcrypt.compare(password as string, user.password);
+    if (!isValid)
+      return reply.status(401).send({ error: 'Invalid email or password' });
+    if (user.isBanned)
+      return reply.status(403).send({ error: 'User is banned' });
+    if (user.isTowFAEnabled) {
+      const token = jwt.sign({data: {
+        id: user.id,
+        email: email,
+        name: user.name,
+        towfactorSecret: user.towfactorsecret,
+        dfa: true
+      }}, process.env.JWT_SECRET as string, { expiresIn: '24h' });
+      if (!token)
+        throw (new Error("cannot generate user token"));
+      return reply.cookie('session', token, {
+        httpOnly: true,
+        path: '/',
+        secure: true,
+        sameSite: 'none',
+    }).send({ response: "success", need2FA: true });
+  }
+  else {}
 
+
+    
+    console.log("Réponse :", data)
     // ici tu peux comparer contre ta base, bcrypt, etc.
     return { ok: true };
   });
