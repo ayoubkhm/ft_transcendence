@@ -13,7 +13,6 @@ declare module 'fastify' {
 
 const app = fastify({ logger: true });
 
-const cookieSecure = process.env.NODE_ENV === 'production';
 // Si tu es en production, utilise HTTPS et mets secure à true
 // Sinon, en développement, mets secure à false (HTTP)
 // —–– 1) Cookie plugin (pour ton setCookie dans le callback)
@@ -39,7 +38,7 @@ app.register(oauthPlugin, {
     auth: oauthPlugin.GOOGLE_CONFIGURATION
   },
   cookie: {
-    secure:   process.env.NODE_ENV === 'production',
+    secure:   true,
     sameSite: 'lax',
     path:     '/'
   },
