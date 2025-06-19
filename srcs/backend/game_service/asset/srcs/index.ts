@@ -40,10 +40,13 @@ app.get('/metrics', async (_req, reply) => metrics)
 // Autoload game routes
 app.register(gameRoutes, { prefix: '/api' })
 
-app.listen({ port: 3000, host: '0.0.0.0' }, err => {
+// Listen on configured port/host (default to 3001)
+const port = parseInt(process.env.PORT || '3001', 10);
+const host = process.env.HOST || '0.0.0.0';
+app.listen({ port, host }, err => {
   if (err) {
-    app.log.error(err)
-    process.exit(1)
+    app.log.error(err);
+    process.exit(1);
   }
-  app.log.info('Auth service ready');
+  app.log.info(`Game service ready on http://${host}:${port}`);
 });

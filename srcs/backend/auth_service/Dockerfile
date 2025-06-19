@@ -20,6 +20,8 @@ RUN chmod +x pnpm_install.sh && ./pnpm_install.sh
 COPY ./conf/entrypoint.sh .
 COPY ./assets/srcs ./srcs
 COPY ./assets/tsconfig.json .
+# Copy .env file for runtime configuration (create srcs/backend/auth_service/.env from .env.example)
+COPY .env .
 
 RUN chmod +x entrypoint.sh 
 
