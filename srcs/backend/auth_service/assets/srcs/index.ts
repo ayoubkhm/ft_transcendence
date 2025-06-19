@@ -18,23 +18,36 @@ const cookieSecure = process.env.NODE_ENV === 'production';
 // Sinon, en développement, mets secure à false (HTTP)
 // —–– 1) Cookie plugin (pour ton setCookie dans le callback)
 app.register(cookiesPlugin, {});
+// Determine callbackUri: use env var if set, otherwise build dynamically per request
+const callbackUri = process.env.CALLBACK_URL 
+  ?? 'http://localhost:3000/api/auth/google/callback'; 
+console.log('🔔 callbackUri =', callbackUri);
+
+console.log('🔐 GOOGLE_CLIENT_ID =', process.env.GOOGLE_CLIENT_ID)
+console.log('🔔 CALLBACK_URL     =', process.env.CALLBACK_URL)
+
+
+
 app.register(oauthPlugin, {
-    name: 'googleOAuth2',
-    scope: ['profile','email'],
-    credentials: {
-      client: {
-        id:     process.env.GOOGLE_CLIENT_ID!,
-        secret: process.env.GOOGLE_CLIENT_SECRET!
-      },
-      auth: oauthPlugin.GOOGLE_CONFIGURATION
+  name: 'googleOAuth2',
+  scope: ['profile', 'email'],
+  credentials: {
+    client: {
+      id:     process.env.GOOGLE_CLIENT_ID!,
+      secret: process.env.GOOGLE_CLIENT_SECRET!
     },
-    cookie: {
-      secure: cookieSecure, // true si HTTPS, false si HTTP
-      sameSite: 'lax'
-    },
-    startRedirectPath: '/api/auth/login/google',
-    callbackUri: process.env.CALLBACK_URL!
-});
+    auth: oauthPlugin.GOOGLE_CONFIGURATION
+  },
+  cookie: {
+    secure:   process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path:     '/'
+  },
+  startRedirectPath: '/api/auth/login/google',
+  callbackUri        // ← utilise directement ta variable
+})
+
+
 
 
 // —–– 3) Tes routes custom (le callback)

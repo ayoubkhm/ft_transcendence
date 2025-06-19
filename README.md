@@ -26,13 +26,17 @@ pnpm install         # installe les dépendances (ou npm install)
 
 ### Configuration
 
-Créez un fichier `.env` à la racine de `auth_service` avec les variables suivantes :
+Copy `.env.example` to `.env` in the `srcs/backend/auth_service` folder and fill in your own values:
 ```dotenv
-GOOGLE_CLIENT_ID=votre_client_id
-GOOGLE_CLIENT_SECRET=votre_client_secret
+# OAuth2 credentials from Google Cloud Console
+GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+# The redirect URI you registered in Google (must match exactly)
 CALLBACK_URL=http://localhost:3000/api/auth/google/callback
-COOKIE_SECRET=une_chaine_secrete_pour_signature_des_cookies
+# Secret to sign session cookies
+COOKIE_SECRET=some_random_string
 ```
+Note: Place this `.env` file in the same directory as the `Dockerfile` (`srcs/backend/auth_service`) so that it is included in the Docker build.
 
 ### Lancement
 
