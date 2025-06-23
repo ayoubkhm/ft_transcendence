@@ -131,24 +131,24 @@ export default async function authRoutes(app: FastifyInstance) {
       return reply.status(401).send({ error: 'Invalid email or password' });
     if (user.isBanned) {
       return reply.status(403).send({ error: 'User is banned' });
+    }
     if (user.isTowFAEnabled) {
-      const token = jwt.sign({data: {
-        id: user.id,
-        email: email,
-        name: user.name,
-        towfactorSecret: user.towfactorsecret,
-        dfa: true
-      }}, process.env.JWT_SECRET as string, { expiresIn: '24h' });
-      if (!token)
-        throw (new Error("cannot generate user token"));
-      return reply.cookie('session', token, {
-        httpOnly: true,
-        path: '/',
-        secure: true,
-        sameSite: 'none',
-    }).send({ response: "success", need2FA: true });
-  }
-  else {
+      // Send a magic link as second factor
+      const pendingToken = jwt.sign(
+        { data: { id: user.id, email, name: user.name, isAdmin: user.isAdmin }, pendingMagic: true },
+        process.env.JWT_SECRET as string,
+        { expiresIn: '15m' }
+      );
+      const host = request.headers.host!;
+      const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
+      const link = `${protocol}://${host}/login/magic/callback?token=${pendingToken}`;
+      await transporter.sendMail({
+        to: email,
+        subject: 'Your login magic link',
+        html: `<p>Hello ${user.name},</p><p>Click <a href="${link}">here</a> to complete login.</p>`
+      });
+      return reply.send({ response: 'magic_sent' });
+    } else {
     const token = jwt.sign({data: {
       id: user.id,
       email: email,
@@ -171,5 +171,34 @@ export default async function authRoutes(app: FastifyInstance) {
     console.log("Réponse :", data)
     // ici tu peux comparer contre ta base, bcrypt, etc.
     return { ok: true };
+  });
+
+  // Magic link callback
+  app.get('/login/magic/callback', async (request: FastifyRequest, reply: FastifyReply) => {
+    const { token } = request.query as { token?: string };
+    if (!token) {
+      return reply.status(400).send({ error: 'Missing token' });
+    }
+    try {
+      const payload: any = jwt.verify(token, process.env.JWT_SECRET as string);
+      if (!payload.pendingMagic) {
+        return reply.status(403).send({ error: 'Invalid or expired magic link' });
+      }
+      const { id, email, name, isAdmin } = payload.data;
+      const finalToken = jwt.sign(
+        { data: { id, email, name, isAdmin, dfa: true } },
+        process.env.JWT_SECRET as string,
+        { expiresIn: '24h' }
+      );
+      if (!finalToken) throw new Error('Token generation failed');
+      return reply.cookie('session', finalToken, {
+        httpOnly: true,
+        path: '/',
+        secure: true,
+        sameSite: 'none',
+      }).send({ response: 'success' });
+    } catch (err) {
+      return reply.status(401).send({ error: 'Unauthorized' });
+    }
   });
 }
