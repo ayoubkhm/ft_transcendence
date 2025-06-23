@@ -23,8 +23,17 @@ let playerId: string;
 let stateInterval: number;
 
 startBtn?.addEventListener('click', () => {
-  // No body is sent, so drop the JSON Content-Type header to avoid Fastify 400 error
-  fetch('http://localhost:3001/api/game', { method: 'POST' })
+  // Start new game with chosen AI difficulty
+  // Read selected difficulty
+  const difficultySelect = document.getElementById('difficulty') as HTMLSelectElement | null;
+  const difficulty = difficultySelect?.value;
+  // Prepare request options: include JSON body when difficulty provided
+  const opts: RequestInit = { method: 'POST' };
+  if (difficulty) {
+    opts.headers = { 'Content-Type': 'application/json' };
+    opts.body = JSON.stringify({ difficulty });
+  }
+  fetch('http://localhost:3001/api/game', opts)
     .then((res) => res.json())
     .then((data) => {
       gameId = data.gameId;

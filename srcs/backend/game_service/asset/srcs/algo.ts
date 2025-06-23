@@ -6,13 +6,21 @@ import {
 } from './types.js';
 import { aiPaddleMove } from './ai/index.js';
 
+// AI difficulty levels
+type AIDifficulty = 'easy' | 'medium' | 'hard';
 export class Game {
   private state: GameState;
-  private readonly speed       = 400; // vitesse balle  (px/s)
-  private readonly paddleSpeed = 340; // vitesse joueur (px/s)
-  private readonly aiSpeed     = 280; // vitesse max IA (px/s)
+  private readonly speed       = 400; // ball speed (px/s)
+  private readonly paddleSpeed = 340; // player paddle speed (px/s)
+  private readonly aiSpeed     = 100; // base AI paddle speed (px/s)
+  private readonly aiDifficulty: AIDifficulty;
 
-  constructor(leftId: string, rightId: string /* "AI" pour solo */) {
+  constructor(
+    leftId: string,
+    rightId: string /* "AI" for solo */,
+    aiDifficulty: AIDifficulty = 'medium'
+  ) {
+    this.aiDifficulty = aiDifficulty;
     this.state = {
       ball: {
         x: GAME_WIDTH / 2,
@@ -64,9 +72,46 @@ export class Game {
       }
     }
 
-    // 2) IA très simple (raquette droite uniquement)
+    // 2) AI paddle movement (right side)
     if (right.id === 'AI') {
-      right.paddle.y = aiPaddleMove(right.paddle, ball, this.aiSpeed, dt);
+      // Determine AI speed and noise based on difficulty
+      let speedMul = 1;
+      let noiseAmp = 0;
+      switch (this.aiDifficulty) {
+        case 'easy':
+          speedMul = 0.9;
+          noiseAmp = PADDLE_H * 0.3;
+          break;
+        case 'medium':
+          speedMul = 1;
+          noiseAmp = PADDLE_H * 0.1;
+          break;
+        case 'hard':
+          speedMul = 1;
+          noiseAmp = 0;
+          break;
+      }
+      // Apply mistake probability: occasional misprediction
+      const mistakeProb = this.aiDifficulty === 'easy'
+        ? 0.4
+        : this.aiDifficulty === 'medium'
+          ? 0.3
+          : 0.1; // hard difficulty: 10% chance of mistake
+      if (Math.random() < mistakeProb) {
+        // use full-range noise to simulate error
+        noiseAmp = GAME_HEIGHT;
+      }
+      // Compute effective AI speed and noise per difficulty
+      const effectiveSpeed = this.aiSpeed * speedMul;
+      const effectiveNoiseAmp = noiseAmp;
+      // Move AI paddle
+      right.paddle.y = aiPaddleMove(
+        right.paddle,
+        ball,
+        effectiveSpeed,
+        dt,
+        effectiveNoiseAmp
+      );
     }
 
     // 3) Déplacement de la balle
@@ -77,14 +122,37 @@ export class Game {
     if (ball.y - BALL_R <= 0 || ball.y + BALL_R >= GAME_HEIGHT)
       ball.v.y *= -1;
 
-    // rebond sur paddles
+    // Paddle collision with angle based on hit position
+    const maxBounceAngle = Math.PI / 4; // 45 degrees
+    // Left paddle
     if (ball.x - BALL_R <= PADDLE_W) {
-      if (ball.y >= left.paddle.y && ball.y <= left.paddle.y + PADDLE_H)
-        ball.v.x *= -1;
+      const py = left.paddle.y;
+      if (ball.y >= py && ball.y <= py + PADDLE_H) {
+        // Compute normalized intersection [-1..1]
+        const paddleCenter = py + PADDLE_H / 2;
+        const relativeY = (ball.y - paddleCenter) / (PADDLE_H / 2);
+        const clamped = Math.max(-1, Math.min(relativeY, 1));
+        const bounceAngle = clamped * maxBounceAngle;
+        // Preserve speed magnitude
+        const speedMag = Math.hypot(ball.v.x, ball.v.y);
+        ball.v.x =  speedMag * Math.cos(bounceAngle);
+        ball.v.y =  speedMag * Math.sin(bounceAngle);
+      }
     }
+    // Right paddle
     if (ball.x + BALL_R >= GAME_WIDTH - PADDLE_W) {
-      if (ball.y >= right.paddle.y && ball.y <= right.paddle.y + PADDLE_H)
-        ball.v.x *= -1;
+      const py = right.paddle.y;
+      if (ball.y >= py && ball.y <= py + PADDLE_H) {
+        // Compute normalized intersection [-1..1]
+        const paddleCenter = py + PADDLE_H / 2;
+        const relativeY = (ball.y - paddleCenter) / (PADDLE_H / 2);
+        const clamped = Math.max(-1, Math.min(relativeY, 1));
+        const bounceAngle = clamped * maxBounceAngle;
+        // Preserve speed magnitude
+        const speedMag = Math.hypot(ball.v.x, ball.v.y);
+        ball.v.x = -speedMag * Math.cos(bounceAngle);
+        ball.v.y =  speedMag * Math.sin(bounceAngle);
+      }
     }
 
     // 4) Score et fin de manche
