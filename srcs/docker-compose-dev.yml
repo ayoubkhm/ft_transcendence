@@ -3,7 +3,9 @@
 services:
   auth_service:
     container_name: auth_service
-    restart: no-failure
+    restart: "no"
+    env_file:
+      - ../.env
     environment:
       - NODE_ENV=dev
       - PORT=3000
@@ -19,7 +21,7 @@ services:
   
   game_service:
     container_name: game_service
-    restart: no-failure
+    restart: "no"
     environment:
       - NODE_ENV=dev
       - PORT=3000
@@ -40,7 +42,7 @@ services:
       - database:/db
     tty: true
     env_file:
-      - .env
+      - ../.env
     environment:
       - POSTGRES_USER=${DB_USER}
       - POSTGRES_PASSWORD=${DB_PASS}
@@ -48,10 +50,33 @@ services:
       - POSTGRES_DB=${DB_NAME}
       - PGDATA=/db
     expose:
-    # port par défaut Postgre
       - 5432
+    networks:
+      - router
 
 
+  db_service:
+    container_name: db_service
+    restart: "no"
+    build:
+      context: ./backend/db_service
+      dockerfile: Dockerfile
+      args:
+        - NODE_ENV=dev
+    env_file:
+      - ../.env
+    environment:
+      - PGHOST=database
+      - PGUSER=${DB_USER}
+      - PGPASSWORD=${DB_PASS}
+      - PGDATABASE=${DB_NAME}
+      - PGPORT=5432
+    expose:
+      - 3001
+    depends_on:
+      - database
+    networks:
+      - router
 volumes:
   database:
 

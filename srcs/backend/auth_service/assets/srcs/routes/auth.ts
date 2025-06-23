@@ -5,6 +5,8 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import nodemailer from 'nodemailer';
 
+// Base URL for User service (DB service)
+const USER_SERVICE_URL = process.env.USER_SERVICE_URL || 'http://localhost:3001';
 // Configure SMTP transporter for sending magic links
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
@@ -57,7 +59,7 @@ export default async function authRoutes(app: FastifyInstance) {
       return reply.status(400).send({ error: 'Invalid email, password or name' });
     }
     const hashedPassword = await bcrypt.hash(password, 12);
-    const response = await fetch(`http://localhost:3001/api/users/create`, 
+    const response = await fetch(`${USER_SERVICE_URL}/api/users/create`, 
     {
       method: 'POST',
       headers: {
@@ -65,7 +67,7 @@ export default async function authRoutes(app: FastifyInstance) {
       },
       body: JSON.stringify({
         email,
-        password,
+        password: hashedPassword,
         name,
         credential: process.env.API_CREDENTIAL
       }),
@@ -109,7 +111,7 @@ export default async function authRoutes(app: FastifyInstance) {
     ) {
       return reply.status(400).send({ error: 'Invalid email or password' });
     }
-    const response = await fetch(`http://localhost:3001/api/users/lookup/${email}`, 
+    const response = await fetch(`${USER_SERVICE_URL}/api/users/lookup/${encodeURIComponent(email)}`, 
     {
       method: 'POST',
       headers: {

@@ -20,8 +20,7 @@ RUN chmod +x pnpm_install.sh && ./pnpm_install.sh
 COPY ./conf/entrypoint.sh .
 COPY ./assets/srcs ./srcs
 COPY ./assets/tsconfig.json .
-# Copy .env file for runtime configuration (create srcs/backend/auth_service/.env from .env.example)
-COPY .env .
+# Runtime env vars are injected by docker-compose via env_file; no .env copy during build
 
 RUN chmod +x entrypoint.sh 
 

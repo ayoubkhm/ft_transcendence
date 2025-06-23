@@ -9,8 +9,8 @@ const app = fastify({ logger: true });
 // Register CORS plugin for Fastify v5 compatibility
 app.register(fastifyPlugin(cors, { fastify: '5.x' }));
 
-// Register DB service routes under /api/db
-app.register(dbRoutes, { prefix: '/api/db' });
+// Register DB and User API routes under /api
+app.register(dbRoutes, { prefix: '/api' });
 
 // Simple metrics endpoint
 app.get('/metrics', async (_req, _reply) => ({
