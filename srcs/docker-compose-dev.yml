@@ -1,17 +1,17 @@
-name: ft_transcendence
+# name: ft_transcendence
 
 services:
   auth_service:
     container_name: auth_service
     restart: no-failure
     environment:
-      - NODE_ENV: dev
-      - PORT: 3000
+      - NODE_ENV=dev
+      - PORT=3000
     build:
       context: ./backend/auth_service
       dockerfile: Dockerfile
       args:
-        - NODE_ENV: dev
+        - NODE_ENV=dev
     expose:
       - 3000
     networks:
@@ -21,17 +21,39 @@ services:
     container_name: game_service
     restart: no-failure
     environment:
-      - NODE_ENV: dev
-      - PORT: 3000
+      - NODE_ENV=dev
+      - PORT=3000
     build:
       context: ./backend/game_service
       dockerfile: Dockerfile
       args:
-        - NODE_ENV: dev
+        - NODE_ENV=dev
     expose:
       - 3000
     networks:
       - router
+
+  database:
+    container_name: database_service
+    build: ./backend/database/
+    volumes:
+      - database:/db
+    tty: true
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASS}
+      # name of default database when init
+      - POSTGRES_DB=${DB_NAME}
+      - PGDATA=/db
+    expose:
+    # port par défaut Postgre
+      - 5432
+
+
+volumes:
+  database:
 
 networks:
   router:
