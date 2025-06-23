@@ -9,14 +9,38 @@ export default async function private_userRoutes(server: FastifyInstance) {
     }
   
     server.post<{ Params: PrivateDataParams }>('/lookup/:email', async (request, reply) => {
-        // Simulate fetching private data
-        
-        const email = request.params.email;
-        const isEmail = email.match(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/);
-        const isID = email.match(/^[0-9]$/);
-        //check dans la db et post via reply
-        return reply.send(email);
-    });
+    const value = request.params.email;
+
+    const isEmail = value.match(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/);
+    const isID = value.match(/^\d+$/); // ex: 0 à 100+
+  
+    try {
+    let user = null;
+
+    if (isEmail) {
+      user = await server.pg.query (
+        `SELECT * FROM "User" WHERE email = '${value}'`
+      );
+    } else if (isID) {
+      user = await server.pg.query(
+        `SELECT * FROM "User" WHERE id = ${Number(value)}`
+      );
+    } else {
+      user = await server.pg.query(
+        `SELECT * FROM "User" WHERE name = '${value}'`
+      );
+    }
+
+    if (!user || user.length === 0) {
+      return reply.status(404).send({ error: 'User not found' });
+    }
+
+    return reply.send(user[0]); // renvoyer le premier résultat
+  } catch (error) {
+    console.error('Raw query error:', error);
+    return reply.status(500).send({ error: 'Internal server error' });
+  }
+});
 
     interface DataUserParams {
       email: string;
