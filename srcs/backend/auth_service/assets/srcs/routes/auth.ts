@@ -6,7 +6,7 @@ import jwt from 'jsonwebtoken';
 
 export default async function authRoutes(app: FastifyInstance) {
   // callback Google OAuth2
-  app.get('/google/callback', async (req: FastifyRequest, reply: FastifyReply) => {
+  app.get('/login/google/callback', async (req: FastifyRequest, reply: FastifyReply) => {
     // 1) Exchange code → AccessToken object
     const oauthResult = await app.googleOAuth2.getAccessTokenFromAuthorizationCodeFlow(req);
     // 2) Récupère la vraie chaîne d’accès
@@ -25,6 +25,62 @@ export default async function authRoutes(app: FastifyInstance) {
         token: accessToken
       });
   });
+
+    interface SingupBody {
+    email: string;
+    password: string;
+    name: string;
+  }
+  app.post<{ Body: SingupBody }>('/signup', async (request, reply) => {
+    const { email, password, name } = request.body;
+    if (
+      !email ||
+      !password ||
+      !name ||
+      typeof email !== 'string' ||
+      typeof password !== 'string' ||
+      typeof name !== 'string' ||
+      !email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)
+    ) {
+      return reply.status(400).send({ error: 'Invalid email, password or name' });
+    }
+    const hashedPassword = await bcrypt.hash(password, 12);
+    const response = await fetch(`http://localhost:3001/api/users/create`, 
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email,
+        password,
+        name,
+        credential: process.env.API_CREDENTIAL
+      }),
+    });
+    const data = await response.json();
+    if (response.status !== 200)
+      return reply.status(response.status).send({ error: data.error || 'Unknown error' });
+    const user = data;
+    if (!user || !user.id)
+      return reply.status(400).send({ error: 'User creation failed' });
+    const token = jwt.sign({data: {
+      id: user.id,
+      email: email,
+      name: user.name,
+      towfactorSecret: user.towfactorsecret,
+      dfa: true
+    }}, process.env.JWT_SECRET as string, { expiresIn: '24h' });
+    if (!token)
+      return reply.status(500).send({ error: 'Token generation failed' });
+    return reply.cookie('session', token, {
+      httpOnly: true,
+      path: '/',
+      secure: true,
+      sameSite: 'none',
+    }).send({ response: "success", need2FA: false });
+  });
+  
     interface LoginBody {
     email: string;
     password: string;
@@ -41,7 +97,7 @@ export default async function authRoutes(app: FastifyInstance) {
     ) {
       return reply.status(400).send({ error: 'Invalid email or password' });
     }
-    const response = await fetch(`http://localhost:3000/api/users/lookup/${email}`, 
+    const response = await fetch(`http://localhost:3001/api/users/lookup/${email}`, 
     {
       method: 'POST',
       headers: {
@@ -80,8 +136,24 @@ export default async function authRoutes(app: FastifyInstance) {
         sameSite: 'none',
     }).send({ response: "success", need2FA: true });
   }
-  else {}
-
+  else {
+    const token = jwt.sign({data: {
+      id: user.id,
+      email: email,
+      name: user.name,
+      isAdmin: user.isAdmin,
+      towfactorSecret: user.towfactorsecret,
+      dfa: true
+    }}, process.env.JWT_SECRET as string, { expiresIn: '24h' });
+    if (!token)
+      throw (new Error("cannot generate user token"));
+    return reply.cookie('session', token, {
+      httpOnly: true,
+      path: '/',
+      secure: true,
+      sameSite: 'none',
+    }).send({ response: "success", need2FA: false });
+  }
 
     
     console.log("Réponse :", data)

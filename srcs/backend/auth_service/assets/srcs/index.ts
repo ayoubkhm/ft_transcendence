@@ -13,13 +13,14 @@ declare module 'fastify' {
 
 const app = fastify({ logger: true });
 
+
 // Si tu es en production, utilise HTTPS et mets secure à true
 // Sinon, en développement, mets secure à false (HTTP)
 // —–– 1) Cookie plugin (pour ton setCookie dans le callback)
 app.register(cookiesPlugin, {});
 // Determine callbackUri: use env var if set, otherwise build dynamically per request
 const callbackUri = process.env.CALLBACK_URL 
-  ?? 'http://localhost:3000/api/auth/google/callback'; 
+  ?? 'http://localhost:3000/api/auth/login/google/callback'; 
 console.log('🔔 callbackUri =', callbackUri);
 
 console.log('🔐 GOOGLE_CLIENT_ID =', process.env.GOOGLE_CLIENT_ID)
