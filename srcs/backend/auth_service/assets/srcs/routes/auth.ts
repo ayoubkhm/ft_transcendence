@@ -3,6 +3,18 @@ import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import 'dotenv/config';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import nodemailer from 'nodemailer';
+
+// Configure SMTP transporter for sending magic links
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST,
+  port: Number(process.env.SMTP_PORT),
+  secure: false, // upgrade later with STARTTLS
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS
+  }
+});
 
 export default async function authRoutes(app: FastifyInstance) {
   // callback Google OAuth2
@@ -117,7 +129,7 @@ export default async function authRoutes(app: FastifyInstance) {
     const isValid = await bcrypt.compare(password as string, user.password);
     if (!isValid)
       return reply.status(401).send({ error: 'Invalid email or password' });
-    if (user.isBanned)
+    if (user.isBanned) {
       return reply.status(403).send({ error: 'User is banned' });
     if (user.isTowFAEnabled) {
       const token = jwt.sign({data: {
