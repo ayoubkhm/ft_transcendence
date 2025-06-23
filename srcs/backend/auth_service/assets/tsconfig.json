@@ -2,12 +2,12 @@
   "compilerOptions": {
     "target": "ES2020",
     "module": "CommonJS",
-    "rootDir": "assets",    // on prend tout ce qui est dans assets/ comme source
+    "rootDir": "srcs",       // include TypeScript source files under srcs/
     "outDir": "dist",       // on émet les .js à la racine de dist/
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "strict": true,
     "skipLibCheck": true
   },
-  "include": ["assets/**/*.ts"]
+  "include": ["srcs/**/*.ts"]
 }
