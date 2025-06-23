@@ -11,11 +11,14 @@ interface GameSession {
 const sessions = new Map<string, GameSession>()
 
 export default async function gamesRoutes (app: FastifyInstance) {
-  // Create a new solo game (player vs AI)
-  app.post('/game', async (request, reply) => {
+  // Create a new solo game (player vs AI) with optional difficulty
+  app.post<{ Body: { difficulty?: 'easy' | 'medium' | 'hard' } }>('/game', async (request, reply) => {
     const playerId = randomUUID()
     const gameId = randomUUID()
-    const game = new Game(playerId, 'AI')
+    // Read AI difficulty
+    const { difficulty } = request.body
+    const level = difficulty ?? 'medium'
+    const game = new Game(playerId, 'AI', level)
     // Start game simulation at ~60fps
     const interval = setInterval(() => {
       const state: GameState = game.getState()
