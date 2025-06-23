@@ -3,6 +3,18 @@ import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import 'dotenv/config';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import nodemailer from 'nodemailer';
+
+// Configure SMTP transporter for sending magic links
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST,
+  port: Number(process.env.SMTP_PORT),
+  secure: false, // upgrade later with STARTTLS
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS
+  }
+});
 
 export default async function authRoutes(app: FastifyInstance) {
   // callback Google OAuth2
@@ -61,31 +73,50 @@ export default async function authRoutes(app: FastifyInstance) {
     const isValid = await bcrypt.compare(password as string, user.password);
     if (!isValid)
       return reply.status(401).send({ error: 'Invalid email or password' });
-    if (user.isBanned)
+    if (user.isBanned) {
       return reply.status(403).send({ error: 'User is banned' });
-    if (user.isTowFAEnabled) {
-      const token = jwt.sign({data: {
-        id: user.id,
-        email: email,
-        name: user.name,
-        towfactorSecret: user.towfactorsecret,
-        dfa: true
-      }}, process.env.JWT_SECRET as string, { expiresIn: '24h' });
-      if (!token)
-        throw (new Error("cannot generate user token"));
-      return reply.cookie('session', token, {
-        httpOnly: true,
-        path: '/',
-        secure: true,
-        sameSite: 'none',
-    }).send({ response: "success", need2FA: true });
-  }
-  else {}
-
-
-    
-    console.log("Réponse :", data)
-    // ici tu peux comparer contre ta base, bcrypt, etc.
-    return { ok: true };
+    }
+    // Generate a short-lived magic link token
+    const magicToken = jwt.sign(
+      { sub: user.id, email },
+      process.env.JWT_SECRET as string,
+      { expiresIn: '15m' }
+    );
+    // Build magic link URL
+    const link = `${process.env.APP_URL}/api/auth/magic-login?token=${magicToken}`;
+    // Send the magic link via email
+    await transporter.sendMail({
+      from: process.env.SMTP_FROM,
+      to: email,
+      subject: 'Your login link',
+      text: `Click this link to login: ${link}`
+    });
+    return reply.send({ ok: true, message: 'Magic link sent to your email.' });
+  });
+  // Magic link verification for email-based 2FA
+  app.get('/magic-login', async (req: FastifyRequest, reply: FastifyReply) => {
+    const { token } = req.query as { token?: string };
+    if (!token) {
+      return reply.status(400).send({ error: 'No token provided' });
+    }
+    try {
+      const payload: any = jwt.verify(token, process.env.JWT_SECRET!);
+      // Issue full session token
+      const sessionToken = jwt.sign(
+        { sub: payload.sub, email: payload.email },
+        process.env.JWT_SECRET!,
+        { expiresIn: '24h' }
+      );
+      return reply
+        .setCookie('session', sessionToken, {
+          httpOnly: true,
+          path: '/',
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'strict'
+        })
+        .send({ ok: true });
+    } catch (err) {
+      return reply.status(401).send({ error: 'Invalid or expired link' });
+    }
   });
 }
