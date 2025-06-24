@@ -5,7 +5,7 @@ services:
     container_name: auth_service
     restart: "no"
     env_file:
-      - ../.env
+      - ./.env
     environment:
       - NODE_ENV=dev
       - PORT=3000
@@ -42,11 +42,10 @@ services:
       - database:/db
     tty: true
     env_file:
-      - ../.env
+      - ./.env
     environment:
       - POSTGRES_USER=${DB_USER}
       - POSTGRES_PASSWORD=${DB_PASS}
-      # name of default database when init
       - POSTGRES_DB=${DB_NAME}
       - PGDATA=/db
     expose:
@@ -64,7 +63,7 @@ services:
       args:
         - NODE_ENV=dev
     env_file:
-      - ../.env
+      - ./.env
     environment:
       - PGHOST=database
       - PGUSER=${DB_USER}
