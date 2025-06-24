@@ -80,7 +80,8 @@ function fetchAndDraw() {
 }
 
 // Render game state on canvas
-function draw(state: any) {
+function draw(state: any)
+{
   if (!ctx || !canvas) return;
   ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
   // Draw ball
