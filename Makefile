@@ -4,6 +4,7 @@ DOCKER_COMPOSE_FILE=srcs/docker-compose-dev.yml
 all: up
 
 redirect:
+	@chmod +x ./srcs/tools/redirect-localhost.sh 
 	@./srcs/tools/redirect-localhost.sh
 
 up-build:
