@@ -10,15 +10,15 @@ redirect:
 up-build:
 	@docker-compose -p $(PROJECT_NAME) -f $(DOCKER_COMPOSE_FILE) up --build -d
 
-re: redirect docker-start down up-build
+re: down up-build
 
-rev: redirect docker-start down-volume up-build
+rev: down-volume up-build
 
 
-up: docker-start
+up:
 	@docker-compose -p $(PROJECT_NAME) -f $(DOCKER_COMPOSE_FILE) up -d
 
-docker-start: redirect docker-start
+docker-start:
 	sudo service docker start
 
 down:
@@ -27,10 +27,10 @@ down:
 down-volume:
 	@docker-compose -p $(PROJECT_NAME) -f $(DOCKER_COMPOSE_FILE) down -v
 
-db-buildv: docker-start down-volume
+db-buildv: down-volume
 	@docker-compose -p $(PROJECT_NAME) -f $(DOCKER_COMPOSE_FILE) build --no-cache database
 
-db-build: docker-start down
+db-build: down
 	@docker-compose -p $(PROJECT_NAME) -f $(DOCKER_COMPOSE_FILE) build --no-cache database
 
 db-up: docker-start
@@ -40,7 +40,7 @@ db:
 	@docker exec -it database_service \
 		sh -c 'psql -U "$$DB_USER" -d "$$DB_NAME"'
 
-db-full: docker-start db-buildv db-up
+db-full: db-buildv db-up
 
 
 logs :
