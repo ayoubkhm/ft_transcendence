@@ -2,7 +2,8 @@ import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { Pool } from 'pg';
 
 const pool = new Pool();
-export default async function dbRoutes(app: FastifyInstance) {
+// Plugin function for Fastify; accepts instance and options
+export default async function dbRoutes(app: FastifyInstance, opts: any) {
   // Health check endpoint
   app.get('/health', async (request: FastifyRequest, reply: FastifyReply) => {
     // TODO: implement actual DB connectivity check

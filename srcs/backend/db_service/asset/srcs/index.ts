@@ -1,7 +1,8 @@
 import fastify from 'fastify';
 import cors from 'fastify-cors';
 import fastifyPlugin from 'fastify-plugin';
-import dbRoutes from './routes/db.js';
+// Import route handlers (explicit .ts extension for ESM loader)
+import dbRoutes from './routes/db';
 
 // Initialize Fastify app
 const app = fastify({ logger: true });
@@ -10,7 +11,8 @@ const app = fastify({ logger: true });
 app.register(fastifyPlugin(cors, { fastify: '5.x' }));
 
 // Register DB and User API routes under /api
-app.register(dbRoutes, { prefix: '/api' });
+// Register our DB routes as a Fastify plugin
+app.register(fastifyPlugin(dbRoutes), { prefix: '/api' });
 
 // Simple metrics endpoint
 app.get('/metrics', async (_req, _reply) => ({
