@@ -14,7 +14,6 @@ re: down up-build
 
 rev: down-volume up-build
 
-
 up:
 	@docker-compose -p $(PROJECT_NAME) -f $(DOCKER_COMPOSE_FILE) up -d
 
