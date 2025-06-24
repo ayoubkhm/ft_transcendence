@@ -1,6 +1,7 @@
-
+version: "3.9"
 
 services:
+  # ──────────────────────────────────────────────────────────
   auth_service:
     container_name: auth_service
     restart: "no"
@@ -13,7 +14,9 @@ services:
       - PGDATABASE=${DB_NAME}
       - GOOGLE_CLIENT_ID=428358411017-tpnb2gagmtg8vve9hlahkh962d7h76hf.apps.googleusercontent.com
       - GOOGLE_CLIENT_SECRET=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
-      - CALLBACK_URL=http://localhost:3000/api/auth/login/google/callback
+      # ⇩ Quand tu passeras par Nginx, remplace localhost:3000 par ton domaine/port proxy
+      # Read CALLBACK_URL from .env for HTTPS callback over the proxy
+      - CALLBACK_URL=${CALLBACK_URL}
       - COOKIE_SECRET=fdaf682f5ec7571eb3dc2d08655cae7f6b7c026d8218088fc13fa2e546a084b4
       - API_CREDENTIAL=83294bb5c629d7e456e9bbed76693581304b977fce80a57a6cccf37c470a41c0
       - PGPORT=5432
@@ -24,11 +27,16 @@ services:
       dockerfile: Dockerfile
       args:
         - NODE_ENV=dev
+    expose:
+      - "3000"              # ▶ visible uniquement dans le réseau Docker
     ports:
-      - "3002:3000"
+      - "3000:3000"        # ▶ mappe le port interne pour tests locaux via localhost
+    depends_on:
+      - user_service
     networks:
       - router
-  
+
+  # ──────────────────────────────────────────────────────────
   game_service:
     container_name: game_service
     restart: "no"
@@ -39,16 +47,19 @@ services:
       - PGDATABASE=${DB_NAME}
       - PGPORT=5432
       - NODE_ENV=dev
-      - PORT=3000
+      # Ensure Fastify listens on 3001 to match Dockerfile
+      - PORT=3001
     build:
       context: ./backend/game_service
       dockerfile: Dockerfile
       args:
         - NODE_ENV=dev
     expose:
-      - 3000
+      - "3001"
     networks:
       - router
+
+  # ──────────────────────────────────────────────────────────
   user_service:
     container_name: user_service
     restart: "no"
@@ -67,11 +78,12 @@ services:
       dockerfile: Dockerfile
       args:
         - NODE_ENV=dev
-    ports:
-      - "3001:3000"
+    expose:
+      - "3001"
     networks:
       - router
-    
+
+  # ──────────────────────────────────────────────────────────
   database:
     container_name: database_service
     build: ./backend/database/
@@ -81,16 +93,48 @@ services:
     env_file:
       - ./.env
     environment:
-      - PGHOST=database
-      - PGUSER=${DB_USER}
-      - PGPASSWORD=${DB_PASS}
-      - PGDATABASE=${DB_NAME}
-      - PGPORT=5432
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASS}
+      - POSTGRES_DB=${DB_NAME}
+      - PGDATA=/db
     expose:
-      - 5432
+      - "5432"
     networks:
       - router
 
+  # ──────────────────────────────────────────────────────────
+  frontend:
+    container_name: frontend
+    restart: "no"
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    environment:        # ← ajoute si PORT n’est pas déjà fixé côté Vite
+      - PORT=4000
+    expose:
+      - "4000"          # ← reste 4000
+    networks:
+      - router
+
+  # ──────────────────────────────────────────────────────────
+  nginx:
+    container_name: nginx
+    restart: "no"
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    depends_on:
+      - auth_service
+      - game_service
+      - user_service
+      - frontend
+    ports:
+      - "443:443"          # 🔐 HTTPS vers l’hôte
+      - "80:80"            # HTTP for development
+    networks:
+      - router
+
+# ──────────────────────────────────────────────────────────────
 volumes:
   database:
 
