@@ -3,18 +3,33 @@ DOCKER_COMPOSE_FILE=srcs/docker-compose-dev.yml
 
 all: up
 
-up: docker-start
-	@docker compose -p $(PROJECT_NAME) -f $(DOCKER_COMPOSE_FILE) up -d
+redirect:
+	@./srcs/tools/redirect-localhost.sh
 
-docker-start:
+up-build:
+	@docker-compose -p $(PROJECT_NAME) -f $(DOCKER_COMPOSE_FILE) up --build -d
+
+re: redirect docker-start down up-build
+
+rev: redirect docker-start down-volume up-build
+
+
+up: docker-start
+	@docker-compose -p $(PROJECT_NAME) -f $(DOCKER_COMPOSE_FILE) up -d
+
+docker-start: redirect docker-start
 	sudo service docker start
 
-db-buildv: docker-start
+down:
+	@docker-compose -p $(PROJECT_NAME) -f $(DOCKER_COMPOSE_FILE) down
+
+down-volume:
 	@docker-compose -p $(PROJECT_NAME) -f $(DOCKER_COMPOSE_FILE) down -v
+
+db-buildv: docker-start down-volume
 	@docker-compose -p $(PROJECT_NAME) -f $(DOCKER_COMPOSE_FILE) build --no-cache database
 
-db-build: docker-start
-	@docker-compose -p $(PROJECT_NAME) -f $(DOCKER_COMPOSE_FILE) down
+db-build: docker-start down
 	@docker-compose -p $(PROJECT_NAME) -f $(DOCKER_COMPOSE_FILE) build --no-cache database
 
 db-up: docker-start
@@ -31,4 +46,4 @@ fclean:
 	@docker system prune -a --volumes -f
 
 logs :
-	@docker-compose -p $(PROJECT_NAME) -f $(DOCKER_COMPOSE_FILE) logs 
+	@docker-compose -p $(PROJECT_NAME) -f $(DOCKER_COMPOSE_FILE) logs

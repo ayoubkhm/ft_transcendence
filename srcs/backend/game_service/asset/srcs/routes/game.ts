@@ -4,15 +4,18 @@ import { Game } from '../algo.js'
 import type { ClientInput, GameState } from '../types.js'
 
 // In-memory store of active game sessions and their simulation loops
-interface GameSession {
+interface GameSession
+{
   game: Game
   interval: NodeJS.Timer
 }
 const sessions = new Map<string, GameSession>()
 
-export default async function gamesRoutes (app: FastifyInstance) {
+export default async function gamesRoutes (app: FastifyInstance)
+{
   // Create a new solo game (player vs AI) with optional difficulty
-  app.post<{ Body: { difficulty?: 'easy' | 'medium' | 'hard' } }>('/game', async (request, reply) => {
+  app.post<{ Body: { difficulty?: 'easy' | 'medium' | 'hard' } }>('/game', async (request, reply) =>
+  {
     const playerId = randomUUID()
     const gameId = randomUUID()
     // Read AI difficulty
@@ -20,24 +23,27 @@ export default async function gamesRoutes (app: FastifyInstance) {
     const level = difficulty ?? 'medium'
     const game = new Game(playerId, 'AI', level)
     // Start game simulation at ~60fps
-    const interval = setInterval(() => {
+    const interval = setInterval(() =>
+    {
       const state: GameState = game.getState()
-      if (!state.isGameOver) {
+      if (!state.isGameOver)
         game.step(1 / 60)
-      } else {
+      else
         clearInterval(interval)
-      }
     }, 1000 / 60)
     sessions.set(gameId, { game, interval })
     return { gameId, playerId }
-  })
+  }
+  )
 
   // Submit player input to an existing game
-  app.post('/game/:id/input', async (request, reply) => {
+  app.post('/game/:id/input', async (request, reply) =>
+  {
     const { id } = request.params as { id: string }
     const payload = request.body as ClientInput & { playerId: string }
     const session = sessions.get(id)
-    if (!session) {
+    if (!session)
+    {
       reply.code(404)
       return { error: 'Game not found' }
     }
@@ -48,10 +54,12 @@ export default async function gamesRoutes (app: FastifyInstance) {
   })
 
   // Get current game state
-  app.get('/game/:id/state', async (request, reply) => {
+  app.get('/game/:id/state', async (request, reply) =>
+  {
     const { id } = request.params as { id: string }
     const session = sessions.get(id)
-    if (!session) {
+    if (!session)
+    {
       reply.code(404)
       return { error: 'Game not found' }
     }

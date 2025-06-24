@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import { Game } from '../game.js';
 const sessions = new Map();
+
 export default async function (app) {
     // Create a new solo game (player vs AI)
     app.post('/game', async (request, reply) => {
@@ -20,6 +21,7 @@ export default async function (app) {
         sessions.set(gameId, { game, interval });
         return { gameId, playerId };
     });
+
     // Submit player input to an existing game
     app.post('/game/:id/input', async (request, reply) => {
         const { id } = request.params;

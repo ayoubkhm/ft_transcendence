@@ -22,6 +22,14 @@ export type Paddle = {
 // La balle stocke sa position et sa vitesse
 export type Ball = Vec & { v: Vec };
 
+export interface BonusBall extends Ball
+{
+  active: boolean;
+  type: 'speedUp' | 'slowDown' | 'shield' | 'bigger' | 'smaller' | 'invert';
+  owner?: 'left' | 'right';
+}
+
+
 // Un joueur a un `id`, un côté (left/right), son paddle + son score
 export interface Player
 {
@@ -34,9 +42,11 @@ export interface Player
 // État complet d’une partie
 export interface GameState
 {
+    bonusBalls?: BonusBall[]; // nouveau champ
     ball:    Ball;
     players: [Player, Player];   // index 0 = left, index 1 = right
     // Flag and winner info when game is over
+    isCustomon?: boolean;
     isGameOver?: boolean;
     winner?: 'left' | 'right';
 }
