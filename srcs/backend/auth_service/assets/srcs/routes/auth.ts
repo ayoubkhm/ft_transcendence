@@ -59,7 +59,7 @@ export default async function authRoutes(app: FastifyInstance) {
       return reply.status(400).send({ error: 'Invalid email, password or name' });
     }
     const hashedPassword = await bcrypt.hash(password, 12);
-    const response = await fetch(`${USER_SERVICE_URL}/api/users/create`, 
+    const response = await fetch(`http://user_service:3000/api/users/create`, 
     {
       method: 'POST',
       headers: {
@@ -111,7 +111,7 @@ export default async function authRoutes(app: FastifyInstance) {
     ) {
       return reply.status(400).send({ error: 'Invalid email or password' });
     }
-    const response = await fetch(`${USER_SERVICE_URL}/api/users/lookup/${encodeURIComponent(email)}`, 
+    const response = await fetch(`http://user_service:3000/api/users/lookup/${email}`, 
     {
       method: 'POST',
       headers: {

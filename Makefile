@@ -42,6 +42,9 @@ db:
 
 db-full: db-buildv db-up
 
+fclean:
+	@echo "🔥 Nettoyage complet de Docker..."
+	@docker system prune -a --volumes -f
 
 logs :
 	@docker-compose -p $(PROJECT_NAME) -f $(DOCKER_COMPOSE_FILE) logs
