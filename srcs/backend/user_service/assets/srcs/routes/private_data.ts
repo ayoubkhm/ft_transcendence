@@ -1,7 +1,5 @@
 import { FastifyInstance } from "fastify";
 
-
-
 export default async function private_userRoutes(server: FastifyInstance) {
         
     interface PrivateDataParams {
@@ -9,33 +7,28 @@ export default async function private_userRoutes(server: FastifyInstance) {
     }
   
     server.post<{ Params: PrivateDataParams }>('/lookup/:email', async (request, reply) => {
-    const value = request.params.email;
+  const value = request.params.email;
 
-    const isEmail = value.match(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/);
-    const isID = value.match(/^\d+$/); // ex: 0 à 100+
-  
-    try {
-    let user = null;
+  const isEmail = value.match(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/);
+  const isID = value.match(/^\d+$/);
 
+  try {
+
+    let result;
     if (isEmail) {
-      user = await server.pg.query (
-        `SELECT * FROM "User" WHERE email = '${value}'`
-      );
+      result = await server.pg.query(`SELECT * FROM "User" WHERE email = $1`, [value]);
     } else if (isID) {
-      user = await server.pg.query(
-        `SELECT * FROM "User" WHERE id = ${Number(value)}`
-      );
+      result = await server.pg.query(`SELECT * FROM "User" WHERE id = $1`, [Number(value)]);
     } else {
-      user = await server.pg.query(
-        `SELECT * FROM "User" WHERE name = '${value}'`
-      );
+      result = await server.pg.query(`SELECT * FROM "User" WHERE name = $1`, [value]);
     }
 
-    if (!user || user.length === 0) {
+    if (!result || result.rows.length === 0) {
       return reply.status(404).send({ error: 'User not found' });
     }
 
-    return reply.send(user[0]); // renvoyer le premier résultat
+    return reply.send(result.rows[0]);
+
   } catch (error) {
     console.error('Raw query error:', error);
     return reply.status(500).send({ error: 'Internal server error' });
