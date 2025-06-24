@@ -1,6 +1,11 @@
 PROJECT_NAME=ft_transcendence
 DOCKER_COMPOSE_FILE=srcs/docker-compose-dev.yml
 
+all: up
+
+up: docker-start
+	@docker-compose -p $(PROJECT_NAME) -f $(DOCKER_COMPOSE_FILE) up -d
+
 docker-start:
 	sudo service docker start
 
