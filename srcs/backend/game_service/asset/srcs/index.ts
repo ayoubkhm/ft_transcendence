@@ -1,20 +1,26 @@
 import fastify, { FastifyRequest, FastifyReply } from 'fastify';
 import cors from 'fastify-cors'
 import fastifyPlugin from 'fastify-plugin'
+import fastifyWebsocket from '@fastify/websocket'
 
 // OAuth2 (Google) plugin is now auto-loaded via services/oauth/routes
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
-import gameRoutes from './routes/game.js'
+// Import without extension to allow ts-node (dev) and compiled JS (prod) resolution
+// Import with .ts extension so ts-node/esm can resolve the TypeScript source
+import gameRoutes from './routes/game.ts'
 
 // Polyfill __dirname in ES module scope
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
-const app = fastify({ logger: true })
+// Trust proxy headers for protocol when behind SSL termination (e.g., Nginx)
+const app = fastify({ logger: true, trustProxy: true })
 // Register CORS plugin with compatibility for Fastify v5
 app.register(
   fastifyPlugin(cors, { fastify: '5.x' })
 )
+// WebSocket plugin (for real-time game updates)
+app.register(fastifyWebsocket)
 
 // OAuth2 (Google) plugin registration moved to autoload below
 // Simple in-memory metrics
@@ -52,5 +58,7 @@ app.listen({ port, host }, err => {
     app.log.error(err);
     process.exit(1);
   }
-  app.log.info(`Game service ready on http://${host}:${port}`);
+  // Log service availability with correct protocol per environment
+  const scheme = process.env.NODE_ENV === 'production' ? 'https' : 'http';
+  app.log.info(`Game service ready on ${scheme}://${host}:${port}`);
 });
