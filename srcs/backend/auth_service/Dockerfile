@@ -4,8 +4,6 @@ WORKDIR /usr/src/auth_service
 
 RUN apt-get update && \
     apt-get install -y \
-        sqlite3 \
-        openssl \
         curl \
         wget && \
     npm install -g pnpm && \
