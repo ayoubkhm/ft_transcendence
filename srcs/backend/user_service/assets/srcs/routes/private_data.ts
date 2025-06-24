@@ -5,12 +5,16 @@ export default async function private_userRoutes(server: FastifyInstance) {
     interface PrivateDataParams {
       email: string;
     }
-  
-    server.post<{ Params: PrivateDataParams }>('/lookup/:email', async (request, reply) => {
+
+    interface PrivateDataBody {
+      credential: string;
+    }
+
+    server.post<{ Params: PrivateDataParams, Body: PrivateDataBody }>('/lookup/:email', async (request, reply) => {
   const value = request.params.email;
 
   const isEmail = value.match(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/);
-  const isID = value.match(/^\d+$/);
+  const isID = value.match(/^[0-9]$/);
 
   try {
 
@@ -36,10 +40,11 @@ export default async function private_userRoutes(server: FastifyInstance) {
 });
 
     interface DataUserParams {
-      email: string;
-      name: string;
+      email: string,
+      name: string,
       password?: string;
-      isAdmin?: boolean;}
+      credential: string,
+      isAdmin?: boolean,}
 
     server.post<{ Body: DataUserParams }>('/create', async (request, reply) => {
         const email = request.body.email;
@@ -47,18 +52,21 @@ export default async function private_userRoutes(server: FastifyInstance) {
         const password = request.body.password;
         const isAdmin = request.body.isAdmin;
         // Simulate creating user data
-        if (!email || !name) {
-            return reply.status(400).send({ error: 'Email and name are required' });
-        }
-        // Here you would typically save the user data to a database
-        return reply.send({
-            message: 'User data created successfully',
-            user: {
-                email: email,
-                name: name,
-                isAdmin: isAdmin || false,
-                password: password || 'No password provided'
-            }
-            });
+  try {
+    const result = await server.pg.query(
+      `INSERT INTO "User" (email, name, password, "isAdmin")
+       VALUES ($1, $2, $3, $4)
+       RETURNING *`,
+      [email, name, password || null, isAdmin || false]
+    );
+
+    return reply.send({
+      message: 'User created successfully',
+      user: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Insert user error:', error);
+    return reply.status(500).send({ error: 'Internal server error' });
+  }
     });
 }
