@@ -6,6 +6,14 @@ all: up
 redirect:
 	@./srcs/tools/redirect-localhost.sh
 
+up-build:
+	@docker-compose -p $(PROJECT_NAME) -f $(DOCKER_COMPOSE_FILE) up --build -d
+
+re: redirect docker-start down up-build
+
+rev: redirect docker-start down-volume up-build
+
+
 up: docker-start
 	@docker-compose -p $(PROJECT_NAME) -f $(DOCKER_COMPOSE_FILE) up -d
 
@@ -35,4 +43,4 @@ db-full: docker-start db-buildv db-up
 
 
 logs :
-	@docker-compose -p $(PROJECT_NAME) -f $(DOCKER_COMPOSE_FILE) logs 
+	@docker-compose -p $(PROJECT_NAME) -f $(DOCKER_COMPOSE_FILE) logs
