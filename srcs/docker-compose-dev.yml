@@ -11,6 +11,11 @@ services:
       - PGUSER=${DB_USER}
       - PGPASSWORD=${DB_PASS}
       - PGDATABASE=${DB_NAME}
+      - GOOGLE_CLIENT_ID=428358411017-tpnb2gagmtg8vve9hlahkh962d7h76hf.apps.googleusercontent.com
+      - GOOGLE_CLIENT_SECRET=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
+      - CALLBACK_URL=http://localhost:3000/api/auth/login/google/callback
+      - COOKIE_SECRET=fdaf682f5ec7571eb3dc2d08655cae7f6b7c026d8218088fc13fa2e546a084b4
+      - API_CREDENTIAL=83294bb5c629d7e456e9bbed76693581304b977fce80a57a6cccf37c470a41c0
       - PGPORT=5432
       - NODE_ENV=dev
       - PORT=3000
@@ -19,8 +24,8 @@ services:
       dockerfile: Dockerfile
       args:
         - NODE_ENV=dev
-    expose:
-      - 3000
+    ports:
+      - "3002:3000"
     networks:
       - router
   
