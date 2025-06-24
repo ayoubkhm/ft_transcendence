@@ -4,9 +4,10 @@ import 'dotenv/config';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import nodemailer from 'nodemailer';
+import validatePassword from '../utils/password';
 
 // Base URL for User service (DB service)
-const USER_SERVICE_URL = process.env.USER_SERVICE_URL || 'http://localhost:3001';
+const USER_SERVICE_URL = process.env.USER_SERVICE_URL || 'http://localhost:3000';
 // Configure SMTP transporter for sending magic links
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
@@ -40,60 +41,63 @@ export default async function authRoutes(app: FastifyInstance) {
       });
   });
 
-    interface SingupBody {
-    email: string;
-    password: string;
-    name: string;
-  }
-  app.post<{ Body: SingupBody }>('/signup', async (request, reply) => {
-    const { email, password, name } = request.body;
-    if (
-      !email ||
-      !password ||
-      !name ||
-      typeof email !== 'string' ||
-      typeof password !== 'string' ||
-      typeof name !== 'string' ||
-      !email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)
-    ) {
-      return reply.status(400).send({ error: 'Invalid email, password or name' });
+      interface signUpBody {
+        email: string,
+        name: string,
+        password: string,
     }
-    const hashedPassword = await bcrypt.hash(password, 12);
-    const response = await fetch(`http://user_service:3000/api/users/create`, 
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        email,
-        password: hashedPassword,
-        name,
-        credential: process.env.API_CREDENTIAL
-      }),
+    
+    app.post<{ Body: signUpBody }>('/signup', { preHandler:[validatePassword], config: {
+    } }, async (req, res) => {
+        const { email, name, password } = req.body;
+        if (!email)
+            return (res.status(230).send({ error: "1007" }));
+        if (!name)
+            return (res.status(230).send({ error: "1008" }));
+        if (!password)
+            return (res.status(230).send({ error: "1009" }));
+        try {
+            const hashedPassword = await bcrypt.hash(password, 12);
+            const response = await fetch(`http://user_service:3000/api/user/create`,
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: email,
+                    name: name,
+                    password: hashedPassword,
+                    credential: process.env.API_CREDENTIAL
+                }),
+            });
+            const data = await response.json();
+            if (response.status != 200)
+                return (res.status(response.status).send({ error: data.error}))
+            const user = data;
+            if (!user)
+                throw(new Error("cannot upsert user in prisma"));
+            const token = jwt.sign({
+            data: {
+                id: user.id,
+                email: email,
+                name: name,
+                isAdmin: false,
+                twoFactorSecret: user.twoFactorSecret,
+                dfa: true
+            }
+            }, process.env.JWT_SECRET as string, { expiresIn: '24h' });
+            if (!token)
+                throw(new Error("cannot generate user token"));
+            return (res.cookie("ft_transcendence_jw_token", token, {
+                path: "/",
+                httpOnly: true,
+                sameSite: "none",
+                secure: process.env.NODE_ENV === 'prod'
+              }).send({ response: "successfully logged in", need2fa: false }));
+        } catch (err) {
+      console.error('Signup fetch failed:', err);
+      return res.status(500).send({ error: 'Internal server error: signup fetch failed' });
+    }
     });
-    const data = await response.json();
-    if (response.status !== 200)
-      return reply.status(response.status).send({ error: data.error || 'Unknown error' });
-    const user = data;
-    if (!user || !user.id)
-      return reply.status(400).send({ error: 'User creation failed' });
-    const token = jwt.sign({data: {
-      id: user.id,
-      email: email,
-      name: user.name,
-      towfactorSecret: user.towfactorsecret,
-      dfa: true
-    }}, process.env.JWT_SECRET as string, { expiresIn: '24h' });
-    if (!token)
-      return reply.status(500).send({ error: 'Token generation failed' });
-    return reply.cookie('session', token, {
-      httpOnly: true,
-      path: '/',
-      secure: true,
-      sameSite: 'none',
-    }).send({ response: "success", need2FA: false });
-  });
   
     interface LoginBody {
     email: string;

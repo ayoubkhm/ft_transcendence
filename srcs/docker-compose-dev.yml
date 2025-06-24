@@ -25,9 +25,7 @@ services:
       args:
         - NODE_ENV=dev
     ports:
-      - "3000:3000"
-    depends_on:
-      - user_service
+      - "3002:3000"
     networks:
       - router
   
@@ -70,7 +68,7 @@ services:
       args:
         - NODE_ENV=dev
     ports:
-      - "3000:3000"
+      - "3001:3000"
     networks:
       - router
     
