@@ -3,10 +3,13 @@ DOCKER_COMPOSE_FILE=srcs/docker-compose-dev.yml
 
 all: up
 
+redirect:
+	@./srcs/tools/redirect-localhost.sh
+
 up: docker-start
 	@docker-compose -p $(PROJECT_NAME) -f $(DOCKER_COMPOSE_FILE) up -d
 
-docker-start: docker-start
+docker-start: redirect docker-start
 	sudo service docker start
 
 down:

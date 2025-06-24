@@ -4,6 +4,10 @@ set -e
 # 127.0.0.1   DOMAIN_NAME -> IPv4
 # ::1         DOMAIN_NAME -> IPv6
 
+if [ -f ./srcs/.env ]; then
+  . ./srcs/.env
+fi
+
 if [ -z "$DOMAIN_NAME" ]; then
   echo "❌ Start: Pls define DOMAIN_NAME in env file" >&2
   exit 1
