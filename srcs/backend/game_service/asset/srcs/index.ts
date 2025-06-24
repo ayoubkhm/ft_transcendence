@@ -15,6 +15,7 @@ const app = fastify({ logger: true })
 app.register(
   fastifyPlugin(cors, { fastify: '5.x' })
 )
+
 // OAuth2 (Google) plugin registration moved to autoload below
 // Simple in-memory metrics
 const metrics = {
@@ -22,18 +23,21 @@ const metrics = {
   cookiesCount: 0,
   requestsPerRoute: {} as Record<string, number>
 }
+
 // Count cookies on each incoming request
 app.addHook('onRequest', async (request) => {
   const raw = request.headers.cookie || ''
   const count = raw ? raw.split(';').length : 0
   metrics.cookiesCount += count
 })
+
 // Count total requests and per-route counts after response is sent
 app.addHook('onResponse', async (request, reply) => {
   metrics.totalRequests += 1
   const route = (request as any).routerPath || request.url || ''
   metrics.requestsPerRoute[route] = (metrics.requestsPerRoute[route] || 0) + 1
 })
+
 // Expose metrics endpoint (JSON)
 app.get('/metrics', async (_req, reply) => metrics)
 
