@@ -11,25 +11,63 @@
 
 <body class="bg-black text-white h-screen flex flex-col">
   <div id="app" class="flex flex-col flex-1">
-    <!-- Top-bar -->
-    <header id="top-bar" class="p-4 flex justify-end space-x-4">
-      <button id="login-btn" class="px-4 py-2 bg-blue-500 rounded">Login</button>
-      <button id="play-btn"  class="px-4 py-2 bg-green-500 rounded">Play</button>
-    </header>
 
-    <!-- Hero section (titre + sous-titre) -->
-    <section id="hero" class="flex-1 flex flex-col items-center justify-center select-none">
+  <!-- Top-bar -->
+  <header id="top-bar"
+          class="p-4 flex gap-4 justify-end items-start">
+
+    <!-- Login -->
+    <button id="login-btn"
+            class="px-4 py-2 bg-blue-500 rounded">
+      Login
+    </button>
+
+    <!-- Tournament (désormais avant le PvP) -->
+    <button id="play-tourn-btn"
+            class="px-4 py-2 bg-green-500 rounded">
+      Tournament
+    </button>
+
+    <!-- Play vs Player -->
+    <button id="play-pvp-btn"
+            class="px-4 py-2 bg-green-500 rounded">
+      Play&nbsp;vs&nbsp;Player
+    </button>
+
+    <!-- Wrap IA bouton + select -->
+  <div class="relative inline-block">
+    <button id="play-ai-btn"
+            class="px-4 py-2 bg-green-500 rounded">
+      Play vs IA
+    </button>
+
+    <!-- Positionné juste sous le bouton grâce à top-full + mt-1 -->
+    <select id="ai-difficulty"
+            class="absolute left-0 right-0 top-full mt-1 w-full bg-gray-700 rounded z-10">
+      <option value="easy"   selected>Easy</option>
+      <option value="medium">Medium</option>
+      <option value="hard">Difficult</option>
+    </select>
+  </div>
+  </header>
+
+
+    <!-- Hero -->
+    <section id="hero"
+             class="flex-1 flex flex-col items-center justify-center select-none">
       <h1 class="text-4xl font-bold mb-2">ft_Transcendence</h1>
-      <p class="text-lg text-gray-300">Pong&nbsp;Platform — play&nbsp;&amp;&nbsp;compete online</p>
+      <p class="text-lg text-gray-300">
+        Pong&nbsp;Platform — play&nbsp;&amp;&nbsp;compete online
+      </p>
     </section>
 
-    <!-- Canvas caché tant qu’on ne joue pas -->
+    <!-- Canvas -->
     <canvas id="game-canvas"
             width="800" height="450"
             class="flex-1 border border-white hidden"
             tabindex="0"></canvas>
 
-    <!-- Résultat (caché tant que la partie n’est pas terminée) -->
+    <!-- Résultat -->
     <pre id="game-result"
          class="mt-4 mx-auto mb-6 max-w-xl text-sm text-black bg-white p-3 rounded hidden"></pre>
   </div>
