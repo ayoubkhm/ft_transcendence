@@ -11,6 +11,48 @@ Chaque table possède:
  
 ---
 
+
+### 👤 Table `users`
+
+```sql
+• id : int généré automatiquement : unique
+• name : TEXT, unique, non null
+• type : 'guest', 'signed' ou 'oauth'
+• admin : BOOLEAN (default false)
+• email : TEXT, unique (null si guest)
+• password : TEXT (null si guest ou oauth)
+• created_at : TIMESTAMP (default now())
+```
+
+### 🔁 Triggers pour `users`
+Refuse la création d'un user de type:
+  * `signed` sans email ou mot de passe
+  * `oauth` avec mot de passe ou sans email
+  * `guest` avec email ou mot de passe
+
+### ⚙️ Fonctions sur `users`
+
+```sql
+new_user(name, type, email, password)
+→ return [ [] ]
+
+update_user_email(id, email)
+→ modifie l’email d’un user
+
+update_user_name(id, name)
+→ modifie le nom d’un user
+
+update_user_password(id, password)
+→ modifie le mot de passe d’un user
+
+delete_user(id)
+→ supprime l’utilisateur
+
+get_user(id)
+→ renvoie les infos utilisateur (succès, message, name, type, email, password, created_at)
+```
+
+
 ### 🎮 Table `games`
 
 ```sql
@@ -42,45 +84,6 @@ Rien pour le moment
 ```
 
 ---
-
-### 👤 Table `users`
-
-```sql
-• id : int généré automatiquement : unique
-• name : TEXT, unique, non null
-• type : 'guest', 'signed' ou 'oauth'
-• admin : BOOLEAN (default false)
-• email : TEXT, unique (null si guest)
-• password : TEXT (null si guest ou oauth)
-• created_at : TIMESTAMP (default now())
-```
-
-### 🔁 Triggers pour `users`
-  * refuse la création d’un signed sans email ou mot de passe
-  * refuse un oauth avec mot de passe ou sans email
-  * refuse un guest avec email ou mot de passe
-
-### ⚙️ Fonctions sur `users`
-
-```sql
-new_user(name, type, email, password)
-→ return [ [] ]
-
-update_user_email(id, email)
-→ modifie l’email d’un user
-
-update_user_name(id, name)
-→ modifie le nom d’un user
-
-update_user_password(id, password)
-→ modifie le mot de passe d’un user
-
-delete_user(id)
-→ supprime l’utilisateur
-
-get_user(id)
-→ renvoie les infos utilisateur (succès, message, name, type, email, password, created_at)
-```
 
 ---
 
