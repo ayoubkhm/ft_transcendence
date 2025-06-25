@@ -1,4 +1,5 @@
 import { FastifyInstance } from "fastify";
+import  validateUserData from "../utils/userData";
 
 export default async function private_userRoutes(server: FastifyInstance) {
         
@@ -30,7 +31,7 @@ export default async function private_userRoutes(server: FastifyInstance) {
     if (!result || result.rows.length === 0) {
       return reply.status(404).send({ error: 'User not found' });
     }
-
+    console.log('[LOOKUP] Utilisateur trouvé :', result.rows[0]);
     return reply.send(result.rows[0]);
 
   } catch (error) {
@@ -43,21 +44,24 @@ export default async function private_userRoutes(server: FastifyInstance) {
       email: string,
       name: string,
       password?: string;
+      provider?: string,
       credential: string,
-      isAdmin?: boolean,}
+      isAdmin?: boolean,
+    }
 
-    server.post<{ Body: DataUserParams }>('/create', async (request, reply) => {
+    server.post<{ Body: DataUserParams }>('/create', { preHandler: [validateUserData] }, async (request, reply) => {
         const email = request.body.email;
         const name = request.body.name;
         const password = request.body.password;
         const isAdmin = request.body.isAdmin;
+        const provider = request.body.provider;
         // Simulate creating user data
   try {
     const result = await server.pg.query(
-      `INSERT INTO "User" (email, name, password, "isAdmin")
-       VALUES ($1, $2, $3, $4)
+      `INSERT INTO "User" (email, name, password, "isAdmin", provider)
+       VALUES ($1, $2, $3, $4, $5)
        RETURNING *`,
-      [email, name, password || null, isAdmin || false]
+      [email, name, password || null, isAdmin || false, provider || null]
     );
 
     return reply.send({
