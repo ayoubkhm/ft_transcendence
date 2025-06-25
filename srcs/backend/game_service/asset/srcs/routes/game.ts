@@ -4,37 +4,67 @@ import { Game } from '../algo.js'
 import type { ClientInput, GameState } from '../types.js'
 
 // In-memory store of active game sessions and their simulation loops
-interface GameSession
-{
-  game: Game
-  interval: NodeJS.Timer
+// Store game instance and optional simulation interval
+interface GameSession {
+  game: Game;
+  interval?: NodeJS.Timer;
 }
 const sessions = new Map<string, GameSession>()
+// Pending PvP game waiting for a second player
+let pendingPvPGameId: string | null = null;
 
 export default async function gamesRoutes (app: FastifyInstance)
 {
-  // Create a new solo game (player vs AI) with optional difficulty
-  app.post<{ Body: { difficulty?: 'easy' | 'medium' | 'hard' } }>('/game', async (request, reply) =>
-  {
-    const playerId = randomUUID()
-    const gameId = randomUUID()
-    // Read AI difficulty
-    const { difficulty } = request.body
-    const level = difficulty ?? 'medium'
-    const game = new Game(playerId, 'AI', level)
-    // Start game simulation at ~60fps
-    const interval = setInterval(() =>
-    {
-      const state: GameState = game.getState()
-      if (!state.isGameOver)
-        game.step(1 / 60)
-      else
-        clearInterval(interval)
-    }, 1000 / 60)
-    sessions.set(gameId, { game, interval })
-    return { gameId, playerId }
-  }
-  )
+  // Create or join a game: solo AI or PvP matchmaking
+  app.post<{
+    Body: { mode?: 'ai' | 'pvp'; difficulty?: 'easy' | 'medium' | 'hard' }
+  }>('/game', async (request, reply) => {
+    const { mode = 'ai', difficulty } = request.body;
+    // Solo AI mode
+    if (mode === 'ai') {
+      const playerId = randomUUID();
+      const gameId = randomUUID();
+      const level = difficulty ?? 'medium';
+      const game = new Game(playerId, 'AI', level);
+      // Start AI simulation immediately
+      const interval = setInterval(() => {
+        const state = game.getState();
+        if (!state.isGameOver) game.step(1 / 60);
+        else clearInterval(interval);
+      }, 1000 / 60);
+      sessions.set(gameId, { game, interval });
+      return { gameId, playerId };
+    }
+    // PvP mode: attempt to match with pending game
+    if (pendingPvPGameId) {
+      const gameId = pendingPvPGameId;
+      const session = sessions.get(gameId);
+      if (session) {
+        // Second player joins
+        const playerId = randomUUID();
+        // Register second human player
+        session.game.joinPlayer(playerId);
+        // Start simulation now that both players are present
+        const interval = setInterval(() => {
+          const state = session.game.getState();
+          if (!state.isGameOver) session.game.step(1 / 60);
+          else clearInterval(interval);
+        }, 1000 / 60);
+        session.interval = interval;
+        pendingPvPGameId = null;
+        return { gameId, playerId };
+      }
+      // Orphaned pending id, clear it
+      pendingPvPGameId = null;
+    }
+    // No pending game: create new PvP game and wait for opponent
+    const playerId = randomUUID();
+    const gameId = randomUUID();
+    const game = new Game(playerId, '__PENDING__', difficulty ?? 'medium');
+    sessions.set(gameId, { game });
+    pendingPvPGameId = gameId;
+    return { gameId, playerId };
+  });
 
   // Submit player input to an existing game
   app.post('/game/:id/input', async (request, reply) =>
@@ -66,6 +96,33 @@ export default async function gamesRoutes (app: FastifyInstance)
     const state: GameState = session.game.getState()
     return state
   })
+  
+  // Join an existing PvP game: assign second player ID
+  app.post<{ Params: { id: string } }>('/game/:id/join', async (request, reply) => {
+    const { id } = request.params;
+    const session = sessions.get(id);
+    if (!session) {
+      reply.code(404);
+      return { error: 'Game not found' };
+    }
+    // Assign new player ID to the second slot
+    const newPlayerId = randomUUID();
+    // Register second human player
+    session.game.joinPlayer(newPlayerId);
+    // Start PvP simulation now that both players have joined
+    if (!session.interval) {
+      const interval = setInterval(() => {
+        const state: GameState = session.game.getState();
+        if (!state.isGameOver) {
+          session.game.step(1 / 60);
+        } else {
+          clearInterval(interval);
+        }
+      }, 1000 / 60);
+      session.interval = interval;
+    }
+    return { gameId: id, playerId: newPlayerId };
+  });
   
   // WebSocket endpoint for streaming game state updates
   app.get('/game/:id/ws', { websocket: true }, (connection, request) => {
