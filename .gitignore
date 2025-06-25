@@ -1,7 +1,10 @@
 ## Node.js dependencies
 node_modules/
 Makefile
+<<<<<<< HEAD
 
+=======
+>>>>>>> c99d9da8c373fce3a939b5e55b62827ee7cacc99
 ## Build output
 /dist/
 /build/

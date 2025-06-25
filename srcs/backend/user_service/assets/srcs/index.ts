@@ -3,7 +3,8 @@ import cookiesPlugin from '@fastify/cookie';
 import private_userRoutes from './routes/private_data';
 import fastifyPostgres from '@fastify/postgres';
 
-const server = fastify();
+// Trust proxy headers (e.g., X-Forwarded-Proto) when behind SSL termination
+const server = fastify({ trustProxy: true });
 
 server.register(fastifyPostgres, {
   connectionString: 'postgresql://transcendence:imthebest@database_service:5432/db',
@@ -13,7 +14,10 @@ server.register(private_userRoutes, {
   prefix: '/api/user/',
 });
 
-server.listen({ port: 3000, host: '0.0.0.0' }, (err, address) => {
+// Determine port and host from environment, with defaults
+const port = parseInt(process.env.PORT || '3000', 10);
+const host = process.env.HOST || '0.0.0.0';
+server.listen({ port, host }, (err, address) => {
   if (err) {
     console.error(err);
     process.exit(1);
