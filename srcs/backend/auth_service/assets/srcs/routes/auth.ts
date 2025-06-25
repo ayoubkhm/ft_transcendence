@@ -137,45 +137,6 @@ export default async function authRoutes(app: FastifyInstance) {
       console.error('Signup fetch failed:', err);
       return res.status(500).send({ error: 'Internal server error: signup fetch failed' });
     }
-
-    const hashed = await bcrypt.hash(password, 12);
-    const res = await fetch(`${USER_SERVICE_URL}/api/users/create`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email,
-        password: hashed,
-        name,
-        credential: process.env.API_CREDENTIAL,
-      }),
-    });
-    const data = await res.json();
-    if (res.status !== 200) {
-      return reply.status(res.status).send({ error: data.error || 'User creation failed' });
-    }
-
-    const token = jwt.sign(
-      {
-        data: {
-          id: data.id,
-          email: data.email,
-          name: data.name,
-          towfactorSecret: data.towfactorsecret,
-          dfa: true,
-        },
-      },
-      process.env.JWT_SECRET as string,
-      { expiresIn: '24h' }
-    );
-
-    reply
-      .setCookie('session', token, {
-        httpOnly: true,
-        secure: true,
-        sameSite: 'none',
-        path: '/',
-      })
-      .send({ response: 'success', need2FA: false });
   });
 
   // Login
@@ -252,31 +213,6 @@ export default async function authRoutes(app: FastifyInstance) {
         sameSite: 'none',
       }).send({ response: "success", need2FA: false });
     }
-
-    // Normal login → issue session cookie
-    const sessionToken = jwt.sign(
-      {
-        data: {
-          id: user.id,
-          email,
-          name: user.name,
-          isAdmin: user.isAdmin,
-          towfactorSecret: user.towfactorsecret,
-          dfa: true,
-        },
-      },
-      process.env.JWT_SECRET as string,
-      { expiresIn: '24h' }
-    );
-
-    reply
-      .setCookie('session', sessionToken, {
-        httpOnly: true,
-        secure: true,
-        sameSite: 'none',
-        path: '/',
-      })
-      .send({ response: 'success', need2FA: false });
   });
 
   // Magic link callback
@@ -299,7 +235,7 @@ export default async function authRoutes(app: FastifyInstance) {
         { expiresIn: '24h' }
       );
       if (!finalToken) throw new Error('Token generation failed');
-      return reply.cookie('jtw_transcendance', token, {jtw_transcendance', finalToken, {
+      return reply.cookie('jtw_transcendance', finalToken, {
         httpOnly: true,
         path: '/',
         secure: true,
