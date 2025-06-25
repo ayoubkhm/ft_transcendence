@@ -1,26 +1,39 @@
 # 📚 Base de données Transcendence
 
-## Commandes disponibles pour la database :
+## Commandes disponibles pour la databases
 
-Se fera update au fur et à mesure.
+Se fera update au fur et à mesure
 
+Chaque table possède:
+ * sa description
+ * ses triggers (pour un certain event, généralement la creation d'un élément, un trigger lance une exception)
+ * ses fonctions
+ 
 ---
 
 ### 🎮 Table `games`
 
 ```sql
-TABLE games contient :
-- id : int généré automatiquement : unique
-- p1_id : id du joueur 1, référence à `users(id)`, peut être NULL si bot ou user supprimé
-- p2_id : pareil pour player 2
-- state game_state : ENUM, peut être 'WAITING', 'RUNNING', 'PAUSE', ou 'OVER' (NOT NULL, default 'RUNNING')
-- p1_score : INT, score du joueur 1 (NOT NULL, default 0)
-- p2_score : INT, score du joueur 2 (NOT NULL, default 0)
-- p1_bot : BOOLEAN, true si p1 est un bot (NOT NULL, default false)
-- p2_bot : BOOLEAN, true si p2 est un bot (NOT NULL, default false)
-- created_at : TIMESTAMP (default CURRENT_TIMESTAMP)
-- state game_type : ENUM, peut être 'IA', 'TOURNAMENT', ou 'VS' (NOT NULL)
+• id : INTEGER généré automatiquement : unique
+
+• p1_id : id du joueur 1, référence à `users(id)`, peut être NULL si bot ou user supprimé
+• p2_id : pareil pour player 2
+• p1_score : INTEGER, score du joueur 1 (NOT NULL, default 0)
+• p2_score : INTEGER, score du joueur 2 (NOT NULL, default 0)
+• p1_bot : BOOLEAN, true si p1 est un bot (NOT NULL, default false)
+• p2_bot : BOOLEAN, true si p2 est un bot (NOT NULL, default false)
+
+• state game_state : ENUM, peut être 'WAITING', 'RUNNING', 'PAUSE', ou 'OVER' (NOT NULL, default 'RUNNING')
+• state game_type : ENUM, peut être 'IA', 'TOURNAMENT', ou 'VS' (NOT NULL)
+
+• created_at : TIMESTAMP (default CURRENT_TIMESTAMP)
 ```
+
+### 🔁 Triggers pour `games`
+  * refuse 
+  * refuse un oauth avec mot de passe ou sans email
+  * refuse un guest avec email ou mot de passe
+
 
 ### 🎮 Fonctions pour `games`
 
@@ -33,14 +46,13 @@ Rien pour le moment
 ### 👤 Table `users`
 
 ```sql
-TABLE users contient :
-- id : int généré automatiquement : unique
-- name : TEXT, unique, non null
-- type : 'guest', 'signed' ou 'oauth'
-- admin : BOOLEAN (default false)
-- email : TEXT, unique (null si guest)
-- password : TEXT (null si guest ou oauth)
-- created_at : TIMESTAMP (default now())
+• id : int généré automatiquement : unique
+• name : TEXT, unique, non null
+• type : 'guest', 'signed' ou 'oauth'
+• admin : BOOLEAN (default false)
+• email : TEXT, unique (null si guest)
+• password : TEXT (null si guest ou oauth)
+• created_at : TIMESTAMP (default now())
 ```
 
 ### 🔁 Triggers pour `users`
@@ -76,11 +88,11 @@ get_user(id)
 
 ```sql
 TABLE tournaments contient :
-- id : SERIAL, clé primaire
-- name : TEXT, unique, non null
-- nbr_players : INT non null
-- remaining_rounds : INT non null
-- state : ENUM 'WAITING', 'RUNNING', 'OVER', default 'WAITING'
+• id : SERIAL, clé primaire
+• name : TEXT, unique, non null
+• nbr_players : INT non null
+• remaining_rounds : INT non null
+• state : ENUM 'WAITING', 'RUNNING', 'OVER', default 'WAITING'
 ```
 
 ### 🔁 Triggers pour `tournaments`
