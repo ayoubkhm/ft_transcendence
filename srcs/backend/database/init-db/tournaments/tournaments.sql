@@ -20,5 +20,5 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER enforce_tournament_constraints
-BEFORE INSERT OR UPDATE ON users
+BEFORE INSERT OR UPDATE ON tournaments
 FOR EACH ROW EXECUTE FUNCTION enforce_tournament_constraints();
