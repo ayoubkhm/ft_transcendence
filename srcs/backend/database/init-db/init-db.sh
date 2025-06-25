@@ -1,6 +1,7 @@
 #!/bin/bash
 set -e
 # envsubst < /usr/bin/init-db.sql > /docker-entrypoint-initdb.d/init-db.sql
+
 envsubst < /app/db-init/init-db-all.template.sql > /tmp/init-db-all.sql
 
 chmod +x /tmp/init-db-all.sql

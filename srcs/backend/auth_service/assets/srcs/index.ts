@@ -4,6 +4,7 @@ import cookiesPlugin from '@fastify/cookie';
 import jwt from 'jsonwebtoken';
 import 'dotenv/config';
 import authRoutes from './routes/auth';
+import dfaRoutes from './routes/2FA';
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -65,6 +66,7 @@ app.register(oauthPlugin, {
 
 // —–– 3) Tes routes custom (le callback)
 app.register(authRoutes, { prefix: '/api/auth' });
+app.register(dfaRoutes, { prefix: '/api/auth/2fa' });
 
 // —–– 4) Démarrage
 app.listen({ host: '0.0.0.0', port: 3000 }, err => {

@@ -14,13 +14,11 @@ server.register(private_userRoutes, {
   prefix: '/api/user/',
 });
 
-// Determine port and host from environment, with defaults
-const port = parseInt(process.env.PORT || '3000', 10);
-const host = process.env.HOST || '0.0.0.0';
-server.listen({ port, host }, (err, address) => {
-  if (err) {
-    console.error(err);
-    process.exit(1);
-  }
-  console.log(`Server listening at ${address}`);
-});
+server.listen({ host: '0.0.0.0', port: 3000 }, (err, address) =>
+{
+    if (err) {
+      console.error(err);
+      process.exit(1);
+    }
+    console.log(`ready`);
+})

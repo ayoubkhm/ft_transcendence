@@ -1,8 +1,6 @@
 import jtw, {JwtPayload} from 'jsonwebtoken';
 import {i_token} from '../utils/getTokenData';
 
-
-
 export default function isConnected(request: any, reply: any, done: any) {
     const token = request.cookies.jtw_transcendance;
     if (!token || token === 'undefined') {
