@@ -4,7 +4,7 @@ CREATE OR REPLACE FUNCTION new_user(
 	_email TEXT DEFAULT NULL,
 	_password TEXT DEFAULT NULL
 )
-RETURNS TABLE(success BOOLEAN, message TEXT) AS $$
+RETURNS TABLE(success BOOLEAN, msg TEXT) AS $$
 BEGIN
 	INSERT INTO users (name, type, email, password)
 	VALUES (_name, _type, _email, _password);
@@ -13,9 +13,7 @@ BEGIN
 
 EXCEPTION
 	WHEN unique_violation THEN
-		IF SQLERRM LIKE '%users_name_key%' THEN
-			RETURN QUERY SELECT FALSE, 'Username is already taken';
-		ELSIF SQLERRM LIKE '%users_email_key%' THEN
+		IF SQLERRM LIKE '%users_email_key%' THEN
 			RETURN QUERY SELECT FALSE, 'Email is already in use';
 		ELSE
 			RETURN QUERY SELECT FALSE, 'Unique constraint violation on users (not normal)';
@@ -32,7 +30,7 @@ $$ LANGUAGE plpgsql;
 
 
 CREATE OR REPLACE FUNCTION update_user_email(_id INT, _email TEXT)
-RETURNS TABLE(success BOOLEAN, message TEXT) AS $$
+RETURNS TABLE(success BOOLEAN, msg TEXT) AS $$
 BEGIN
 	UPDATE users
 	SET email = _email
@@ -52,7 +50,7 @@ $$ LANGUAGE plpgsql;
 
 
 CREATE OR REPLACE FUNCTION update_user_name(_id INT, _name TEXT)
-RETURNS TABLE(success BOOLEAN, message TEXT) AS $$
+RETURNS TABLE(success BOOLEAN, msg TEXT) AS $$
 BEGIN
 	UPDATE users
 	SET name = _name
@@ -72,7 +70,7 @@ $$ LANGUAGE plpgsql;
 
 
 CREATE OR REPLACE FUNCTION update_user_password(_id INT, _password TEXT)
-RETURNS TABLE(success BOOLEAN, message TEXT) AS $$
+RETURNS TABLE(success BOOLEAN, msg TEXT) AS $$
 -- DECLARE
 --   hashed TEXT;
 BEGIN
@@ -99,7 +97,7 @@ $$ LANGUAGE plpgsql;
 
 
 CREATE OR REPLACE FUNCTION delete_user(_id INT)
-RETURNS TABLE(success BOOLEAN, message TEXT) AS $$
+RETURNS TABLE(success BOOLEAN, msg TEXT) AS $$
 BEGIN
 	IF NOT EXISTS (SELECT 1 FROM users WHERE id = _id) THEN
     	RETURN QUERY SELECT FALSE, 'User not found';
@@ -117,7 +115,7 @@ $$ LANGUAGE plpgsql;
 
 
 CREATE OR REPLACE FUNCTION get_user(_id INT)
-RETURNS TABLE(succes BOOLEAN, message TEXT, name TEXT, email TEXT, type TEXT, admin BOOLEAN) AS $$
+RETURNS TABLE(succes BOOLEAN, msg TEXT, name TEXT, email TEXT, type TEXT, admin BOOLEAN) AS $$
 DECLARE
 	u users%ROWTYPE;
 BEGIN

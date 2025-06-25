@@ -1,7 +1,7 @@
 
 CREATE TABLE IF NOT EXISTS users (
 	id SERIAL PRIMARY KEY,
-	name TEXT NOT NULL UNIQUE,
+	name TEXT NOT NULL,
 	type TEXT NOT NULL CHECK (type IN ('guest', 'signed', 'oauth')),
 	admin BOOLEAN NOT NULL DEFAULT FALSE,
 	email TEXT UNIQUE DEFAULT NULL,		-- nullable pour guest
@@ -13,15 +13,15 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE OR REPLACE FUNCTION enforce_user_constraints() RETURNS trigger AS $$
 BEGIN
 	IF NEW.type = 'signed' AND (NEW.email IS NULL OR NEW.password IS NULL) THEN
-    	RAISE EXCEPTION 'Signed users must have email and password';
+    	RAISE EXCEPTION 'Signed-in users must have email and password';
 	ELSIF NEW.type = 'oauth' THEN
 		IF NEW.password IS NOT NULL then 
-			RAISE EXCEPTION 'Signed-in users via OAuth dont have password';
+			RAISE EXCEPTION 'OAuth users via OAuth can''t have password';
 		ELSIF NEW.email IS NULL then
-			RAISE EXCEPTION 'Signed-in users must have email';
+			RAISE EXCEPTION 'OAuth users must have email';
 		END IF;
 	ELSIF NEW.type = 'guest' AND (NEW.email IS NOT NULL OR NEW.password IS NOT NULL) THEN
-		RAISE EXCEPTION 'Guest users cant have email or password';
+		RAISE EXCEPTION 'Guest users can''t have email or password';
 	END IF;
   RETURN NEW;
 END;

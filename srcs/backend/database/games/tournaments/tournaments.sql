@@ -5,15 +5,16 @@ CREATE TABLE IF NOT EXISTS tournaments (
 	name TEXT NOT NULL UNIQUE,
 	nbr_players INTEGER NOT NULL,
 	remaining_rounds INTEGER NOT NULL,
+	total_rounds INTEGER NOT NULL,
+	round INTEGER NOT NULL DEFAULT 0,
 	state tournament_state NOT NULL DEFAULT 'WAITING'
-	-- start_at TIMESTAMP DEFAULT NOW(),
 );
 
 
 CREATE OR REPLACE FUNCTION enforce_tournament_constraints() RETURNS trigger AS $$
 BEGIN
-	IF (NEW.remaining_rounds < 0) THEN
-		RAISE EXCEPTION 'Tournament can''t have a number of rounds negative';
+	IF (NEW.remaining_rounds < 1) OR (NEW.total_rounds < 1) THEN
+		RAISE EXCEPTION 'Tournament can''t have a number of rounds negative or null';
 	END IF;
   RETURN NEW;
 END;
