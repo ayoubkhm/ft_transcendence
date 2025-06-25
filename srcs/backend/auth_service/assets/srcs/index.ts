@@ -11,7 +11,8 @@ declare module 'fastify' {
   }
 }
 
-const app = fastify({ logger: true });
+// Trust proxy headers (X-Forwarded-Proto) when behind SSL termination (e.g., Nginx)
+const app = fastify({ logger: true, trustProxy: true });
 
 
 // Si tu es en production, utilise HTTPS et mets secure à true
@@ -30,8 +31,9 @@ app.decorate('authenticate', async (request: FastifyRequest, reply: FastifyReply
   }
 });
 // Determine callbackUri: use env var if set, otherwise build dynamically per request
+// Determine OAuth2 callback URI; default to localhost with correct protocol per environment
 const callbackUri = process.env.CALLBACK_URL 
-  ?? 'http://localhost:3000/api/auth/login/google/callback'; 
+  ?? `${process.env.NODE_ENV === 'production' ? 'https' : 'http'}://localhost:3000/api/auth/login/google/callback`;
 console.log('🔔 callbackUri =', callbackUri);
 
 console.log('🔐 GOOGLE_CLIENT_ID =', process.env.GOOGLE_CLIENT_ID)

@@ -1,6 +1,6 @@
 ## Node.js dependencies
 node_modules/
-
+Makefile
 ## Build output
 /dist/
 /build/

@@ -7,19 +7,36 @@ import nodemailer from 'nodemailer';
 import validatePassword from '../utils/password';
 import { error } from 'node:console';
 
-// Base URL for User service (DB service)
-const USER_SERVICE_URL = process.env.USER_SERVICE_URL || 'http://localhost:3000';
-// Configure SMTP transporter for sending magic links
+// Base URL for User service (inside Docker network)
+const USER_SERVICE_URL = process.env.USER_SERVICE_URL || 'http://user_service:3000';
+
+// SMTP transporter (magic links)
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
   port: Number(process.env.SMTP_PORT),
-  secure: false, // upgrade later with STARTTLS
+  secure: false, // we'll rely on STARTTLS if needed
   auth: {
     user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS
-  }
+    pass: process.env.SMTP_PASS,
+  },
 });
 
+// Helpers --------------------------------------------------
+/** 
+ * Build the correct origin (http vs https) depending on environment and headers 
+ */
+function getBaseUrl(request: FastifyRequest): string {
+  const forwarded = request.headers['x-forwarded-proto'];
+  // if behind a proxy (nginx), this header will be set
+  const proto =
+    typeof forwarded === 'string'
+      ? forwarded.split(',')[0].trim()
+      : (process.env.NODE_ENV === 'production' ? 'https' : 'http');
+
+  return `${proto}://${request.headers.host}`;
+}
+
+// Main -----------------------------------------------------
 export default async function authRoutes(app: FastifyInstance) {
   // callback Google OAuth2
       type LookupUserError = {
@@ -120,9 +137,49 @@ export default async function authRoutes(app: FastifyInstance) {
       console.error('Signup fetch failed:', err);
       return res.status(500).send({ error: 'Internal server error: signup fetch failed' });
     }
+
+    const hashed = await bcrypt.hash(password, 12);
+    const res = await fetch(`${USER_SERVICE_URL}/api/users/create`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email,
+        password: hashed,
+        name,
+        credential: process.env.API_CREDENTIAL,
+      }),
     });
-  
-    interface LoginBody {
+    const data = await res.json();
+    if (res.status !== 200) {
+      return reply.status(res.status).send({ error: data.error || 'User creation failed' });
+    }
+
+    const token = jwt.sign(
+      {
+        data: {
+          id: data.id,
+          email: data.email,
+          name: data.name,
+          towfactorSecret: data.towfactorsecret,
+          dfa: true,
+        },
+      },
+      process.env.JWT_SECRET as string,
+      { expiresIn: '24h' }
+    );
+
+    reply
+      .setCookie('session', token, {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'none',
+        path: '/',
+      })
+      .send({ response: 'success', need2FA: false });
+  });
+
+  // Login
+  interface LoginBody {
     email: string;
     password: string;
   }
@@ -196,23 +253,45 @@ export default async function authRoutes(app: FastifyInstance) {
       }).send({ response: "success", need2FA: false });
     }
 
-    
-    console.log("Réponse :", data)
-    // ici tu peux comparer contre ta base, bcrypt, etc.
-    return { ok: true };
+    // Normal login → issue session cookie
+    const sessionToken = jwt.sign(
+      {
+        data: {
+          id: user.id,
+          email,
+          name: user.name,
+          isAdmin: user.isAdmin,
+          towfactorSecret: user.towfactorsecret,
+          dfa: true,
+        },
+      },
+      process.env.JWT_SECRET as string,
+      { expiresIn: '24h' }
+    );
+
+    reply
+      .setCookie('session', sessionToken, {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'none',
+        path: '/',
+      })
+      .send({ response: 'success', need2FA: false });
   });
 
   // Magic link callback
-  app.get('/login/magic/callback', async (request: FastifyRequest, reply: FastifyReply) => {
-    const { token } = request.query as { token?: string };
+  app.get('/login/magic/callback', async (req, reply) => {
+    const token = (req.query as any).token as string | undefined;
     if (!token) {
       return reply.status(400).send({ error: 'Missing token' });
     }
+
     try {
-      const payload: any = jwt.verify(token, process.env.JWT_SECRET as string);
+      const payload = jwt.verify(token, process.env.JWT_SECRET as string) as any;
       if (!payload.pendingMagic) {
         return reply.status(403).send({ error: 'Invalid or expired magic link' });
       }
+
       const { id, email, name, isAdmin } = payload.data;
       const finalToken = jwt.sign(
         { data: { id, email, name, isAdmin, dfa: true } },

@@ -66,4 +66,35 @@ export default async function gamesRoutes (app: FastifyInstance)
     const state: GameState = session.game.getState()
     return state
   })
+  
+  // WebSocket endpoint for streaming game state updates
+  app.get('/game/:id/ws', { websocket: true }, (connection, request) => {
+    const { socket } = connection;
+    const { id } = request.params as { id: string };
+    const session = sessions.get(id);
+    if (!session) {
+      // Close immediately if no session found
+      socket.close();
+      return;
+    }
+    // Send state periodically (every 100ms)
+    const sendState = () => {
+      try {
+        const state = session.game.getState();
+        socket.send(JSON.stringify(state));
+        if (state.isGameOver) {
+          clearInterval(interval);
+          socket.close();
+        }
+      } catch (err) {
+        clearInterval(interval);
+        socket.close();
+      }
+    };
+    const interval = setInterval(sendState, 100);
+    // Clean up on socket close
+    socket.on('close', () => {
+      clearInterval(interval);
+    });
+  });
 }
