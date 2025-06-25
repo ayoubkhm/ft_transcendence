@@ -6,4 +6,4 @@ envsubst < /app/db-init/init-db-all.template.sql > /tmp/init-db-all.sql
 chmod +x /tmp/init-db-all.sql
 
 # Exécution immédiate via psql (et non en comptant sur docker-entrypoint)
-psql --username="me" --dbname="$DB_NAME" --file=/tmp/init-db-all.sql
+psql --username="$DB_SUPERUSER" --dbname="$DB_NAME" --file=/tmp/init-db-all.sql

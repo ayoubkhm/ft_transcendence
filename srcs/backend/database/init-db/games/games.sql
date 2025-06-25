@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS games (
 	p1_bot BOOLEAN NOT NULL DEFAULT FALSE,
 	p2_bot BOOLEAN NOT NULL DEFAULT FALSE,
 	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-	state game_type NOT NULL
+	type game_type NOT NULL
 );
 
 
@@ -20,7 +20,7 @@ BEGIN
 	IF NEW.p1_bot = TRUE AND NEW.p1_id IS NULL THEN
     	RAISE EXCEPTION 'Player 1 is not a bot and should have id';
 
-	ELSE IF NEW.p2_bot = TRUE AND NEW.p2_id IS NULL THEN
+	ELSIF NEW.p2_bot = TRUE AND NEW.p2_id IS NULL THEN
     	RAISE EXCEPTION 'Player 2 is not a bot and should have id';
 	END IF;
   RETURN NEW;

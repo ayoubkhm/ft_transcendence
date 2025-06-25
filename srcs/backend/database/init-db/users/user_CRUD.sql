@@ -1,6 +1,6 @@
 CREATE OR REPLACE FUNCTION new_user(
-	_name TEXT NOT NULL,
-	_type TEXT NOT NULL DEFAULT 'guest',
+	_name TEXT,
+	_type TEXT DEFAULT 'guest',
 	_email TEXT DEFAULT NULL,
 	_password TEXT DEFAULT NULL
 )
@@ -117,14 +117,16 @@ $$ LANGUAGE plpgsql;
 
 
 CREATE OR REPLACE FUNCTION get_user(_id INT)
-RETURNS TABLE(succes BOOLEAN, message TEXT, name TEXT, type TEXT, email TEXT, password TEXT, created_at TIMESTAMP) AS $$
+RETURNS TABLE(succes BOOLEAN, message TEXT, name TEXT, email TEXT, type TEXT, admin BOOLEAN) AS $$
+DECLARE
+	u users%ROWTYPE;
 BEGIN
-	SELECT * INTO user FROM users WHERE id = _id;
+	SELECT * INTO u FROM users WHERE id = _id;
 	IF NOT FOUND THEN
     	RETURN QUERY SELECT FALSE, 'User not found';
-  END IF;
+	END IF;
 
-  RETURN QUERY SELECT TRUE, 'User info collected', user.id, user.name, user.email, user.type;
+  RETURN QUERY SELECT TRUE, 'User info collected', u.id, u.name, u.email, u.type, u.admin;
 EXCEPTION
 	WHEN OTHERS then
 		return QUERY SELECT FALSE, SQLERRM;
