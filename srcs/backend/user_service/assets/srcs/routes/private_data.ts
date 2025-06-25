@@ -1,4 +1,5 @@
 import { FastifyInstance } from "fastify";
+import  validateUserData from "../utils/userData";
 
 export default async function private_userRoutes(server: FastifyInstance) {
         
@@ -48,7 +49,7 @@ export default async function private_userRoutes(server: FastifyInstance) {
       isAdmin?: boolean,
     }
 
-    server.post<{ Body: DataUserParams }>('/create', async (request, reply) => {
+    server.post<{ Body: DataUserParams }>('/create', { preHandler: [validateUserData] }, async (request, reply) => {
         const email = request.body.email;
         const name = request.body.name;
         const password = request.body.password;

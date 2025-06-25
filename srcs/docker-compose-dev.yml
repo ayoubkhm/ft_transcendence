@@ -54,8 +54,8 @@ services:
       dockerfile: Dockerfile
       args:
         - NODE_ENV=dev
-    expose:
-      - "3001"
+    ports:
+      - "3001:3000"
     networks:
       - router
 
@@ -78,8 +78,8 @@ services:
       dockerfile: Dockerfile
       args:
         - NODE_ENV=dev
-    expose:
-      - "3001"
+    ports:
+      - "3002:3000"
     networks:
       - router
 
