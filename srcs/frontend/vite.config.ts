@@ -1,11 +1,13 @@
 import { defineConfig } from 'vite';
+// Remove React plugin; using vanilla JS for SPA
 
 export default defineConfig({
+  plugins: [],
   server: {
-    // bind to all interfaces so Nginx (other containers) can reach it
     host: '0.0.0.0',
     port: 4000,
-    // disable automatic browser open inside Docker containers
-    open: false
-  }
+    open: false,
+    // Disable HMR to avoid WebSocket TLS errors behind HTTPS proxy
+    hmr: false,
+  },
 });
