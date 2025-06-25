@@ -1,11 +1,11 @@
 CREATE OR REPLACE FUNCTION new_tournament(
 	_name TEXT,
-	_nbr_players INTEGER NOT NULL,
-	_tournament_state state tournament_state NOT NULL DEFAULT 'WAITING'
+	_nbr_players INTEGER DEFAULT 1,
+	_tournament_state tournament_state DEFAULT 'WAITING'
 )
 RETURNS TABLE(success BOOLEAN, message TEXT) AS $$
 DECLARE
-	_remaining_rounds INTEGER NOT NULL;
+	_remaining_rounds INTEGER NOT NULL DEFAULT 1;
 BEGIN
 	_remaining_rounds = CEIL(LOG(2, _nbr_players));
 	INSERT INTO tournaments (name, nbr_players, remaining_rounds, tournament_state)

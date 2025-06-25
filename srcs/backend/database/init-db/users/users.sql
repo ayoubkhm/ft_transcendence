@@ -3,6 +3,7 @@ CREATE TABLE IF NOT EXISTS users (
 	id SERIAL PRIMARY KEY,
 	name TEXT NOT NULL UNIQUE,
 	type TEXT NOT NULL CHECK (type IN ('guest', 'signed', 'oauth')),
+	admin BOOLEAN NOT NULL DEFAULT FALSE,
 	email TEXT UNIQUE DEFAULT NULL,		-- nullable pour guest
 	password TEXT DEFAULT NULL,			-- nullable pour guest
 	created_at TIMESTAMP DEFAULT NOW()
@@ -15,12 +16,12 @@ BEGIN
     	RAISE EXCEPTION 'Signed users must have email and password';
 	ELSIF NEW.type = 'oauth' THEN
 		IF NEW.password IS NOT NULL then 
-			RAISE EXCEPTION 'Signed-in users via OAuth dont have password'
+			RAISE EXCEPTION 'Signed-in users via OAuth dont have password';
 		ELSIF NEW.email IS NULL then
-			RAISE EXCEPTION 'Signed-in users must have email'
+			RAISE EXCEPTION 'Signed-in users must have email';
 		END IF;
 	ELSIF NEW.type = 'guest' AND (NEW.email IS NOT NULL OR NEW.password IS NOT NULL) THEN
-		RAISE EXCEPTION 'Guest users cant have email or password'
+		RAISE EXCEPTION 'Guest users cant have email or password';
 	END IF;
   RETURN NEW;
 END;
