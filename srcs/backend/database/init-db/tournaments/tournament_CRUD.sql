@@ -8,7 +8,7 @@ DECLARE
 	_remaining_rounds INTEGER NOT NULL DEFAULT 1;
 BEGIN
 	_remaining_rounds = CEIL(LOG(2, _nbr_players));
-	INSERT INTO tournaments (name, nbr_players, remaining_rounds, tournament_state)
+	INSERT INTO tournaments (name, nbr_players, remaining_rounds, state)
 	VALUES (_name, _nbr_players, _remaining_rounds, _tournament_state);
 	
 	RETURN QUERY SELECT TRUE, 'Tournament created successfully';

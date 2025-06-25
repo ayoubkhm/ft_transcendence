@@ -223,6 +223,14 @@ export class Game
 		}
 	}
 	getState(): GameState { return this.state; }
+  /**
+   * Register a second human player by replacing placeholder or AI.
+   */
+  public joinPlayer(newId: string) {
+    // Replace the right-side player id to disable AI movement
+    const right = this.state.players[1];
+    right.id = newId;
+  }
 }
 
 
