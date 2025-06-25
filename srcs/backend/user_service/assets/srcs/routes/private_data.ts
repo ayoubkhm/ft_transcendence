@@ -1,8 +1,14 @@
 import { FastifyInstance } from "fastify";
 import  validateUserData from "../utils/userData";
+import { doesNotMatch } from "assert";
 
-export default async function private_userRoutes(server: FastifyInstance) {
+export default async function private_userRoutes(server: FastifyInstance, options: any, done: any) {
         
+    
+  
+  
+  
+  
     interface PrivateDataParams {
       email: string;
     }
@@ -11,7 +17,7 @@ export default async function private_userRoutes(server: FastifyInstance) {
       credential: string;
     }
 
-    server.post<{ Params: PrivateDataParams, Body: PrivateDataBody }>('/lookup/:email', async (request, reply) => {
+  server.post<{ Params: PrivateDataParams, Body: PrivateDataBody }>('/lookup/:email', async (request, reply) => {
   const value = request.params.email;
 
   const isEmail = value.match(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/);
@@ -21,11 +27,11 @@ export default async function private_userRoutes(server: FastifyInstance) {
 
     let result;
     if (isEmail) {
-      result = await server.pg.query(`SELECT * FROM "User" WHERE email = $1`, [value]);
+      result = await server.pg.query(`SELECT * FROM users WHERE email = $1`, [value]);
     } else if (isID) {
-      result = await server.pg.query(`SELECT * FROM "User" WHERE id = $1`, [Number(value)]);
+      result = await server.pg.query(`SELECT * FROM users WHERE id = $1`, [Number(value)]);
     } else {
-      result = await server.pg.query(`SELECT * FROM "User" WHERE name = $1`, [value]);
+      result = await server.pg.query(`SELECT * FROM users WHERE name = $1`, [value]);
     }
 
     if (!result || result.rows.length === 0) {
@@ -49,7 +55,7 @@ export default async function private_userRoutes(server: FastifyInstance) {
       isAdmin?: boolean,
     }
 
-    server.post<{ Body: DataUserParams }>('/create', { preHandler: [validateUserData] }, async (request, reply) => {
+  server.post<{ Body: DataUserParams }>('/create', { preHandler: [validateUserData] }, async (request, reply) => {
         const email = request.body.email;
         const name = request.body.name;
         const password = request.body.password;
@@ -57,13 +63,8 @@ export default async function private_userRoutes(server: FastifyInstance) {
         const provider = request.body.provider;
         // Simulate creating user data
   try {
-    const result = await server.pg.query(
-      `INSERT INTO "User" (email, name, password, "isAdmin", provider)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING *`,
-      [email, name, password || null, isAdmin || false, provider || null]
-    );
-
+    const result = await server.pg.query('SELECT * FROM new_user($1, $2, $3, $4)', [name, 'signed', email, password]);
+    console.log('[CREATE] New user created:', result.rows[0]);
     return reply.send({
       message: 'User created successfully',
       user: result.rows[0]
@@ -73,4 +74,5 @@ export default async function private_userRoutes(server: FastifyInstance) {
     return reply.status(500).send({ error: 'Internal server error' });
   }
     });
+  done();
 }
