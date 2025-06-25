@@ -17,7 +17,7 @@ rev: down-volume up-build
 up:
 	@docker-compose -p $(PROJECT_NAME) -f $(DOCKER_COMPOSE_FILE) up -d
 
-docker-start:
+docker:
 	sudo service docker start
 
 down:
@@ -32,7 +32,7 @@ db-buildv: down-volume
 db-build: down
 	@docker-compose -p $(PROJECT_NAME) -f $(DOCKER_COMPOSE_FILE) build --no-cache database
 
-db-up: docker-start
+db-up:
 	@docker-compose -p $(PROJECT_NAME) -f $(DOCKER_COMPOSE_FILE) up -d database
 
 db:
