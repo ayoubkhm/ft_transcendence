@@ -1,5 +1,6 @@
 ## Node.js dependencies
 node_modules/
+Makefile
 
 ## Build output
 /dist/
@@ -20,6 +21,7 @@ yarn-error.log*
 
 ## Environment variables
 .env
+.vault_secrets.env
 
 ## Temporary files
 *.tmp
