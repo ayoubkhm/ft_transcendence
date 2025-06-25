@@ -1,21 +1,28 @@
-FROM owasp/modsecurity-crs:nginx
+# Use official nginx base image
+FROM nginx:alpine
+ 
+# Install openssl for certificate generation
+RUN apk add --no-cache openssl
+ 
+# Domain for SSL certificate (default: localhost)
+ARG DOMAIN=localhost
+ENV DOMAIN=${DOMAIN}
+ 
+# Generate a self-signed SSL certificate
+RUN mkdir -p /etc/nginx/ssl && \
+    openssl req -x509 -nodes -days 365 \
+        -newkey rsa:2048 \
+        -subj "/CN=${DOMAIN}" \
+        -keyout /etc/nginx/ssl/nginx.key \
+        -out /etc/nginx/ssl/nginx.crt
 
-# Copie ta conf comme template AVEC bons droits
-USER root
-
-COPY nginx.conf /etc/nginx/templates/nginx.conf.template
-COPY waf.conf /etc/nginx/waf.conf
+# Copy configuration files
+COPY nginx.conf /etc/nginx/nginx.conf
 COPY proxy_params /etc/nginx/proxy_params
+COPY waf.conf /etc/nginx/waf.conf
 
-# Fix les permissions pour que le script d'entrée puisse l’écrire
-RUN chown -R nginx:nginx /etc/nginx/templates \
-    && chmod -R 644 /etc/nginx/templates
+# Expose HTTP and HTTPS ports
+EXPOSE 80 443
 
-RUN openssl req -x509 -nodes -days 365 \
-  -newkey rsa:2048 \
-  -keyout /etc/nginx/ssl/selfsigned.key \
-  -out /etc/nginx/ssl/selfsigned.crt \
-  -subj "/C=FR/ST=Paris/L=Paris/O=MyOrg/CN=localhost"
-
-
-USER nginx
+# Run nginx in the foreground
+CMD ["nginx", "-g", "daemon off;"]

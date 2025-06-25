@@ -15,7 +15,8 @@ const BALL_R = 6;
 const loginBtn = document.getElementById('login-google') as HTMLButtonElement | null;
 loginBtn?.addEventListener('click', () => {
   // Open OAuth login flow in a new tab
-  window.open('http://localhost:3000/api/auth/login/google', '_blank');
+  // Open OAuth login via secure proxy
+  window.open('/api/auth/login/google', '_blank');
 });
 // Game session identifiers and interval handle
 let gameId: string;
@@ -33,7 +34,8 @@ startBtn?.addEventListener('click', () => {
     opts.headers = { 'Content-Type': 'application/json' };
     opts.body = JSON.stringify({ difficulty });
   }
-  fetch('http://localhost:3001/api/game', opts)
+  // Start game via secure proxy
+  fetch('/api/game', opts)
     .then((res) => res.json())
     .then((data) => {
       gameId = data.gameId;
@@ -65,7 +67,8 @@ startBtn?.addEventListener('click', () => {
 });
 // Fetch the latest game state and render it
 function fetchAndDraw() {
-  fetch(`http://localhost:3001/api/game/${gameId}/state`)
+  // Fetch game state via secure proxy
+  fetch(`/api/game/${gameId}/state`)
     .then((res) => res.json())
     .then((state) => {
       draw(state);
@@ -115,7 +118,8 @@ function setupInput() {
 
 // Send a player input event to the backend
 function sendInput(type: 'move_up' | 'move_down' | 'stop') {
-  fetch(`http://localhost:3001/api/game/${gameId}/input`, {
+  // Send player input via secure proxy
+  fetch(`/api/game/${gameId}/input`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ playerId, type, ts: Date.now() }),
