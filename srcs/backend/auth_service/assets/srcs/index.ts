@@ -46,10 +46,9 @@ app.register(oauthPlugin, {
   scope: ['profile', 'email'],
   credentials: {
     client: {
-      id:     process.env.GOOGLE_CLIENT_ID!,
-      secret: process.env.GOOGLE_CLIENT_SECRET!
+      id: process.env.GOOGLE_CLIENT_ID,
+      secret: process.env.GOOGLE_CLIENT_SECRET
     },
-    auth: oauthPlugin.GOOGLE_CONFIGURATION
   },
   cookie: {
     secure:   true,
@@ -57,11 +56,12 @@ app.register(oauthPlugin, {
     path:     '/'
   },
   startRedirectPath: '/api/auth/login/google',
-  callbackUri        // ← utilise directement ta variable
+  callbackUri,
+  discovery: {
+    issuer: 'https://accounts.google.com'
+  },
+  useDiscovery: true,
 })
-
-
-
 
 // —–– 3) Tes routes custom (le callback)
 app.register(authRoutes, { prefix: '/api/auth' });

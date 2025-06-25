@@ -54,8 +54,8 @@ services:
       dockerfile: Dockerfile
       args:
         - NODE_ENV=dev
-    expose:
-      - "3001"
+    ports:
+      - "3001:3000"
     networks:
       - router
 
@@ -78,8 +78,8 @@ services:
       dockerfile: Dockerfile
       args:
         - NODE_ENV=dev
-    expose:
-      - "3001"
+    ports:
+      - "3002:3000"
     networks:
       - router
 
@@ -93,10 +93,16 @@ services:
     env_file:
       - ./.env
     environment:
-      - POSTGRES_USER=${DB_USER}
-      - POSTGRES_PASSWORD=${DB_PASS}
+      # - PGHOST=database -> pour autres containers
+      - PGUSER=${DB_USER}
+      - PGPASSWORD=${DB_PASS}
+      - PGDATABASE=${DB_NAME}
+      - PGPORT=5432
+      - POSTGRES_USER=${DB_SUPERUSER}
+      - POSTGRES_PASSWORD=${DB_SUPERPASS}
       - POSTGRES_DB=${DB_NAME}
       - PGDATA=/db
+      # - POSTGRES_HOST_AUTH_METHOD=trust
     expose:
       - "5432"
     networks:
