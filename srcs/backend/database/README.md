@@ -12,7 +12,7 @@ Chaque table possède:
 ---
 
 
-### 👤 Table `users`
+# 👤 Table `users`
 
 ```sql
 • id : int généré automatiquement : unique
@@ -30,14 +30,48 @@ Refuse la création d'un user de type:
   * `oauth` avec mot de passe ou sans email
   * `guest` avec email ou mot de passe
 
-### ⚙️ Fonctions sur `users`
+## 👤 Fonctions sur `users`
 
-```sql
-new_user(name, type, email, password)
-→ return [ [] ]
 
-update_user_email(id, email)
+### new_user
+Query : `SELECT * FROM new_user(name, type, email, password);`
+→ return une table [ success: BOOLEAN, msg: TEXT ]
+##### Restrictions
+ * name: nom unique
+ * type: 'guest', 'oauth' ou 'signed', par défaut 'guest'
+
+##### Usage
+```ts
+const resultQuery = await client.query('SELECT * FROM new_user(\'mehdi\')');
+const result = resultQuery.rows[0];
+if (result.succes)
+	print("User created !");
+else
+	print(result.msg);
+```
+##### Message retour
+`result.msg` peut contenir
+ * 'User created successfully'
+ * 'Username is already taken'
+ * 'Email is already in use'
+ * 'Signed-in users must have email and password'
+ * 'OAuth users can't have password'
+ * 'OAuth users must have email'
+ * 'Guest users cant have email or password'
+ * Un autre message n'est pas normal
+
+
+### update_user_email(id, email)
+Query : 
+→ Retourne une table : [ success: BOOLEAN, msg: TEXT ]
+
 → modifie l’email d’un user
+
+
+
+
+
+
 
 update_user_name(id, name)
 → modifie le nom d’un user
