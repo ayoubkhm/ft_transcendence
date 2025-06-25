@@ -5,6 +5,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import nodemailer from 'nodemailer';
 import validatePassword from '../utils/password';
+import isConnected from '../JTW/jsonwebtoken';
 import { error } from 'node:console';
 
 // Base URL for User service (inside Docker network)
@@ -37,7 +38,7 @@ function getBaseUrl(request: FastifyRequest): string {
 }
 
 // Main -----------------------------------------------------
-export default async function authRoutes(app: FastifyInstance) {
+export default function authRoutes(app: FastifyInstance, options: any, done: any) {
   // callback Google OAuth2
       type LookupUserError = {
         error: number;
@@ -63,9 +64,7 @@ export default async function authRoutes(app: FastifyInstance) {
       if (!userInfo) {
         throw (Error("googleOAuth2.userinfo failed"));
       }
-      console.log('🔔 userInfo =', userInfo);
-      // 2) Check if user exists in DB
-      const response = await fetch(`http://user_service:3000/api/user/lookup/${userInfo.email}`,{
+      const response = await fetch(`http://user_service:3000/api/user/lookup/${userInfo.email}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -74,10 +73,61 @@ export default async function authRoutes(app: FastifyInstance) {
       });
       let user;
       const lookupdata = await response.json();
-      //if response pas ok cree le user sinon user trouvé
+      if (response.ok && !(error in lookupdata)) {
+        if (!lookupdata.provider || lookupdata.provider !== 'google') {
+          // User exists but not linked to Google, update provider
+          user = lookupdata;
+        }
+      }
+      else {
+        // User does not exist, create a new one
+        const name = userInfo.given_name.trim().replace(/[^a-zA-Z0-9 ]/g, '_');
+        console.log('name', name);
+        const response = await fetch(`http://user_service:3000/api/user/create`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: userInfo.email,
+            name: name,
+            provider: 'google',
+            credential: process.env.API_CREDENTIAL,
+          }),
+        });
+        if (!response.ok) {
+          const data = await response.json();
+          console.error('Error creating user:', data);
+          return reply.status(response.status).send({ error: data.error || 'Internal server error' });
+        }
+
+        user = await response.json();
+        
+        const payloadBase = {
+          id : user.id,
+          email: user.email,
+          name: user.name,
+          isAdmin: user.isAdmin,
+          towfactorSecret: user.towfactorSecret,
+        };
+        const jwtpayload = {
+          data: payloadBase,
+          dfa: !user.twoFactorSecret,
+        };
+        const token = jwt.sign(jwtpayload, process.env.JWT_SECRET as string, { expiresIn: '24h' });
+        if (token) {
+          return reply.cookie('jtw_transcendance', token, {
+            path: '/',
+            httpOnly: true,
+            sameSite: 'none',
+            secure: process.env.NODE_ENV === 'prod'
+          }).redirect("/login?oauth=true&need2fa=${user.isTwoFactorEnabled}");
+        }
+        else {
+          throw new Error("no token generated");
+        }
+      }
     } catch (err) {
       console.error('Error during Google OAuth2 callback:', err);
-      return reply.status(500).send({ error: 'Internal server error' });
+      return (reply.redirect("/register?oauth-error=0500"));
     }
   });
 
@@ -145,6 +195,8 @@ export default async function authRoutes(app: FastifyInstance) {
     password: string;
   }
     app.post<{ Body: LoginBody }>('/login', async (request, reply) => {
+      
+      try {
       const { email, password } = request.body;
 
       if (
@@ -169,7 +221,7 @@ export default async function authRoutes(app: FastifyInstance) {
       });
       const data = await response.json()
       if (response.status !== 200)
-        return reply.status(response.status).send({ error: data.error || 'Unknown error' });
+        reply.status(response.status).send({ error: data.error || 'Unknown error' });
       const user = data
       if (!user || !user.password)
         return reply.status(401).send({ error: 'Invalid email or password' });
@@ -179,31 +231,31 @@ export default async function authRoutes(app: FastifyInstance) {
       if (user.isBanned) {
         return reply.status(403).send({ error: 'User is banned' });
       }
-      if (user.isTowFAEnabled) {
+      if (user.isTwoFAEnabled) {
         // Send a magic link as second factor
         const pendingToken = jwt.sign(
-          { data: { id: user.id, email, name: user.name, isAdmin: user.isAdmin }, pendingMagic: true },
+          { data: { id: user.id, email, name: user.name, isAdmin: user.isAdmin, twoFactorSecret: user.twoFactorSecret, dfa: false } },
           process.env.JWT_SECRET as string,
           { expiresIn: '24h' }
         );
-        const host = request.headers.host!;
-        const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
-        const link = `${protocol}://${host}/login/magic/callback?token=${pendingToken}`;
-        await transporter.sendMail({
-          to: email,
-          subject: 'Your login magic link',
-          html: `<p>Hello ${user.name},</p><p>Click <a href="${link}">here</a> to complete login.</p>`
-        });
-        return reply.send({ response: 'magic_sent' });
+        if (!pendingToken) {
+          throw new Error("cannot generate pending token");
+        }
+        return reply.cookie('jtw_transcendance', pendingToken, {
+          httpOnly: true,
+          path: '/',
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'none',
+        }).send({ response: 'magic_sent' });
       } else {
-      const token = jwt.sign({data: {
-        id: user.id,
-        email: email,
-        name: user.name,
-        isAdmin: user.isAdmin,
-        towfactorSecret: user.towfactorsecret,
-        dfa: true
-      }}, process.env.JWT_SECRET as string, { expiresIn: '24h' });
+        const token = jwt.sign({ data: {
+          id: user.id,
+          email: email,
+          name: user.name,
+          isAdmin: user.isAdmin,
+          twoFactorSecret: user.twoFactorSecret,
+          dfa: true
+        }}, process.env.JWT_SECRET as string, { expiresIn: '24h' });
       if (!token)
         throw (new Error("cannot generate user token"));
       return reply.cookie('jtw_transcendance', token, {
@@ -213,36 +265,17 @@ export default async function authRoutes(app: FastifyInstance) {
         sameSite: 'none',
       }).send({ response: "success", need2FA: false });
     }
+  } catch (err) {
+    console.error('Login fetch failed:', err);
+    return reply.status(500).send({ error: 'Internal server error: login fetch failed' });
+  }
+});
+
+  app.get('/status', async function (request, reply) {
+    await isConnected(request, reply, () => {
+      return (reply.status(200).send({ message: "logged_in" }));
+    });
   });
 
-  // Magic link callback
-  app.get('/login/magic/callback', async (req, reply) => {
-    const token = (req.query as any).token as string | undefined;
-    if (!token) {
-      return reply.status(400).send({ error: 'Missing token' });
-    }
-
-    try {
-      const payload = jwt.verify(token, process.env.JWT_SECRET as string) as any;
-      if (!payload.pendingMagic) {
-        return reply.status(403).send({ error: 'Invalid or expired magic link' });
-      }
-
-      const { id, email, name, isAdmin } = payload.data;
-      const finalToken = jwt.sign(
-        { data: { id, email, name, isAdmin, dfa: true } },
-        process.env.JWT_SECRET as string,
-        { expiresIn: '24h' }
-      );
-      if (!finalToken) throw new Error('Token generation failed');
-      return reply.cookie('jtw_transcendance', finalToken, {
-        httpOnly: true,
-        path: '/',
-        secure: true,
-        sameSite: 'none',
-      }).send({ response: 'success' });
-    } catch (err) {
-      return reply.status(401).send({ error: 'Unauthorized' });
-    }
-  });
+  done();
 }

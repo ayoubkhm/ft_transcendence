@@ -13,42 +13,45 @@
   <div id="app" class="flex flex-col flex-1">
 
   <!-- Top-bar -->
-  <header id="top-bar"
-          class="p-4 flex gap-4 justify-end items-start">
-
-    <!-- Login -->
-    <button id="login-btn"
-            class="px-4 py-2 bg-blue-500 rounded">
-      Login
-    </button>
-
-    <!-- Tournament (désormais avant le PvP) -->
-    <button id="play-tourn-btn"
-            class="px-4 py-2 bg-green-500 rounded">
-      Tournament
-    </button>
-
-    <!-- Play vs Player -->
-    <button id="play-pvp-btn"
-            class="px-4 py-2 bg-green-500 rounded">
-      Play&nbsp;vs&nbsp;Player
-    </button>
-
-    <!-- Wrap IA bouton + select -->
-  <div class="relative inline-block">
-    <button id="play-ai-btn"
-            class="px-4 py-2 bg-green-500 rounded">
-      Play vs IA
-    </button>
-
-    <!-- Positionné juste sous le bouton grâce à top-full + mt-1 -->
-    <select id="ai-difficulty"
-            class="absolute left-0 right-0 top-full mt-1 w-full bg-gray-700 rounded z-10">
-      <option value="easy"   selected>Easy</option>
-      <option value="medium">Medium</option>
-      <option value="hard">Difficult</option>
-    </select>
-  </div>
+  <header id="top-bar" class="p-4 flex justify-between items-center">
+    <!-- Authenticated user view -->
+    <div id="auth-user" class="hidden flex items-center gap-4">
+      <input id="search-user" type="search" placeholder="Search users"
+             class="px-2 py-1 rounded bg-gray-700 text-white placeholder-gray-400 focus:outline-none" />
+      <span id="user-greeting" class="text-white"></span>
+      <button id="logout-btn" class="px-4 py-2 bg-red-500 rounded text-white">
+        Logout
+      </button>
+    </div>
+    <!-- Guest view -->
+    <div id="auth-guest" class="flex items-center gap-4">
+      <button id="signup-btn" class="px-4 py-2 bg-blue-500 rounded">
+        Sign Up
+      </button>
+      <button id="login-btn" class="px-4 py-2 bg-blue-500 rounded">
+        Login
+      </button>
+    </div>
+    <!-- Game controls -->
+    <div class="flex items-center gap-4">
+      <button id="play-tourn-btn" class="px-4 py-2 bg-green-500 rounded">
+        Tournament
+      </button>
+      <button id="play-pvp-btn" class="px-4 py-2 bg-green-500 rounded">
+        Play&nbsp;vs&nbsp;Player
+      </button>
+      <div class="relative inline-block">
+        <button id="play-ai-btn" class="px-4 py-2 bg-green-500 rounded">
+          Play vs IA
+        </button>
+        <select id="ai-difficulty"
+                class="absolute left-0 right-0 top-full mt-1 w-full bg-gray-700 rounded z-10">
+          <option value="easy" selected>Easy</option>
+          <option value="medium">Medium</option>
+          <option value="hard">Difficult</option>
+        </select>
+      </div>
+    </div>
   </header>
 
 
@@ -71,6 +74,83 @@
     <pre id="game-result"
          class="mt-4 mx-auto mb-6 max-w-xl text-sm text-black bg-white p-3 rounded hidden"></pre>
   </div>
+  <!-- Login Modal -->
+  <div id="login-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-gray-800 rounded p-6 relative w-full max-w-sm mx-2">
+      <button id="login-modal-close" class="absolute top-2 right-2 text-white text-xl">&times;</button>
+        <form id="login-modal-form" class="flex flex-col gap-2">
+          <input type="email" id="login-email" placeholder="Email"
+                class="px-2 py-1 rounded bg-gray-700 focus:outline-none text-white"
+                required />
+          <input type="password" id="login-password" placeholder="Password"
+                class="px-2 py-1 rounded bg-gray-700 focus:outline-none text-white"
+                required />
+          <div class="flex gap-2 mt-2 justify-center">
+            <button type="submit" id="submit-login-btn"
+                    class="px-4 py-2 bg-blue-500 rounded">
+              Login
+            </button>
+            <button type="button" id="google-login-btn"
+                    class="px-4 py-2 bg-red-500 rounded">
+              Login with Google
+            </button>
+          </div>
+          <button type="button" id="guest-login-btn"
+                  class="px-4 py-2 bg-gray-600 rounded text-white mt-2 mx-auto">
+            Login as Guest
+          </button>
+        </form>
+
+    </div>
+  </div>
+<!-- Sign Up Modal -->
+<div id="signup-modal"
+     class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+  <div class="bg-gray-800 rounded p-6 relative w-full max-w-sm mx-2">
+    <button id="signup-modal-close"
+            class="absolute top-2 right-2 text-white text-xl">&times;</button>
+
+    <!-- Validation HTML5 active → pas de novalidate -->
+    <form id="signup-modal-form" class="flex flex-col gap-2">
+      <!-- Email (max 50) -->
+      <input type="email" id="signup-email" placeholder="Email"
+             class="px-2 py-1 rounded bg-gray-700 text-white"
+             maxlength="50" required />
+
+      <!-- Username (1-20) -->
+      <input type="text" id="signup-name" placeholder="Username"
+             class="px-2 py-1 rounded bg-gray-700 text-white"
+             minlength="1" maxlength="20" required />
+
+      <!-- Password ≥8, 1 digit, 1 special -->
+      <input type="password" id="signup-password" placeholder="Password"
+             class="px-2 py-1 rounded bg-gray-700 text-white"
+             pattern="(?=.*\d)(?=.*[!@#$%^&*]).{8,}"
+             required />
+
+      <!-- Feedback JS -->
+      <div id="signup-pass-feedback" class="text-sm text-gray-400 mt-1"></div>
+
+      <!-- Confirm password (même contrainte mini) -->
+      <input type="password" id="signup-confirm" placeholder="Confirm password"
+             class="px-2 py-1 rounded bg-gray-700 text-white"
+             pattern="(?=.*\d)(?=.*[!@#$%^&*]).{8,}"
+             required />
+
+      <div class="flex gap-2 mt-2 justify-center">
+        <button type="submit" id="submit-signup-btn"
+                class="px-4 py-2 bg-blue-500 rounded text-white">
+          Sign Up
+        </button>
+        <button type="button" id="signup-cancel-btn"
+                class="px-4 py-2 bg-gray-600 rounded text-white">
+          Cancel
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
 
   <!-- Logic SPA -->
   <script type="module" src="/src/index.ts"></script>
