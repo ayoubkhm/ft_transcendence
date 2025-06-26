@@ -1,12 +1,40 @@
 // src/index.ts  – Main SPA logic
 
 /* -------------------- Constants -------------------- */
-const GAME_WIDTH  = 800;
+const GAME_WIDTH = 800;
 const GAME_HEIGHT = 450;
 const PADDLE_W = 10;
 const PADDLE_H = 80;
-const BALL_R   = 6;
+const BALL_R = 6;
+const BBALL_R = BALL_R * 4
 
+// chargement des images
+
+const imagePaths = {
+  fake: './fake.png',
+  speedUp: './speed.png',
+  shield: './shield.png',
+  bigger: './bigger.png',
+  invert: './invert.png',
+};
+
+
+const images: { [key: string]: HTMLImageElement } = {};
+
+function loadImage(type: string, src: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.src = src;
+    img.onload = () => {
+      images[type] = img;
+      resolve();
+    };
+    img.onerror = (err) => {
+      console.error(`❌ Erreur de chargement de l'image "${type}" depuis "${src}"`, err);
+      reject(new Error(`Impossible de charger l'image "${type}"`));
+    };
+  });
+}
 /* -------------------- DOM -------------------- */
 const loginBtn      = document.getElementById('login-btn')      as HTMLButtonElement | null;
 const playAIBtn     = document.getElementById('play-ai-btn')    as HTMLButtonElement | null;
@@ -49,21 +77,62 @@ let pollTimer: number | undefined;
 
 /* -------------------- Rendering -------------------- */
 function draw(state: any) {
-  ctx.fillStyle = 'black';
-  ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
-
+  if (!ctx || !canvas)
+      return;
+  ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+  // Draw ball
   ctx.fillStyle = 'white';
-  const [left, right] = state.players;
-  ctx.fillRect(0,                     left.paddle.y,      PADDLE_W, PADDLE_H);
-  ctx.fillRect(GAME_WIDTH - PADDLE_W, right.paddle.y,     PADDLE_W, PADDLE_H);
-
   ctx.beginPath();
-  ctx.arc(state.ball.x, state.ball.y, BALL_R, 0, 2 * Math.PI);
+  ctx.arc(state.ball.x, state.ball.y, BALL_R, 0, Math.PI * 2);
   ctx.fill();
+  // Draw paddles
 
-  ctx.font = '30px sans-serif';
-  ctx.fillText(String(left.score),  GAME_WIDTH * 0.25, 40);
-  ctx.fillText(String(right.score), GAME_WIDTH * 0.75, 40);
+  if (Array.isArray(state.bonusBalls))
+    {
+      state.bonusBalls.forEach((bonus: any) =>
+      {
+        const img = images[bonus.type];
+        if (img?.complete)
+          ctx.drawImage(img, bonus.x - BBALL_R, bonus.y - BBALL_R, BBALL_R * 2, BBALL_R * 2);
+      });
+    }
+
+  state.players.forEach((player: any) =>
+  {
+    const x = player.side === 'left' ? 0 : GAME_WIDTH - PADDLE_W;
+    if (player.power.includes("s"))
+    {
+      ctx.fillStyle = 'gold';
+      ctx.fillRect(x, 0, player.paddle.w, GAME_HEIGHT);
+    }
+    ctx.fillStyle = 'white';
+    let i = player.power.length - 1;
+    while (i >= 0 && (player.power[i] === "s" || player.power[i] === "f"))
+      i--;
+
+    if (player.power[i] === "i")
+      ctx.fillStyle = 'purple';
+    else if (player.power[i] === "v")
+      ctx.fillStyle = 'blue';
+    else if (player.power[i] === "b")
+      ctx.fillStyle = 'red';
+    ctx.fillRect(x, player.paddle.y, player.paddle.w, player.paddle.h);
+  });
+
+  state.phantomBalls?.forEach((ball: any) =>
+  {
+    ctx.fillStyle = "white";
+    ctx.beginPath();
+    ctx.arc(ball.x, ball.y, BALL_R, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+
+  // Draw scores
+  ctx.fillStyle = 'white';
+  ctx.font = '20px sans-serif';
+  ctx.fillText(state.players[0].score, GAME_WIDTH / 4, 20);
+  ctx.fillText(state.players[1].score, (GAME_WIDTH * 3) / 4, 20);
 }
 
 /* -------------------- Input handling -------------------- */
@@ -119,6 +188,7 @@ async function fetchAndDraw() {
 type GameMode = 'ai' | 'pvp' | 'tournament';
 
 async function startGame(mode: GameMode, difficulty?: string) {
+  await Promise.all(Object.entries(imagePaths).map(([type, path]) => loadImage(type, path)));
   togglePlayButtons(true);
   hero!.classList.add('hidden');
   resultPre!.classList.add('hidden');

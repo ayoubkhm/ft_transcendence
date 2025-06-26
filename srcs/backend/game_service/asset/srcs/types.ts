@@ -7,6 +7,8 @@ export const GAME_HEIGHT = 450;
 export const PADDLE_W = 10;
 export const PADDLE_H = 80;
 
+export const POWER_UPV = 3;
+export const POWER_UPB = 1.5;
 // Rayon de la balle
 export const BALL_R = 6;
 
@@ -16,8 +18,20 @@ export type Vec = { x: number; y: number };
 // On stocke la position `y` + la vélocité verticale `dy` dans Paddle
 export type Paddle = {
   y:  number;
-  dy: number; // ← on l’ajoute ici
+  dy: number;
+  w : number,
+  h: number // ← on l’ajoute ici
 };
+
+export type PhantomBall =
+{
+  x: number;
+  y: number;
+  v: { x: number; y: number };
+  ownerId: string;
+  createdAt: number; // tick à la création
+};
+
 
 // La balle stocke sa position et sa vitesse
 export type Ball = Vec & { v: Vec };
@@ -25,7 +39,7 @@ export type Ball = Vec & { v: Vec };
 export interface BonusBall extends Ball
 {
   active: boolean;
-  type: 'speedUp' | 'slowDown' | 'shield' | 'bigger' | 'smaller' | 'invert';
+  type: 'speedUp' | 'fake' | 'shield' | 'bigger' | 'invert';
   owner?: 'left' | 'right';
 }
 
@@ -37,17 +51,24 @@ export interface Player
     side:   'left' | 'right';
     paddle: Paddle;
     score:  number;
+    speedMultiplier: number,
+    cpttime: number[];
+    cpttch: number
+    power: string
+    i: number
 }
 
 // État complet d’une partie
 export interface GameState
 {
+    phantomBalls?: PhantomBall[];
     bonusBalls?: BonusBall[]; // nouveau champ
     ball:    Ball;
     players: [Player, Player];   // index 0 = left, index 1 = right
     // Flag and winner info when game is over
     isCustomon?: boolean;
     isGameOver?: boolean;
+    timer : number;
     winner?: 'left' | 'right';
 }
 

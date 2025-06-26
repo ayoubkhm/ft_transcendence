@@ -6,6 +6,7 @@
     "outDir": "srcs/dist",
     "rootDir": ".",
     // Allow imports to explicitly use .ts extension (for ts-node/esm)
+      "noEmit": true,
     "allowImportingTsExtensions": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
