@@ -102,7 +102,7 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
         }
 
         user = await response.json();
-        
+      }
         const payloadBase = {
           id : user.id,
           email: user.email,
@@ -114,19 +114,18 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
           data: payloadBase,
           dfa: !user.twoFactorSecret,
         };
-        const token = jwt.sign(jwtpayload, process.env.JWT_SECRET as string, { expiresIn: '24h' });
-        if (token) {
-          return reply.cookie('jtw_transcendance', token, {
+
+        const jwttoken = jwt.sign(jwtpayload, process.env.JWT_SECRET as string, { expiresIn: '24h' });
+        console.log("token:", jwttoken);
+        if (jwttoken) 
+          return reply.cookie('jtw_transcendance', jwttoken, {
             path: '/',
             httpOnly: true,
             sameSite: 'none',
             secure: process.env.NODE_ENV === 'prod'
           }).redirect("/login?oauth=true&need2fa=${user.isTwoFactorEnabled}");
-        }
-        else {
+        else
           throw new Error("no token generated");
-        }
-      }
     } catch (err) {
       console.error('Error during Google OAuth2 callback:', err);
       return (reply.redirect("/register?oauth-error=0500"));
@@ -295,13 +294,14 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
       console.log("token:", token);
       if (!token)
         throw (new Error("cannot generate user token"));
+      // If no 2FA, send JWT token directly
+      console.log("token:", token);
       return reply.cookie('jtw_transcendance', token, {
         httpOnly: true,
         path: '/',
         secure: true,
         sameSite: 'none',
       }).send({ response: "success", need2FA: false });
-      console.log("cookies", cookie);
     }
   } catch (err) {
     console.error('Login fetch failed:', err);
