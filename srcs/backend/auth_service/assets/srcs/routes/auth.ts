@@ -73,6 +73,7 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
       });
       let user;
       const lookupdata = await response.json();
+      console.log("LOOKUPDATA: ", lookupdata);
       if (response.ok && !(error in lookupdata)) {
         if (!lookupdata.provider || lookupdata.provider !== 'google') {
           // User exists but not linked to Google, update provider
@@ -90,6 +91,7 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
             email: userInfo.email,
             name: name,
             provider: 'google',
+            type: 'oauth',
             credential: process.env.API_CREDENTIAL,
           }),
         });
@@ -131,6 +133,36 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
     }
   });
 
+        interface guestBody {
+        name: string,
+    }
+
+  app.post<{Body: guestBody}>('/guest', async (req, res) => {
+    const name = req.body.name;
+    if (!name)
+      return (res.status(230).send({ error: "1006" }));
+    try {
+      const response = await fetch(`http://user_service:3000/api/user/create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name,
+          type: 'guest',
+          credential: process.env.API_CREDENTIAL,
+        }),
+      });
+      const data = await response.json();
+      if (response.status != 200)
+        return (res.status(response.status).send({ error: data.error }));
+      const user = data;
+      if (!user)
+        throw (new Error("cannot upsert user in prisma"));
+      console.log("User guest created:", user);
+    } catch (err) {
+      return (res.status(500).send({ error: "Internal server error" }));
+    }
+  });
+
       interface signUpBody {
         email: string,
         name: string,
@@ -155,6 +187,7 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
                 body: JSON.stringify({
                     email: email,
                     name: name,
+                    type: 'signed',
                     password: hashedPassword,
                     credential: process.env.API_CREDENTIAL
                 }),
@@ -165,6 +198,7 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
             const user = data;
             if (!user)
                 throw(new Error("cannot upsert user in prisma"));
+            console.log("🔐 JWT_SECRET =", process.env.JWT_SECRET);
             const token = jwt.sign({
             data: {
                 id: user.id,
@@ -184,8 +218,7 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
                 secure: process.env.NODE_ENV === 'prod'
               }).send({ response: "successfully logged in", need2fa: false }));
         } catch (err) {
-      console.error('Signup fetch failed:', err);
-      return res.status(500).send({ error: 'Internal server error: signup fetch failed' });
+      return res.status(500).send({ err });
     }
   });
 
@@ -197,8 +230,10 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
     app.post<{ Body: LoginBody }>('/login', async (request, reply) => {
       
       try {
-      const { email, password } = request.body;
-
+      const email = request.body.email;
+      const password = request.body.password;
+      console.log('Login attempt for email:', email);
+      console.log('Password:', password);
       if (
         !email ||
         !password ||
@@ -208,7 +243,7 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
       ) {
         return reply.status(400).send({ error: 'Invalid email or password' });
       }
-      const response = await fetch(`http://user_service:3000/api/users/lookup/${email}`, 
+      const response = await fetch(`http://user_service:3000/api/user/lookup/${email}`, 
       {
         method: 'POST',
         headers: {
@@ -219,9 +254,10 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
           credential: process.env.API_CREDENTIAL
         }),
       });
-      const data = await response.json()
+      const data = await response.json();
+      console.log("data:::::::::::::::::::", data);
       if (response.status !== 200)
-        reply.status(response.status).send({ error: data.error || 'Unknown error' });
+        return reply.status(response.status).send({ error: data.error || 'Unknown error' });
       const user = data
       if (!user || !user.password)
         return reply.status(401).send({ error: 'Invalid email or password' });
@@ -246,7 +282,7 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
           path: '/',
           secure: process.env.NODE_ENV === 'production',
           sameSite: 'none',
-        }).send({ response: 'magic_sent' });
+        }).send({ response: "success", need2FA: true });
       } else {
         const token = jwt.sign({ data: {
           id: user.id,
@@ -256,6 +292,7 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
           twoFactorSecret: user.twoFactorSecret,
           dfa: true
         }}, process.env.JWT_SECRET as string, { expiresIn: '24h' });
+      console.log("token:", token);
       if (!token)
         throw (new Error("cannot generate user token"));
       return reply.cookie('jtw_transcendance', token, {
@@ -264,6 +301,7 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
         secure: true,
         sameSite: 'none',
       }).send({ response: "success", need2FA: false });
+      console.log("cookies", cookie);
     }
   } catch (err) {
     console.error('Login fetch failed:', err);
