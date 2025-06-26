@@ -177,7 +177,7 @@ loginModalForm.addEventListener('submit', async (e) => {
   const email    = loginEmailInput!.value;
   const password = loginPasswordInput!.value;
   try {
-    const res = await fetch('/api/login', {
+    const res = await fetch('/api/auth/login', {
       method : 'POST',
       headers: { 'Content-Type': 'application/json' },
       body   : JSON.stringify({ email, password })
@@ -258,12 +258,12 @@ if (!authUser || !authGuest || !logoutBtn || !userGreeting) throw new Error('Mis
 function updateAuthView() {
   const loggedIn = localStorage.getItem('loggedIn') === 'true';
   if (loggedIn) {
-    authUser.classList.remove('hidden');
-    authGuest.classList.add('hidden');
-    userGreeting.textContent = localStorage.getItem('username') || 'Player';
+    authUser!.classList.remove('hidden');
+    authGuest!.classList.add('hidden');
+    userGreeting!.textContent = localStorage.getItem('username') || 'Player';
   } else {
-    authUser.classList.add('hidden');
-    authGuest.classList.remove('hidden');
+    authUser!.classList.add('hidden');
+    authGuest!.classList.remove('hidden');
   }
 }
 // Logout handler
@@ -303,7 +303,7 @@ signupModal.addEventListener('click', (e) => {
   }
 });
 // Handle Sign Up form submission (basic validation)
-signupModalForm.addEventListener('submit', (e) => {
+signupModalForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   const email = signupEmailInput!.value;
   const username = signupNameInput!.value;
@@ -321,8 +321,26 @@ signupModalForm.addEventListener('submit', (e) => {
     alert('Passwords do not match');
     return;
   }
-  console.log('Sign Up data:', { email, username, password });
-  signupModal!.classList.add('hidden');
+  // Call backend signup endpoint
+  try {
+    const res = await fetch('/api/auth/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, name: username, password }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      localStorage.setItem('loggedIn', 'true');
+      localStorage.setItem('username', username);
+      updateAuthView();
+      signupModal!.classList.add('hidden');
+    } else {
+      alert(data.error || 'Sign up failed');
+    }
+  } catch (err) {
+    console.error('Signup error:', err);
+    alert('Sign up error');
+  }
 });
 
 playAIBtn.addEventListener('click', () => {
