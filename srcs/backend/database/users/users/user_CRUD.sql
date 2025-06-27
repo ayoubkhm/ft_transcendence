@@ -6,25 +6,25 @@ CREATE OR REPLACE FUNCTION new_user(
 	_twofa BOOLEAN DEFAULT FALSE,
 	_online BOOLEAN DEFAULT TRUE
 )
-RETURNS TABLE(success BOOLEAN, msg TEXT, id INTEGER) AS $$
+RETURNS TABLE(success BOOLEAN, msg TEXT, new_user_id INTEGER) AS $$
 DECLARE
-	new_user_id INTEGER;
+	_new_user_id INTEGER;
 BEGIN
 	INSERT INTO users (name, type, email, password, online, twofa)
 	VALUES (_name, _type, _email, _password, _online, _twofa)
-	RETURNING id INTO new_user_id;
+	RETURNING id INTO _new_user_id;
 
-	RETURN QUERY SELECT TRUE, 'User created successfully', new_user_id;
+	RETURN QUERY SELECT TRUE, 'User created successfully', _new_user_id;
 
 EXCEPTION
 	WHEN unique_violation THEN
 		IF SQLERRM LIKE '%users_email_key%' THEN
-			RETURN QUERY SELECT FALSE, 'Email is already in use', NULL;
+			RETURN QUERY SELECT FALSE, 'Email is already in use', NULL::INTEGER;
 		ELSE
-			RETURN QUERY SELECT FALSE, 'Unique constraint violation on users (not normal)', NULL;
+			RETURN QUERY SELECT FALSE, 'Unique constraint violation on users (not normal)', NULL::INTEGER;
 		END IF;
 	WHEN OTHERS THEN
-		RETURN QUERY SELECT FALSE, SQLERRM;
+		RETURN QUERY SELECT FALSE, SQLERRM, NULL::INTEGER;
 END;
 $$ LANGUAGE plpgsql;
 
