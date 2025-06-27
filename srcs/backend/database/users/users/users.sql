@@ -1,4 +1,3 @@
-
 CREATE TABLE IF NOT EXISTS users (
 	id SERIAL PRIMARY KEY,
 	name TEXT NOT NULL,
@@ -6,7 +5,9 @@ CREATE TABLE IF NOT EXISTS users (
 	admin BOOLEAN NOT NULL DEFAULT FALSE,
 	email TEXT UNIQUE DEFAULT NULL,		-- nullable pour guest
 	password TEXT DEFAULT NULL,			-- nullable pour guest
-	created_at TIMESTAMP DEFAULT NOW()
+	created_at TIMESTAMP DEFAULT NOW(),
+	twofa BOOLEAN NOT NULL DEFAULT FALSE,
+	online BOOLEAN NOT NULL DEFAULT TRUE
 );
 
 

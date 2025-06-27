@@ -10,23 +10,41 @@ const twoFaEnabled = new Set<string>();
 
 export default async function dfaRoutes(app: FastifyInstance) {
   // Step 1: setup TOTP secret and provide QR code
-  app.get(
-    '/2fa/setup',
-    { preHandler: (app as any).authenticate },
-    async (req: any, res) => {
-      try {
-        const userId = req.user.sub;
-        const secret = speakeasy.generateSecret({ name: `YourApp:${userId}` });
-        const qrCode = await QRCode.toDataURL(secret.otpauth_url!);
-        // Store temp secret until user confirms
-        temp2faSecrets.set(userId, secret.base32);
-        return res.send({ qrCode });
-      } catch (error) {
-        console.error(error);
-        return res.status(500).send({ error: 'Server error' });
+  app.get('/setup/ask', async (req, res) => {
+    try {
+      const token = req.cookies['jwt_transcendence'];
+      console.log('2FA setup token:', token);
+      const decode = jwt.verify(token, process.env.JWT_SECRET);
+      const tokenpayload = decode.data;
+      console.log('2FA setup payload:', tokenpayload);
+      const secret = speakeasy.generateSecret({
+        name: `Transcendence:${tokenpayload.email}`,
+        issuer: 'Transcendence'
+      });
+      console.log('2FA setup secret:', secret);
+      // Store the secret temporarily
+      const response = await fetch(`http://user_service:3000/api/user/2fa/update/${tokenpayload.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ temp2faSecrets: secret.base32,
+          credential: process.env.API_CREDENTIAL
+         }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        res.status(response.status).send({ error: 'Failed to update user 2FA secret' });
       }
+      const qrcode = await QRCode.toDataURL(secret.otpauth_url);
+      return res.status(230).send({
+        message: '2FA setup initiated and QR code generated',
+        qrCode: qrcode
+      });
+    } catch (err) {
+      return res.status(401).send({ error: 'Unauthorized' });
     }
-  );
+  });
   // Step 2: user confirms TOTP code to enable 2FA
   app.post(
     '/2fa/enable',
