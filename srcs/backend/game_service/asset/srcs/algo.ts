@@ -292,7 +292,7 @@ export class Game
 				ball.v.x =	speedMag * Math.cos(bounceAngle);
 				ball.v.y =	speedMag * Math.sin(bounceAngle);
 			}
-			else if (left.power.includes("s") && ball.x < 0)
+			else if (left.power.includes("s"))
 			{
 				const speedMag = Math.hypot(ball.v.x, ball.v.y);
 				ball.v.x = speedMag;
@@ -317,6 +317,13 @@ export class Game
 				const speedMag = Math.hypot(ball.v.x, ball.v.y);
 				ball.v.x = -speedMag * Math.cos(bounceAngle);
 				ball.v.y =	speedMag * Math.sin(bounceAngle);
+			}
+			else if (right.power.includes("s"))
+			{
+				const speedMag = Math.hypot(ball.v.x, ball.v.y);
+				ball.v.x = -speedMag;
+				ball.v.y = 0;
+				right.power = right.power.replace(/s/g, ""); // supprime tous les shields
 			}
 		}
 		// 4) Score et fin de manche
