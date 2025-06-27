@@ -10,10 +10,10 @@ CREATE TABLE IF NOT EXISTS games (
   	p2_score INT NOT NULL DEFAULT 0,
 	p1_bot BOOLEAN NOT NULL DEFAULT FALSE,
 	p2_bot BOOLEAN NOT NULL DEFAULT FALSE,
-	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+	created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	type game_type NOT NULL,
-	tournament_id INTEGER REFERENCES tournaments(id) ON DELETE CASCADE,
-	tournament_round INTEGER
+	tournament_id INTEGER DEFAULT NULL REFERENCES tournaments(id) ON DELETE CASCADE,
+	tournament_round INTEGER DEFAULT NULL
 );
 
 
@@ -51,8 +51,9 @@ CREATE OR REPLACE FUNCTION delete_game_if_all_players_deleted()
 RETURNS TRIGGER AS $$
 BEGIN
 	IF NEW.p1_id IS NULL AND NEW.p2_id IS NULL
-    		AND NEW.p1_bot = FALSE AND NEW.p2_bot = FALSE THEN
-		DELETE FROM games WHERE id = NEW.id;
+    		AND NEW.p1_bot = FALSE AND NEW.p2_bot = FALSE
+			AND  NEW.type != 'TOURNAMENT' THEN
+			DELETE FROM games WHERE id = NEW.id;
     	-- RAISE NOTICE 'Deleting game %: both players are deleted and were humans', NEW.id; TODO faire de beaux logs
 		RETURN NULL;
 	END IF;
