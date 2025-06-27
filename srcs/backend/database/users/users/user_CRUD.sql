@@ -2,23 +2,26 @@ CREATE OR REPLACE FUNCTION new_user(
 	_name TEXT,
 	_type TEXT DEFAULT 'guest',
 	_email TEXT DEFAULT NULL,
-	_password TEXT DEFAULT NULL
+	_password TEXT DEFAULT NULL,
+	_twofa BOOLEAN DEFAULT FALSE,
+	_online BOOLEAN DEFAULT TRUE
 )
-RETURNS TABLE(success BOOLEAN, msg TEXT) AS $$
+RETURNS TABLE(success BOOLEAN, msg TEXT, id INTEGER) AS $$
+DECLARE
+	new_user_id INTEGER;
 BEGIN
-	INSERT INTO users (name, type, email, password)
-	VALUES (_name, _type, _email, _password);
+	INSERT INTO users (name, type, email, password, online, twofa)
+	VALUES (_name, _type, _email, _password, _online, _twofa)
+	RETURNING id INTO new_user_id;
 
-	RETURN QUERY SELECT TRUE, 'User created successfully';
+	RETURN QUERY SELECT TRUE, 'User created successfully', new_user_id;
 
 EXCEPTION
 	WHEN unique_violation THEN
-		-- IF SQLERRM LIKE '%users_name_key%' THEN
-		-- 	RETURN QUERY SELECT FALSE, 'Username is already taken';
 		IF SQLERRM LIKE '%users_email_key%' THEN
-			RETURN QUERY SELECT FALSE, 'Email is already in use';
+			RETURN QUERY SELECT FALSE, 'Email is already in use', NULL;
 		ELSE
-			RETURN QUERY SELECT FALSE, 'Unique constraint violation on users (not normal)';
+			RETURN QUERY SELECT FALSE, 'Unique constraint violation on users (not normal)', NULL;
 		END IF;
 	WHEN OTHERS THEN
 		RETURN QUERY SELECT FALSE, SQLERRM;
