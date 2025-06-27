@@ -1,4 +1,5 @@
 import { defineConfig } from 'vite';
+
 export default defineConfig({
   plugins: [],
   server: {
@@ -6,5 +7,9 @@ export default defineConfig({
     port: 4000,
     open: false,
     hmr: false,
+    allowedHosts: [
+      '.ngrok-free.app',
+      'localhost',
+    ],
   },
 });

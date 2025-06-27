@@ -154,8 +154,9 @@ function onKeyUp(e: KeyboardEvent) {
   if (e.key === 'ArrowUp' || e.key === 'ArrowDown') sendInput('stop');
 }
 
-/* -------------------- Polling -------------------- */
-const POLL_MS = 100;
+/* -------------------- Polling (target ~60 FPS) -------------------- */
+// Poll server every ~16ms (≈60 frames per second)
+const POLL_MS = 16;
 
 async function fetchAndDraw() {
   try {
