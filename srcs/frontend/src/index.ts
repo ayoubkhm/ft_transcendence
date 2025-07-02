@@ -137,6 +137,24 @@ function draw(state: any) {
   ctx.font = '20px sans-serif';
   ctx.fillText(state.players[0].score, GAME_WIDTH / 4, 20);
   ctx.fillText(state.players[1].score, (GAME_WIDTH * 3) / 4, 20);
+  // Draw elapsed time (timer)
+  if (state.timer != null) {
+    // Display at top center
+    ctx.fillStyle = 'white';
+    // Use a slightly smaller font for timer
+    ctx.font = '16px sans-serif';
+    // Center text
+    ctx.textAlign = 'center';
+    // Convert frame count to total elapsed seconds (step dt=1/60)
+    const totalSeconds = Math.floor(state.timer / 60);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    // Format as MM:SS
+    const paddedSeconds = seconds.toString().padStart(2, '0');
+    ctx.fillText(`Time: ${minutes}:${paddedSeconds}`, GAME_WIDTH / 2, 40);
+    // Restore default alignment
+    ctx.textAlign = 'left';
+  }
 }
 
 /* -------------------- Input handling -------------------- */
