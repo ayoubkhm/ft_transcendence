@@ -14,50 +14,71 @@ import { aiPaddleMove } from './ai/index.js';
 type AIDifficulty = 'easy' | 'medium' | 'hard';
 export class Game
 {
-	private state: GameState;
-	private readonly speed       = 400; // ball speed (px/s)
-	private paddleSpeed = 340; // player paddle speed (px/s)
-	private readonly aiSpeed     = 100; // base AI paddle speed (px/s)
-	private readonly aiDifficulty: AIDifficulty;
+    private state: GameState;
+    private readonly speed       = 400; // ball speed (px/s)
+    private paddleSpeed           = 340; // paddle speed for both human and AI (px/s)
+    private readonly aiDifficulty: AIDifficulty;
+    // Whether custom power-ups/features are enabled
+    private readonly customOn: boolean;
+    // cumulative stats per player
+    private powerUpsUsed: Record<string, number>;
+    private distanceMoved: Record<string, number>;
+    private lastScorerId: string | null;
+    private streaks: Record<string, number>;
 
-	constructor(leftId: string, rightId: string /* "AI" for solo */, aiDifficulty: AIDifficulty = 'medium')
-	{
-
-		this.aiDifficulty = aiDifficulty;
-		this.state =
-		{
+    constructor(
+        leftId: string,
+        rightId: string /* "AI" for solo */,
+        aiDifficulty: AIDifficulty = 'medium',
+        customOn: boolean = true
+    ) {
+        this.aiDifficulty = aiDifficulty;
+        this.customOn = customOn;
+        // initialize cumulative stats
+        this.powerUpsUsed = { [leftId]: 0, [rightId]: 0 };
+        this.distanceMoved = { [leftId]: 0, [rightId]: 0 };
+        this.lastScorerId = null;
+        this.streaks = { [leftId]: 0, [rightId]: 0 };
+        this.state =
+        {
 			ball:
 			{
 				x: GAME_WIDTH / 2,
 				y: GAME_HEIGHT / 2,
 				v: { x: this.speed, y: this.speed * 0.5 }
 			},
-			players:
-			[
-				{
-				speedMultiplier: 1,
-				i: 0,
-				power:"",
-				cpttch: 0,
-				cpttime: [],
-				id: leftId,
-				side: 'left',
-				paddle: { y: GAME_HEIGHT / 2 - PADDLE_H / 2, dy: 0, w : PADDLE_W, h: PADDLE_H},
-				score: 0
-				},
-				{
-				speedMultiplier: 1,
-				i: 0,
-				power:"",
-				cpttch: 0,
-				cpttime: [],
-				id: rightId,
-				side: 'right',
-				paddle: { y: GAME_HEIGHT / 2 - PADDLE_H / 2, dy: 0, w : PADDLE_W, h: PADDLE_H},
-				score: 0
-				}
-			],
-			isCustomon: true,
+        players: [
+            {
+                speedMultiplier: 1,
+                i: 0,
+                power: "",
+                cpttch: 0,
+                cpttime: [],
+                id: leftId,
+                side: 'left',
+                paddle: { y: GAME_HEIGHT / 2 - PADDLE_H / 2, dy: 0, w: PADDLE_W, h: PADDLE_H },
+                score: 0,
+                powerUpsUsed: 0,
+                distanceMoved: 0,
+                streak: 0,
+            },
+            {
+                speedMultiplier: 1,
+                i: 0,
+                power: "",
+                cpttch: 0,
+                cpttime: [],
+                id: rightId,
+                side: 'right',
+                paddle: { y: GAME_HEIGHT / 2 - PADDLE_H / 2, dy: 0, w: PADDLE_W, h: PADDLE_H },
+                score: 0,
+                powerUpsUsed: 0,
+                distanceMoved: 0,
+                streak: 0,
+            }
+        ],
+			// flag whether custom mode is active
+            isCustomon: customOn,
 			bonusBalls: [],
 			timer : 0
 		};
@@ -113,9 +134,11 @@ export class Game
 
 	private applyBonus(playerSide: 'left' | 'right', type: string)
 	{
-		const player = this.state.players.find(p => p.side === playerSide);
-		if (!player)
-			return;
+        const player = this.state.players.find(p => p.side === playerSide);
+        if (!player)
+            return;
+        // Increment power-up usage count for this player
+        this.powerUpsUsed[player.id] = (this.powerUpsUsed[player.id] || 0) + 1;
 		switch (type)
 		{
 			case 'speedUp':
@@ -167,41 +190,30 @@ export class Game
 	{
 		const [left, right] = this.state.players;
 		const ball = this.state.ball;
-		this.state.isCustomon = true;
+		// maintain custom mode flag
+		this.state.isCustomon = this.customOn;
 		// 1) Déplacement des paddles humains
-		for (const pl of this.state.players)
-		{
-			// IA ne bouge pas ici
-			if (pl.id !== 'AI')
-			{
-				pl.paddle.y += pl.paddle.dy * dt;
-				pl.paddle.y = clamp(pl.paddle.y, 0, GAME_HEIGHT - pl.paddle.h);
-			}
-		}
-
-		// 2) AI paddle movement (right side)
-		let randomPowerup : number;
-		if (right.id === 'AI')
-		{
-			// Determine AI speed and noise based on difficulty
-			let speedMul = 1;
-			switch (this.aiDifficulty)
-			{
-				case 'easy':
-					speedMul = 0.9;
-					break;
-				case 'medium':
-					speedMul = 1;
-					break;
-				case 'hard':
-					speedMul = 1;
-					break;
-			}
-			// Compute effective AI speed and noise per difficulty
-			const effectiveSpeed = this.aiSpeed * speedMul;
-			// Move AI paddle
-			right.paddle.y = aiPaddleMove(right.paddle, ball, effectiveSpeed, dt);
-		}
+        for (const pl of this.state.players) {
+            // Human paddle movement and tracking
+            if (pl.id !== 'AI') {
+                const oldY = pl.paddle.y;
+                let newY = oldY + pl.paddle.dy * dt;
+                newY = clamp(newY, 0, GAME_HEIGHT - pl.paddle.h);
+                pl.paddle.y = newY;
+                // Accumulate distance moved
+                this.distanceMoved[pl.id] += Math.abs(newY - oldY);
+            }
+        }
+        // 2) AI paddle movement (right side)
+        if (right.id === 'AI') {
+            // AI paddle moves at same base speed as human (including speed-up power-ups)
+            const oldY = right.paddle.y;
+            const effectiveSpeed = this.paddleSpeed * right.speedMultiplier;
+            const newY = aiPaddleMove(right.paddle, ball, effectiveSpeed, dt);
+            // Accumulate distance moved by AI paddle
+            this.distanceMoved[right.id] += Math.abs(newY - oldY);
+            right.paddle.y = newY;
+        }
 		let rand : number = Math.random();
 		if (this.state.isCustomon && Math.random() < 0.004)
 		{
@@ -327,16 +339,36 @@ export class Game
 			}
 		}
 		// 4) Score et fin de manche
-		if (ball.x < 0)
-		{
-			right.score++;
-			resetBall(ball, -this.speed);
-		}
-		if (ball.x > GAME_WIDTH)
-		{
-			left.score++;
-			resetBall(ball,	this.speed);
-		}
+        if (ball.x < 0) {
+            // Right player scores
+            right.score++;
+            // Update scoring streaks
+            const scorer = right.id;
+            const other = left.id;
+            if (this.lastScorerId === scorer) {
+                this.streaks[scorer] += 1;
+            } else {
+                this.streaks[scorer] = 1;
+                this.streaks[other] = 0;
+            }
+            this.lastScorerId = scorer;
+            resetBall(ball, -this.speed);
+        }
+        if (ball.x > GAME_WIDTH) {
+            // Left player scores
+            left.score++;
+            // Update scoring streaks
+            const scorer = left.id;
+            const other = right.id;
+            if (this.lastScorerId === scorer) {
+                this.streaks[scorer] += 1;
+            } else {
+                this.streaks[scorer] = 1;
+                this.streaks[other] = 0;
+            }
+            this.lastScorerId = scorer;
+            resetBall(ball, this.speed);
+        }
 		// 5) Fin de partie ?
 		if (left.score >= 7 || right.score >= 7)
 		{
@@ -344,7 +376,29 @@ export class Game
 			this.state.winner = left.score > right.score ? 'left' : 'right';
 		}
 	}
-	getState(): GameState { return this.state; }
+    /**
+     * Return current game state, augmented with per-player stats
+     */
+    getState(): GameState {
+        const s = this.state;
+        return {
+            ...s,
+            players: [
+                {
+                    ...s.players[0],
+                    powerUpsUsed: this.powerUpsUsed[s.players[0].id] || 0,
+                    distanceMoved: this.distanceMoved[s.players[0].id] || 0,
+                    streak: this.streaks[s.players[0].id] || 0,
+                },
+                {
+                    ...s.players[1],
+                    powerUpsUsed: this.powerUpsUsed[s.players[1].id] || 0,
+                    distanceMoved: this.distanceMoved[s.players[1].id] || 0,
+                    streak: this.streaks[s.players[1].id] || 0,
+                }
+            ]
+        };
+    }
 
 	  public joinPlayer(newId: string) {
     // Replace the right-side player id to disable AI movement
