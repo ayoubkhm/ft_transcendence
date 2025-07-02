@@ -27,15 +27,17 @@ export default async function gamesRoutes (app: FastifyInstance)
 {
   // Create or join a game: solo AI or PvP matchmaking
   app.post<{
-    Body: { mode?: 'ai' | 'pvp'; difficulty?: 'easy' | 'medium' | 'hard' }
+    Body: { mode?: 'ai' | 'pvp'; difficulty?: 'easy' | 'medium' | 'hard'; isCustomOn?: boolean }
   }>('/game', async (request, reply) => {
-    const { mode = 'ai', difficulty } = request.body;
+    // let client control custom mode on/off
+    const { mode = 'ai', difficulty, isCustomOn = true } = request.body;
     // Solo AI mode
     if (mode === 'ai') {
       const playerId = randomUUID();
       const gameId = randomUUID();
       const level = difficulty ?? 'medium';
-      const game = new Game(playerId, 'AI', level);
+      // Initialize game with custom features enabled/disabled
+      const game = new Game(playerId, 'AI', level, isCustomOn);
       // Start AI simulation immediately
       const interval = setInterval(() => {
         const state = game.getState();
@@ -72,7 +74,8 @@ export default async function gamesRoutes (app: FastifyInstance)
     // No pending game: create new PvP game and wait for opponent
     const playerId = randomUUID();
     const gameId = randomUUID();
-    const game = new Game(playerId, '__PENDING__', difficulty ?? 'medium');
+    // Create new PvP game (first player) with custom mode flag
+    const game = new Game(playerId, '__PENDING__', difficulty ?? 'medium', isCustomOn);
     sessions.set(gameId, { game });
     pendingPvPGameId = gameId;
     // Issue token for the creating player
