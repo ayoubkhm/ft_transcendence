@@ -47,10 +47,19 @@ const customToggle  = document.getElementById('custom-toggle')  as HTMLInputElem
 const canvas   = document.getElementById('game-canvas')! as HTMLCanvasElement;
 const hero     = document.getElementById('hero')        as HTMLElement        | null;
 const resultPre= document.getElementById('game-result') as HTMLPreElement     | null;
-const forfeitBtn = document.getElementById('forfeit-btn') as HTMLButtonElement | null;
+const forfeitBtn            = document.getElementById('forfeit-btn')            as HTMLButtonElement | null;
+// PvP menu controls
+const pvpMenu               = document.getElementById('pvp-menu')              as HTMLElement        | null;
+const pvpCreateBtn          = document.getElementById('pvp-create-btn')        as HTMLButtonElement  | null;
+const pvpJoinBtn            = document.getElementById('pvp-join-btn')          as HTMLButtonElement  | null;
+const pvpJoinInput          = document.getElementById('pvp-join-input')        as HTMLInputElement   | null;
+const pvpJoinConfirmBtn     = document.getElementById('pvp-join-confirm-btn') as HTMLButtonElement  | null;
+// Shareable game ID display for PvP mode
+const shareDiv     = document.getElementById('share-id')    as HTMLElement           | null;
+const gameIdInput  = document.getElementById('game-id-input') as HTMLInputElement     | null;
 
 if (!loginBtn || !playAIBtn || !playPVPBtn || !playTournBtn ||
-    !diffSelect || !customToggle || !canvas || !hero || !resultPre || !forfeitBtn) {
+    !diffSelect || !customToggle || !canvas || !hero || !resultPre || !forfeitBtn || !shareDiv || !gameIdInput || !pvpMenu || !pvpCreateBtn || !pvpJoinBtn || !pvpJoinInput || !pvpJoinConfirmBtn) {
   document.getElementById('app')!.innerHTML =
     '<div class="text-red-500 p-4">Missing required DOM elements</div>';
   throw new Error('Missing DOM');
@@ -235,8 +244,9 @@ async function fetchAndDraw() {
       hero!.classList.remove('hidden');
       canvas.classList.add('hidden');
       togglePlayButtons(false);
-      // Hide Forfeit button when game ends
+      // Hide Forfeit and share-ID when game ends
       forfeitBtn!.classList.add('hidden');
+      shareDiv!.classList.add('hidden');
     }
   } catch (err) {
     console.error('[fetchAndDraw]', err);
@@ -285,6 +295,13 @@ async function startGame(mode: GameMode, difficulty?: string) {
     gameId    = data.gameId;
     playerId  = data.playerId;
     authToken = data.token;
+    // Show or hide shareable game ID for PvP games
+    if (mode === 'pvp') {
+      shareDiv!.classList.remove('hidden');
+      gameIdInput!.value = gameId;
+    } else {
+      shareDiv!.classList.add('hidden');
+    }
 
     await fetchAndDraw();
     pollTimer = window.setInterval(fetchAndDraw, POLL_MS);
@@ -504,9 +521,94 @@ playAIBtn.addEventListener('click', () => {
   startGame('ai', difficulty);
 });
 
-playPVPBtn.addEventListener('click', () => {
+// Show PvP create/join menu
+playPVPBtn.addEventListener('click', (e) => {
+  e.preventDefault();
+  // Hide difficulty selector
   diffSelect!.classList.add('hidden');
+  // Disable other play buttons while choosing
+  playAIBtn!.disabled = true;
+  playTournBtn!.disabled = true;
+  playPVPBtn!.disabled = true;
+  // Show PvP menu
+  pvpMenu!.classList.remove('hidden');
+});
+
+// PvP: Create Game (first player)
+pvpCreateBtn!.addEventListener('click', (e) => {
+  e.preventDefault();
+  pvpMenu!.classList.add('hidden');
+  // Start PvP as creator
   startGame('pvp');
+});
+
+// PvP: Show join input
+pvpJoinBtn!.addEventListener('click', (e) => {
+  e.preventDefault();
+  pvpJoinInput!.classList.remove('hidden');
+  pvpJoinConfirmBtn!.classList.remove('hidden');
+});
+
+// PvP: Confirm join existing game
+pvpJoinConfirmBtn!.addEventListener('click', async (e) => {
+  e.preventDefault();
+  const joinId = pvpJoinInput!.value.trim();
+  if (!joinId) {
+    alert('Please enter a game ID to join');
+    return;
+  }
+  try {
+    const res = await fetch(`/api/game/${joinId}/join`, {
+      method: 'POST'
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      alert(data.error || 'Failed to join game');
+      return;
+    }
+    // Got participant slot
+    gameId    = data.gameId;
+    playerId  = data.playerId;
+    authToken = data.token;
+    // Hide menu and join inputs
+    pvpMenu!.classList.add('hidden');
+    pvpJoinInput!.classList.add('hidden');
+    pvpJoinConfirmBtn!.classList.add('hidden');
+    // Prepare UI for active game
+    togglePlayButtons(true);
+    hero!.classList.add('hidden');
+    resultPre!.classList.add('hidden');
+    // Hide share-ID box (only creator needs it)
+    shareDiv!.classList.add('hidden');
+    // Show game canvas
+    canvas.classList.remove('hidden');
+    // Resize canvas to fit available viewport under header
+    const headerElem = document.getElementById('top-bar');
+    if (headerElem) {
+      const headerHeight = headerElem.clientHeight;
+      const availH = window.innerHeight - headerHeight;
+      const scaleX = window.innerWidth / GAME_WIDTH;
+      const scaleY = availH / GAME_HEIGHT;
+      const scale = Math.min(scaleX, scaleY);
+      canvas.style.transform = '';
+      canvas.style.transformOrigin = '';
+      canvas.style.width = `${GAME_WIDTH * scale}px`;
+      canvas.style.height = `${GAME_HEIGHT * scale}px`;
+    }
+    canvas.focus();
+    lastInput = null;
+    // Show Forfeit button
+    forfeitBtn!.classList.remove('hidden');
+    forfeitBtn!.disabled = false;
+    // Start polling & input
+    await fetchAndDraw();
+    pollTimer = window.setInterval(fetchAndDraw, POLL_MS);
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup',   onKeyUp);
+  } catch (err) {
+    console.error('[joinGame]', err);
+    alert('Error joining game');
+  }
 });
 
 playTournBtn.addEventListener('click', () => {
