@@ -75,6 +75,8 @@ export interface GameState
     isCustomon?: boolean;
     isGameOver?: boolean;
     timer : number;
+    /** Seconds remaining before game starts */
+    countdown?: number;
     winner?: 'left' | 'right';
 }
 

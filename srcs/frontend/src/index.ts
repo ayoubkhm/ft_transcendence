@@ -84,6 +84,19 @@ function draw(state: any) {
   if (!ctx || !canvas)
       return;
   ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+  // Show countdown before game starts
+  if (state.countdown && state.countdown > 0) {
+    const prevAlign = ctx.textAlign;
+    const prevBaseline = ctx.textBaseline;
+    ctx.fillStyle = 'white';
+    ctx.font = '48px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`Starting in ${state.countdown}`, GAME_WIDTH / 2, GAME_HEIGHT / 2);
+    ctx.textAlign = prevAlign;
+    ctx.textBaseline = prevBaseline;
+    return;
+  }
   // Draw ball
   ctx.fillStyle = 'white';
   ctx.beginPath();
