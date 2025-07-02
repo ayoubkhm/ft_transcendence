@@ -91,11 +91,16 @@ export class Game
 	// ────────────────────────────────────────────────────────────────────────
 	// GESTION DES INPUTS JOUEUR HUMAIN
 	// ────────────────────────────────────────────────────────────────────────
-	handleInput(id: string, msg: ClientInput)
-	{
-		const p = this.state.players.find(pl => pl.id === id);
-		if (!p)
-			return;
+   handleInput(id: string, msg: ClientInput)
+   {
+       const p = this.state.players.find(pl => pl.id === id);
+       if (!p) return;
+       // Handle forfeit: end game and declare other player as winner
+       if (msg.type === 'forfeit') {
+           this.state.isGameOver = true;
+           this.state.winner = p.side === 'left' ? 'right' : 'left';
+           return;
+       }
 		if (msg.type === 'move_up')	
 		p.paddle.dy = -this.paddleSpeed * p.speedMultiplier;
 		if (msg.type === 'move_down')
