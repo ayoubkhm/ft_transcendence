@@ -47,9 +47,10 @@ const customToggle  = document.getElementById('custom-toggle')  as HTMLInputElem
 const canvas   = document.getElementById('game-canvas')! as HTMLCanvasElement;
 const hero     = document.getElementById('hero')        as HTMLElement        | null;
 const resultPre= document.getElementById('game-result') as HTMLPreElement     | null;
+const forfeitBtn = document.getElementById('forfeit-btn') as HTMLButtonElement | null;
 
 if (!loginBtn || !playAIBtn || !playPVPBtn || !playTournBtn ||
-    !diffSelect || !customToggle || !canvas || !hero || !resultPre) {
+    !diffSelect || !customToggle || !canvas || !hero || !resultPre || !forfeitBtn) {
   document.getElementById('app')!.innerHTML =
     '<div class="text-red-500 p-4">Missing required DOM elements</div>';
   throw new Error('Missing DOM');
@@ -181,6 +182,26 @@ function sendInput(type: 'move_up' | 'move_down' | 'stop') {
   }).catch(console.error);
 }
 
+/**
+ * Send a forfeit input to server to end the game
+ */
+function sendForfeit() {
+  if (!gameId || !playerId) return;
+  fetch(`/api/game/${gameId}/input`, {
+    method : 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body   : JSON.stringify({ playerId, type: 'forfeit', ts: Date.now(), token: authToken })
+  }).catch(console.error);
+}
+
+// Handle Forfeit button click
+forfeitBtn!.addEventListener('click', (e) => {
+  e.preventDefault();
+  sendForfeit();
+  // disable to prevent double click
+  forfeitBtn!.disabled = true;
+});
+
 function onKeyDown(e: KeyboardEvent) {
   if (e.key === 'ArrowUp')   sendInput('move_up');
   if (e.key === 'ArrowDown') sendInput('move_down');
@@ -214,6 +235,8 @@ async function fetchAndDraw() {
       hero!.classList.remove('hidden');
       canvas.classList.add('hidden');
       togglePlayButtons(false);
+      // Hide Forfeit button when game ends
+      forfeitBtn!.classList.add('hidden');
     }
   } catch (err) {
     console.error('[fetchAndDraw]', err);
@@ -229,6 +252,24 @@ async function startGame(mode: GameMode, difficulty?: string) {
   hero!.classList.add('hidden');
   resultPre!.classList.add('hidden');
   canvas.classList.remove('hidden');
+    // Resize canvas to fit available viewport under header
+    const headerElem = document.getElementById('top-bar');
+    if (headerElem) {
+      const headerHeight = headerElem.clientHeight;
+      // Maximum available height below header
+      const availH = window.innerHeight - headerHeight;
+      // Compute resize scale (only shrink, never enlarge)
+      const scaleX = window.innerWidth / GAME_WIDTH;
+      const scaleY = availH / GAME_HEIGHT;
+      // Allow scaling up or down to fit viewport
+      const scale = Math.min(scaleX, scaleY);
+      // Clear any previous transform
+      canvas.style.transform = '';
+      canvas.style.transformOrigin = '';
+      // Apply CSS width/height to shrink canvas display
+      canvas.style.width = `${GAME_WIDTH * scale}px`;
+      canvas.style.height = `${GAME_HEIGHT * scale}px`;
+    }
   canvas.focus();
   lastInput = null;
 
@@ -250,6 +291,9 @@ async function startGame(mode: GameMode, difficulty?: string) {
 
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup',   onKeyUp);
+    // Show Forfeit button during active game
+    forfeitBtn!.classList.remove('hidden');
+    forfeitBtn!.disabled = false;
 
   } catch (err) {
     console.error('[startGame]', err);
@@ -457,18 +501,15 @@ playAIBtn.addEventListener('click', () => {
 
   // On vient de choisir la difficulté → on lance le jeu
   const difficulty = diffSelect!.value; // easy | medium | hard
-  canvas.requestFullscreen?.().catch(() => {/* ignore */});
   startGame('ai', difficulty);
 });
 
 playPVPBtn.addEventListener('click', () => {
   diffSelect!.classList.add('hidden');
-  canvas.requestFullscreen?.().catch(() => {/* ignore */});
   startGame('pvp');
 });
 
 playTournBtn.addEventListener('click', () => {
   diffSelect!.classList.add('hidden');
-  canvas.requestFullscreen?.().catch(() => {/* ignore */});
   startGame('tournament');
 });

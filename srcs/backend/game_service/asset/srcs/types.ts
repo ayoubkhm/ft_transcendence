@@ -84,4 +84,5 @@ export interface GameState
 export type ClientInput =
   | { type: 'move_up';   ts: number }
   | { type: 'move_down'; ts: number }
-  | { type: 'stop';      ts: number };
+  | { type: 'stop';      ts: number }
+  | { type: 'forfeit';   ts: number };

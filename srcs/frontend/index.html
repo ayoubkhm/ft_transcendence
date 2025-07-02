@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="overflow-hidden">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1.0" />
@@ -9,7 +9,7 @@
   <link href="/src/index.css" rel="stylesheet" />
 </head>
 
-<body class="bg-black text-white h-screen flex flex-col">
+<body class="bg-black text-white h-screen flex flex-col overflow-hidden">
   <div id="app" class="flex flex-col flex-1">
 
   <!-- Top-bar -->
@@ -56,6 +56,10 @@
           <option value="hard">Difficult</option>
         </select>
       </div>
+      <!-- Forfeit button, shown during an active game -->
+      <button id="forfeit-btn" class="px-4 py-2 bg-red-500 rounded hidden">
+        Forfeit
+      </button>
     </div>
   </header>
 
@@ -69,11 +73,13 @@
       </p>
     </section>
 
-    <!-- Canvas -->
-    <canvas id="game-canvas"
-            width="800" height="450"
-            class="flex-1 border border-white hidden"
-            tabindex="0"></canvas>
+    <!-- Canvas: wrapped to center the scaled canvas -->
+    <div id="canvas-wrapper" class="flex-1 flex justify-center items-center">
+      <canvas id="game-canvas"
+              width="800" height="450"
+              class="border border-white hidden"
+              tabindex="0"></canvas>
+    </div>
 
     <!-- Résultat -->
     <pre id="game-result"
