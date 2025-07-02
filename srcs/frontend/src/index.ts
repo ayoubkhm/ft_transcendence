@@ -72,6 +72,8 @@ const ctx = canvas.getContext('2d')!;
 /* -------------------- State -------------------- */
 let gameId     = '';
 let playerId   = '';
+// Auth token to sign client inputs (HMAC of gameId:playerId)
+let authToken  = '';
 let lastInput: 'move_up' | 'move_down' | 'stop' | null = null;
 let pollTimer: number | undefined;
 
@@ -142,7 +144,7 @@ function sendInput(type: 'move_up' | 'move_down' | 'stop') {
   fetch(`/api/game/${gameId}/input`, {
     method : 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body   : JSON.stringify({ playerId, type, ts: Date.now() })
+    body   : JSON.stringify({ playerId, type, ts: Date.now(), token: authToken })
   }).catch(console.error);
 }
 
@@ -205,8 +207,9 @@ async function startGame(mode: GameMode, difficulty?: string) {
       body   : JSON.stringify(body)
     });
     const data = await res.json();
-    gameId   = data.gameId;
-    playerId = data.playerId;
+    gameId    = data.gameId;
+    playerId  = data.playerId;
+    authToken = data.token;
 
     await fetchAndDraw();
     pollTimer = window.setInterval(fetchAndDraw, POLL_MS);
