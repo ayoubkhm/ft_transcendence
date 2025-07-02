@@ -19,11 +19,17 @@ export class Game
 	private paddleSpeed = 340; // player paddle speed (px/s)
 	private readonly aiSpeed     = 100; // base AI paddle speed (px/s)
 	private readonly aiDifficulty: AIDifficulty;
+	// Whether custom power-ups/features are enabled
+	private readonly customOn: boolean;
 
-	constructor(leftId: string, rightId: string /* "AI" for solo */, aiDifficulty: AIDifficulty = 'medium')
-	{
-
+	constructor(
+		leftId: string,
+		rightId: string /* "AI" for solo */,
+		aiDifficulty: AIDifficulty = 'medium',
+		customOn: boolean = true
+	) {
 		this.aiDifficulty = aiDifficulty;
+		this.customOn = customOn;
 		this.state =
 		{
 			ball:
@@ -57,7 +63,8 @@ export class Game
 				score: 0
 				}
 			],
-			isCustomon: true,
+			// flag whether custom mode is active
+			isCustomon: customOn,
 			bonusBalls: [],
 			timer : 0
 		};
@@ -167,7 +174,8 @@ export class Game
 	{
 		const [left, right] = this.state.players;
 		const ball = this.state.ball;
-		this.state.isCustomon = true;
+		// maintain custom mode flag
+		this.state.isCustomon = this.customOn;
 		// 1) Déplacement des paddles humains
 		for (const pl of this.state.players)
 		{

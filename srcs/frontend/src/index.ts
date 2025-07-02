@@ -41,13 +41,15 @@ const playAIBtn     = document.getElementById('play-ai-btn')    as HTMLButtonEle
 const playPVPBtn    = document.getElementById('play-pvp-btn')   as HTMLButtonElement | null;
 const playTournBtn  = document.getElementById('play-tourn-btn') as HTMLButtonElement | null;
 const diffSelect    = document.getElementById('ai-difficulty')  as HTMLSelectElement | null;
+// Toggle for enabling custom power-ups/features
+const customToggle  = document.getElementById('custom-toggle')  as HTMLInputElement  | null;
 
 const canvas   = document.getElementById('game-canvas')! as HTMLCanvasElement;
 const hero     = document.getElementById('hero')        as HTMLElement        | null;
 const resultPre= document.getElementById('game-result') as HTMLPreElement     | null;
 
 if (!loginBtn || !playAIBtn || !playPVPBtn || !playTournBtn ||
-    !diffSelect || !canvas || !hero || !resultPre) {
+    !diffSelect || !customToggle || !canvas || !hero || !resultPre) {
   document.getElementById('app')!.innerHTML =
     '<div class="text-red-500 p-4">Missing required DOM elements</div>';
   throw new Error('Missing DOM');
@@ -200,7 +202,8 @@ async function startGame(mode: GameMode, difficulty?: string) {
   lastInput = null;
 
   try {
-    const body = { mode, difficulty };
+    // Include custom mode preference
+    const body = { mode, difficulty, isCustomOn: customToggle!.checked };
     const res  = await fetch('/api/game', {
       method : 'POST',
       headers: { 'Content-Type': 'application/json' },
