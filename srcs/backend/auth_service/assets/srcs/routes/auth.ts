@@ -267,9 +267,6 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
       const isValid = await bcrypt.compare(password as string, user.password);
       if (!isValid)
         return reply.status(401).send({ error: 'Invalid email or password' });
-      if (user.isBanned) {
-        return reply.status(403).send({ error: 'User is banned' });
-      }
       if (user.isTwoFAEnabled) {
         // Send a magic link as second factor
         const pendingToken = jwt.sign(
