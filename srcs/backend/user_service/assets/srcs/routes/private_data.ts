@@ -1,5 +1,6 @@
 import { FastifyInstance } from "fastify";
 import  validateUserData from "../utils/userData";
+import { getTokenData } from "../utils/getTokenData";
 
 export default async function private_userRoutes(server: FastifyInstance, options: any, done: any) {
         
@@ -62,17 +63,83 @@ export default async function private_userRoutes(server: FastifyInstance, option
   try {
     const result = await server.pg.query('SELECT * FROM new_user($1, $2, $3, $4)', [name, type, email, password]);
     console.log('[CREATE] New user created:', result.rows[0]);
+    const data = await server.pg.query(`SELECT * FROM users WHERE email = $1`, [email]);
+    console.log('[DATA] :', data.rows[0]);
     return reply.send({
-      message: 'User created successfully',
-      user: result.rows[0]
+      user: data.rows[0]
     });
   } catch (error) {
     console.error('Insert user error:', error);
     return reply.status(500).send({ error: 'Internal server error' });
   }
     });
+  
+    interface DfaUpdateParams
+    {
+        id: string,
+    }
 
-  server.put<{ Body: DataUserParams }>('/2fa/update/:id', async (request, reply) => {
+    interface DfaUpdateBody
+    {
+        credential: string,
+        twoFactorSecret?: string,
+        twoFactorSecretTemp?: string,
+    }
+
+    interface DfaPut
+    {
+        twofa?: boolean,
+        twoFactorSecret?: string,
+        twoFactorSecretTemp?: string,
+    }
+
+  //A TESTER
+  server.put<{ Body: DfaUpdateBody, Params: DfaUpdateParams }>('/2fa/update/:id', async (request, reply) => {
+    try {
+      const towfactorSecret = request.body?.towfactorSecret;
+      const twoFactorSecretTemp = request.body?.twoFactorSecretTemp;
+      let put: DfaPut = {};
+      if (towfactorSecret)
+      {
+        put.twofa = true;
+        put.twoFactorSecret = towfactorSecret;
+      }
+      if (twoFactorSecretTemp)
+        put.twoFactorSecretTemp = twoFactorSecretTemp;
+      let user = server.pg.query('');
+      if (!user)
+        reply.status(230).send({ error: "1006" });
+      reply.status(200).send({ message: "user_2fa_secret_updated" });
+    }
+    catch (error) {
+    console.error('Insert user error:', error);
+    return reply.status(500).send({ error: 'Internal server error' });
+  }
   });
+
+  interface deleteUserParams
+  {
+    email: string
+  }
+
+  //A TESTER
+  server.delete<{Params: deleteUserParams}>('delete/:email', async (request, reply) => {
+    const token = request.cookies.jwt_transcendence;
+    if (!token)
+      return (reply.status(230).send({ error: "0403"}));
+    const tokenPayload = getTokenData(token);
+    if (!tokenPayload?.isAdmin && !tokenPayload?.id)
+      return (reply.status(230).send({ error: "0403"}));
+    const dfa = tokenPayload?.dfa;
+    if (!dfa)
+      return (reply.status(230).send({ error: "1020" }));
+    //sql delete avec email
+    const user = await server.pg.query('SELECT * FROM delete_user($1)', [request.params.email]);
+    if (!user)
+      return reply.status(230).send({ error: "1006" });
+    reply.send({ response: "user deleted" });
+  });
+
+
   done();
 }
