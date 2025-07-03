@@ -41,13 +41,25 @@ const playAIBtn     = document.getElementById('play-ai-btn')    as HTMLButtonEle
 const playPVPBtn    = document.getElementById('play-pvp-btn')   as HTMLButtonElement | null;
 const playTournBtn  = document.getElementById('play-tourn-btn') as HTMLButtonElement | null;
 const diffSelect    = document.getElementById('ai-difficulty')  as HTMLSelectElement | null;
+// Toggle for enabling custom power-ups/features
+const customToggle  = document.getElementById('custom-toggle')  as HTMLInputElement  | null;
 
 const canvas   = document.getElementById('game-canvas')! as HTMLCanvasElement;
 const hero     = document.getElementById('hero')        as HTMLElement        | null;
 const resultPre= document.getElementById('game-result') as HTMLPreElement     | null;
+const forfeitBtn            = document.getElementById('forfeit-btn')            as HTMLButtonElement | null;
+// PvP menu controls
+const pvpMenu               = document.getElementById('pvp-menu')              as HTMLElement        | null;
+const pvpCreateBtn          = document.getElementById('pvp-create-btn')        as HTMLButtonElement  | null;
+const pvpJoinBtn            = document.getElementById('pvp-join-btn')          as HTMLButtonElement  | null;
+const pvpJoinInput          = document.getElementById('pvp-join-input')        as HTMLInputElement   | null;
+const pvpJoinConfirmBtn     = document.getElementById('pvp-join-confirm-btn') as HTMLButtonElement  | null;
+// Shareable game ID display for PvP mode
+const shareDiv     = document.getElementById('share-id')    as HTMLElement           | null;
+const gameIdInput  = document.getElementById('game-id-input') as HTMLInputElement     | null;
 
 if (!loginBtn || !playAIBtn || !playPVPBtn || !playTournBtn ||
-    !diffSelect || !canvas || !hero || !resultPre) {
+    !diffSelect || !customToggle || !canvas || !hero || !resultPre || !forfeitBtn || !shareDiv || !gameIdInput || !pvpMenu || !pvpCreateBtn || !pvpJoinBtn || !pvpJoinInput || !pvpJoinConfirmBtn) {
   document.getElementById('app')!.innerHTML =
     '<div class="text-red-500 p-4">Missing required DOM elements</div>';
   throw new Error('Missing DOM');
@@ -72,6 +84,8 @@ const ctx = canvas.getContext('2d')!;
 /* -------------------- State -------------------- */
 let gameId     = '';
 let playerId   = '';
+// Auth token to sign client inputs (HMAC of gameId:playerId)
+let authToken  = '';
 let lastInput: 'move_up' | 'move_down' | 'stop' | null = null;
 let pollTimer: number | undefined;
 
@@ -80,6 +94,19 @@ function draw(state: any) {
   if (!ctx || !canvas)
       return;
   ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+  // Show countdown before game starts
+  if (state.countdown && state.countdown > 0) {
+    const prevAlign = ctx.textAlign;
+    const prevBaseline = ctx.textBaseline;
+    ctx.fillStyle = 'white';
+    ctx.font = '48px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`Starting in ${state.countdown}`, GAME_WIDTH / 2, GAME_HEIGHT / 2);
+    ctx.textAlign = prevAlign;
+    ctx.textBaseline = prevBaseline;
+    return;
+  }
   // Draw ball
   ctx.fillStyle = 'white';
   ctx.beginPath();
@@ -133,6 +160,24 @@ function draw(state: any) {
   ctx.font = '20px sans-serif';
   ctx.fillText(state.players[0].score, GAME_WIDTH / 4, 20);
   ctx.fillText(state.players[1].score, (GAME_WIDTH * 3) / 4, 20);
+  // Draw elapsed time (timer)
+  if (state.timer != null) {
+    // Display at top center
+    ctx.fillStyle = 'white';
+    // Use a slightly smaller font for timer
+    ctx.font = '16px sans-serif';
+    // Center text
+    ctx.textAlign = 'center';
+    // Convert frame count to total elapsed seconds (step dt=1/60)
+    const totalSeconds = Math.floor(state.timer / 60);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    // Format as MM:SS
+    const paddedSeconds = seconds.toString().padStart(2, '0');
+    ctx.fillText(`Time: ${minutes}:${paddedSeconds}`, GAME_WIDTH / 2, 40);
+    // Restore default alignment
+    ctx.textAlign = 'left';
+  }
 }
 
 /* -------------------- Input handling -------------------- */
@@ -142,9 +187,29 @@ function sendInput(type: 'move_up' | 'move_down' | 'stop') {
   fetch(`/api/game/${gameId}/input`, {
     method : 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body   : JSON.stringify({ playerId, type, ts: Date.now() })
+    body   : JSON.stringify({ playerId, type, ts: Date.now(), token: authToken })
   }).catch(console.error);
 }
+
+/**
+ * Send a forfeit input to server to end the game
+ */
+function sendForfeit() {
+  if (!gameId || !playerId) return;
+  fetch(`/api/game/${gameId}/input`, {
+    method : 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body   : JSON.stringify({ playerId, type: 'forfeit', ts: Date.now(), token: authToken })
+  }).catch(console.error);
+}
+
+// Handle Forfeit button click
+forfeitBtn!.addEventListener('click', (e) => {
+  e.preventDefault();
+  sendForfeit();
+  // disable to prevent double click
+  forfeitBtn!.disabled = true;
+});
 
 function onKeyDown(e: KeyboardEvent) {
   if (e.key === 'ArrowUp')   sendInput('move_up');
@@ -179,6 +244,9 @@ async function fetchAndDraw() {
       hero!.classList.remove('hidden');
       canvas.classList.add('hidden');
       togglePlayButtons(false);
+      // Hide Forfeit and share-ID when game ends
+      forfeitBtn!.classList.add('hidden');
+      shareDiv!.classList.add('hidden');
     }
   } catch (err) {
     console.error('[fetchAndDraw]', err);
@@ -194,25 +262,55 @@ async function startGame(mode: GameMode, difficulty?: string) {
   hero!.classList.add('hidden');
   resultPre!.classList.add('hidden');
   canvas.classList.remove('hidden');
+    // Resize canvas to fit available viewport under header
+    const headerElem = document.getElementById('top-bar');
+    if (headerElem) {
+      const headerHeight = headerElem.clientHeight;
+      // Maximum available height below header
+      const availH = window.innerHeight - headerHeight;
+      // Compute resize scale (only shrink, never enlarge)
+      const scaleX = window.innerWidth / GAME_WIDTH;
+      const scaleY = availH / GAME_HEIGHT;
+      // Allow scaling up or down to fit viewport
+      const scale = Math.min(scaleX, scaleY);
+      // Clear any previous transform
+      canvas.style.transform = '';
+      canvas.style.transformOrigin = '';
+      // Apply CSS width/height to shrink canvas display
+      canvas.style.width = `${GAME_WIDTH * scale}px`;
+      canvas.style.height = `${GAME_HEIGHT * scale}px`;
+    }
   canvas.focus();
   lastInput = null;
 
   try {
-    const body = { mode, difficulty };
+    // Include custom mode preference
+    const body = { mode, difficulty, isCustomOn: customToggle!.checked };
     const res  = await fetch('/api/game', {
       method : 'POST',
       headers: { 'Content-Type': 'application/json' },
       body   : JSON.stringify(body)
     });
     const data = await res.json();
-    gameId   = data.gameId;
-    playerId = data.playerId;
+    gameId    = data.gameId;
+    playerId  = data.playerId;
+    authToken = data.token;
+    // Show or hide shareable game ID for PvP games
+    if (mode === 'pvp') {
+      shareDiv!.classList.remove('hidden');
+      gameIdInput!.value = gameId;
+    } else {
+      shareDiv!.classList.add('hidden');
+    }
 
     await fetchAndDraw();
     pollTimer = window.setInterval(fetchAndDraw, POLL_MS);
 
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup',   onKeyUp);
+    // Show Forfeit button during active game
+    forfeitBtn!.classList.remove('hidden');
+    forfeitBtn!.disabled = false;
 
   } catch (err) {
     console.error('[startGame]', err);
@@ -420,18 +518,100 @@ playAIBtn.addEventListener('click', () => {
 
   // On vient de choisir la difficulté → on lance le jeu
   const difficulty = diffSelect!.value; // easy | medium | hard
-  canvas.requestFullscreen?.().catch(() => {/* ignore */});
   startGame('ai', difficulty);
 });
 
-playPVPBtn.addEventListener('click', () => {
+// Show PvP create/join menu
+playPVPBtn.addEventListener('click', (e) => {
+  e.preventDefault();
+  // Hide difficulty selector
   diffSelect!.classList.add('hidden');
-  canvas.requestFullscreen?.().catch(() => {/* ignore */});
+  // Disable other play buttons while choosing
+  playAIBtn!.disabled = true;
+  playTournBtn!.disabled = true;
+  playPVPBtn!.disabled = true;
+  // Show PvP menu
+  pvpMenu!.classList.remove('hidden');
+});
+
+// PvP: Create Game (first player)
+pvpCreateBtn!.addEventListener('click', (e) => {
+  e.preventDefault();
+  pvpMenu!.classList.add('hidden');
+  // Start PvP as creator
   startGame('pvp');
+});
+
+// PvP: Show join input
+pvpJoinBtn!.addEventListener('click', (e) => {
+  e.preventDefault();
+  pvpJoinInput!.classList.remove('hidden');
+  pvpJoinConfirmBtn!.classList.remove('hidden');
+});
+
+// PvP: Confirm join existing game
+pvpJoinConfirmBtn!.addEventListener('click', async (e) => {
+  e.preventDefault();
+  const joinId = pvpJoinInput!.value.trim();
+  if (!joinId) {
+    alert('Please enter a game ID to join');
+    return;
+  }
+  try {
+    const res = await fetch(`/api/game/${joinId}/join`, {
+      method: 'POST'
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      alert(data.error || 'Failed to join game');
+      return;
+    }
+    // Got participant slot
+    gameId    = data.gameId;
+    playerId  = data.playerId;
+    authToken = data.token;
+    // Hide menu and join inputs
+    pvpMenu!.classList.add('hidden');
+    pvpJoinInput!.classList.add('hidden');
+    pvpJoinConfirmBtn!.classList.add('hidden');
+    // Prepare UI for active game
+    togglePlayButtons(true);
+    hero!.classList.add('hidden');
+    resultPre!.classList.add('hidden');
+    // Hide share-ID box (only creator needs it)
+    shareDiv!.classList.add('hidden');
+    // Show game canvas
+    canvas.classList.remove('hidden');
+    // Resize canvas to fit available viewport under header
+    const headerElem = document.getElementById('top-bar');
+    if (headerElem) {
+      const headerHeight = headerElem.clientHeight;
+      const availH = window.innerHeight - headerHeight;
+      const scaleX = window.innerWidth / GAME_WIDTH;
+      const scaleY = availH / GAME_HEIGHT;
+      const scale = Math.min(scaleX, scaleY);
+      canvas.style.transform = '';
+      canvas.style.transformOrigin = '';
+      canvas.style.width = `${GAME_WIDTH * scale}px`;
+      canvas.style.height = `${GAME_HEIGHT * scale}px`;
+    }
+    canvas.focus();
+    lastInput = null;
+    // Show Forfeit button
+    forfeitBtn!.classList.remove('hidden');
+    forfeitBtn!.disabled = false;
+    // Start polling & input
+    await fetchAndDraw();
+    pollTimer = window.setInterval(fetchAndDraw, POLL_MS);
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup',   onKeyUp);
+  } catch (err) {
+    console.error('[joinGame]', err);
+    alert('Error joining game');
+  }
 });
 
 playTournBtn.addEventListener('click', () => {
   diffSelect!.classList.add('hidden');
-  canvas.requestFullscreen?.().catch(() => {/* ignore */});
   startGame('tournament');
 });
