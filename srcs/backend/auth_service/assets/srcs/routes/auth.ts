@@ -102,19 +102,23 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
         }
 
         user = await response.json();
+        console.log('[USER DATA] :', user)
       }
         const payloadBase = {
-          id : user.id,
-          email: user.email,
-          name: user.name,
-          isAdmin: user.isAdmin,
-          towfactorSecret: user.towfactorSecret,
+          id : user.user.id,
+          email: user.user.email,
+          name: user.user.name,
+          isAdmin: user.user.isAdmin,
+          towfactorSecret: user.user.towfactorSecret,
         };
+        console.log('[LA DATA] :', payloadBase);
         const jwtpayload = {
-          data: payloadBase,
-          dfa: !user.twoFactorSecret,
+          data: { 
+          ...payloadBase,
+          dfa: !user.towfa
+          }
         };
-
+        console.log('[LA DATA SUITE] :', jwtpayload);
         const jwttoken = jwt.sign(jwtpayload, process.env.JWT_SECRET as string, { expiresIn: '24h' });
         console.log("token:", jwttoken);
         if (jwttoken) 
@@ -123,7 +127,7 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
             httpOnly: true,
             sameSite: 'none',
             secure: process.env.NODE_ENV === 'prod'
-          }).redirect("/login?oauth=true&need2fa=${user.isTwoFactorEnabled}");
+          }).redirect("/login?oauth=true&need2fa=${user.twofa}");
         else
           throw new Error("no token generated");
     } catch (err) {
