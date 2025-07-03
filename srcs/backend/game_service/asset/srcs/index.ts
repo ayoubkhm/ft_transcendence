@@ -1,3 +1,10 @@
+// Capture uncaught exceptions for logging
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+});
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
 import fastify, { FastifyRequest, FastifyReply } from 'fastify';
 import cors from 'fastify-cors'
 import fastifyPlugin from 'fastify-plugin'
