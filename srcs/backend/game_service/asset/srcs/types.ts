@@ -75,6 +75,8 @@ export interface GameState
     isCustomon?: boolean;
     isGameOver?: boolean;
     timer : number;
+    /** Seconds remaining before game starts */
+    countdown?: number;
     winner?: 'left' | 'right';
 }
 
@@ -82,4 +84,5 @@ export interface GameState
 export type ClientInput =
   | { type: 'move_up';   ts: number }
   | { type: 'move_down'; ts: number }
-  | { type: 'stop';      ts: number };
+  | { type: 'stop';      ts: number }
+  | { type: 'forfeit';   ts: number };

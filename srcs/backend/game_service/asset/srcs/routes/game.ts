@@ -20,66 +20,41 @@ interface GameSession {
   interval?: NodeJS.Timer;
 }
 const sessions = new Map<string, GameSession>()
-// Pending PvP game waiting for a second player
-let pendingPvPGameId: string | null = null;
+// No automatic PvP matchmaking; explicit create/join flows
 
 export default async function gamesRoutes (app: FastifyInstance)
 {
-  // Create or join a game: solo AI or PvP matchmaking
+  // Create a new game: solo AI or PvP (first player only)
   app.post<{
     Body: { mode?: 'ai' | 'pvp'; difficulty?: 'easy' | 'medium' | 'hard'; isCustomOn?: boolean }
   }>('/game', async (request, reply) => {
-    // let client control custom mode on/off
     const { mode = 'ai', difficulty, isCustomOn = true } = request.body;
     // Solo AI mode
     if (mode === 'ai') {
       const playerId = randomUUID();
       const gameId = randomUUID();
       const level = difficulty ?? 'medium';
-      // Initialize game with custom features enabled/disabled
       const game = new Game(playerId, 'AI', level, isCustomOn);
-      // Start AI simulation immediately
       const interval = setInterval(() => {
         const state = game.getState();
         if (!state.isGameOver) game.step(1 / 60);
         else clearInterval(interval);
       }, 1000 / 60);
       sessions.set(gameId, { game, interval });
-      // Issue HMAC token so client can authenticate subsequent inputs
       return { gameId, playerId, token: genToken(gameId, playerId) };
     }
-    // PvP mode: attempt to match with pending game
-    if (pendingPvPGameId) {
-      const gameId = pendingPvPGameId;
-      const session = sessions.get(gameId);
-      if (session) {
-        // Second player joins
-        const playerId = randomUUID();
-        // Register second human player
-        session.game.joinPlayer(playerId);
-        // Start simulation now that both players are present
-        const interval = setInterval(() => {
-          const state = session.game.getState();
-          if (!state.isGameOver) session.game.step(1 / 60);
-          else clearInterval(interval);
-        }, 1000 / 60);
-        session.interval = interval;
-        pendingPvPGameId = null;
-        // Issue token for this player
-        return { gameId, playerId, token: genToken(gameId, playerId) };
-      }
-      // Orphaned pending id, clear it
-      pendingPvPGameId = null;
+    // PvP mode: create a new pending game
+    if (mode === 'pvp') {
+      const playerId = randomUUID();
+      const gameId = randomUUID();
+      const level = difficulty ?? 'medium';
+      const game = new Game(playerId, '__PENDING__', level, isCustomOn);
+      sessions.set(gameId, { game });
+      return { gameId, playerId, token: genToken(gameId, playerId) };
     }
-    // No pending game: create new PvP game and wait for opponent
-    const playerId = randomUUID();
-    const gameId = randomUUID();
-    // Create new PvP game (first player) with custom mode flag
-    const game = new Game(playerId, '__PENDING__', difficulty ?? 'medium', isCustomOn);
-    sessions.set(gameId, { game });
-    pendingPvPGameId = gameId;
-    // Issue token for the creating player
-    return { gameId, playerId, token: genToken(gameId, playerId) };
+    // Invalid mode
+    reply.code(400);
+    return { error: 'Invalid mode' };
   });
 
   // Submit player input to an existing game
@@ -128,9 +103,14 @@ export default async function gamesRoutes (app: FastifyInstance)
       reply.code(404);
       return { error: 'Game not found' };
     }
+    // Ensure the second player slot is available
+    const currentPlayers = session.game.getState().players;
+    if (currentPlayers[1].id !== '__PENDING__') {
+      reply.code(400);
+      return { error: 'Game not available for join' };
+    }
     // Assign new player ID to the second slot
     const newPlayerId = randomUUID();
-    // Register second human player
     session.game.joinPlayer(newPlayerId);
     // Start PvP simulation now that both players have joined
     if (!session.interval) {
