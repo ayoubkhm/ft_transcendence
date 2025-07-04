@@ -25,6 +25,8 @@ export class Game
     private distanceMoved: Record<string, number>;
     private lastScorerId: string | null;
     private streaks: Record<string, number>;
+    /** Countdown ticks (1 tick = 1/60s) before simulation starts */
+    private countdownTicks: number;
 
     constructor(
         leftId: string,
@@ -39,6 +41,8 @@ export class Game
         this.distanceMoved = { [leftId]: 0, [rightId]: 0 };
         this.lastScorerId = null;
         this.streaks = { [leftId]: 0, [rightId]: 0 };
+        // Set initial countdown: 5 seconds at 60 ticks/s
+        this.countdownTicks = 5 * 60;
         this.state =
         {
 			ball:
@@ -87,11 +91,16 @@ export class Game
 	// ────────────────────────────────────────────────────────────────────────
 	// GESTION DES INPUTS JOUEUR HUMAIN
 	// ────────────────────────────────────────────────────────────────────────
-	handleInput(id: string, msg: ClientInput)
-	{
-		const p = this.state.players.find(pl => pl.id === id);
-		if (!p)
-			return;
+   handleInput(id: string, msg: ClientInput)
+   {
+       const p = this.state.players.find(pl => pl.id === id);
+       if (!p) return;
+       // Handle forfeit: end game and declare other player as winner
+       if (msg.type === 'forfeit') {
+           this.state.isGameOver = true;
+           this.state.winner = p.side === 'left' ? 'right' : 'left';
+           return;
+       }
 		if (msg.type === 'move_up')	
 		p.paddle.dy = -this.paddleSpeed * p.speedMultiplier;
 		if (msg.type === 'move_down')
@@ -186,8 +195,13 @@ export class Game
 	// ────────────────────────────────────────────────────────────────────────
 	// BOUCLE DE SIMULATION
 	// ────────────────────────────────────────────────────────────────────────
-	step(dt: number)
-	{
+    step(dt: number)
+    {
+        // Countdown before simulation starts
+        if (this.countdownTicks > 0) {
+            this.countdownTicks--;
+            return;
+        }
 		const [left, right] = this.state.players;
 		const ball = this.state.ball;
 		// maintain custom mode flag
@@ -381,8 +395,11 @@ export class Game
      */
     getState(): GameState {
         const s = this.state;
+        const secondsLeft = this.countdownTicks > 0 ? Math.ceil(this.countdownTicks / 60) : 0;
         return {
             ...s,
+            // Seconds remaining before game starts
+            countdown: secondsLeft,
             players: [
                 {
                     ...s.players[0],

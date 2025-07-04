@@ -23,6 +23,10 @@ services:
       - PGPORT=5432
       - NODE_ENV=dev
       - PORT=3000
+      # Vault config pour récupération sécurisée des secrets
+      - VAULT_ADDR=http://vault:8200
+      - VAULT_TOKEN=root
+
     build:
       context: ./backend/auth_service
       dockerfile: Dockerfile
@@ -34,6 +38,20 @@ services:
       - "3000:3000"        # ▶ mappe le port interne pour tests locaux via localhost
     depends_on:
       - user_service
+      - vault_service        # Vault doit démarrer avant auth_service
+    networks:
+      - router
+
+  # ──────────────────────────────────────────────────────────
+  vault_service:
+    container_name: vault
+    image: hashicorp/vault:1.13.3
+    ports:
+      - "8200:8200"          # port exposé pour accéder à Vault
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: "root"       # token root dev (jamais en prod)
+      VAULT_DEV_LISTEN_ADDRESS: "0.0.0.0:8200"
+    command: server -dev -dev-root-token-id=root
     networks:
       - router
 
@@ -136,8 +154,8 @@ services:
       - user_service
       - frontend
     ports:
-      - "443:443"          # 🔐 HTTPS vers l’hôte
-      - "80:80"            # HTTP for development
+      - "4443:443"          # 🔐 HTTPS vers l’hôte
+      - "8080:80"            # HTTP for development
     networks:
       - router
 
