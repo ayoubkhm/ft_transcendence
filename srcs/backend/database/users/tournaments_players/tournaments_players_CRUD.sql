@@ -12,7 +12,17 @@ BEGIN
 	
 	IF _tournament_id IS NULL THEN
 		RETURN QUERY SELECT FALSE, 'Tournament not found';
+		RETURN ;
 	END IF;
+
+	IF EXISTS (
+		SELECT 1 FROM tournaments_players
+		WHERE player_id = _id AND tournament_id = _tournament_id
+	) THEN
+		RETURN QUERY SELECT FALSE, 'User already joined this tournament';
+		RETURN ;
+	END IF;
+
 	INSERT INTO tournaments_players (player_id, tournament_id)
 	VALUES (_id, _tournament_id);
 
@@ -44,6 +54,7 @@ BEGIN
 	
 	IF _tournament_id IS NULL THEN
 		RETURN QUERY SELECT FALSE, 'Tournament not found';
+		RETURN ;
 	END IF;
 
 

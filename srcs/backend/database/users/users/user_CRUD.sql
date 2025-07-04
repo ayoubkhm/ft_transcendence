@@ -41,8 +41,10 @@ DECLARE
 BEGIN
 	IF _email IS NULL THEN
 		RETURN QUERY SELECT FALSE, 'User not found (email is null)';
+		RETURN ;
 	ELSIF _newEmail IS NULL THEN
 		RETURN QUERY SELECT FALSE, 'New email can''t be null';
+		RETURN ;
 	END IF;
 	UPDATE users
 	SET email = _newEmail
@@ -51,6 +53,7 @@ BEGIN
 
 	IF user_found THEN
 		RETURN QUERY SELECT TRUE, 'Email updated successfully';
+		RETURN ;
 	END IF;
 	RETURN QUERY SELECT FALSE, 'No user found with that email (update email fail)';
 	
@@ -73,8 +76,10 @@ DECLARE
 BEGIN
 	IF _email IS NULL THEN
 		RETURN QUERY SELECT FALSE, 'User not found (email is null)';
+		RETURN ;
 	ELSIF _name IS NULL THEN
 		RETURN QUERY SELECT FALSE, 'New name can''t be null';
+		RETURN ;
 	END IF;
 	UPDATE users
 	SET name = _name
@@ -83,6 +88,7 @@ BEGIN
 
 	IF user_found THEN
 		RETURN QUERY SELECT TRUE, 'Username updated successfully';
+		RETURN ;
 	END IF;
 	RETURN QUERY SELECT FALSE, 'No user not found with that email (update name fail)';
 	
@@ -104,8 +110,10 @@ DECLARE
 BEGIN
 	IF _email IS NULL THEN
 		RETURN QUERY SELECT FALSE, 'User not found (email is null)';
+		RETURN ;
 	ELSIF _password IS NULL THEN
 		RETURN QUERY SELECT FALSE, 'New password can''t be null';
+		RETURN ;
 	END IF;
 	UPDATE users
 	SET password = _password
@@ -114,6 +122,7 @@ BEGIN
 
 	IF user_found THEN
 		RETURN QUERY SELECT TRUE, 'Password updated successfully';
+		RETURN ;
 	END IF;
 	RETURN QUERY SELECT FALSE, 'No user found with that email (update password fail)';
 	
