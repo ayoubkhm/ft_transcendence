@@ -221,7 +221,7 @@ function onKeyUp(e: KeyboardEvent) {
 
 /* -------------------- Polling (target ~60 FPS) -------------------- */
 // Poll server every ~16ms (≈60 frames per second)
-const POLL_MS = 16;
+const POLL_MS = 8;
 
 async function fetchAndDraw() {
   try {
