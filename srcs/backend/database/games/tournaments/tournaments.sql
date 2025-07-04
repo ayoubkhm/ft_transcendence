@@ -1,22 +1,27 @@
-CREATE TYPE tournament_state AS ENUM ('WAITING', 'RUNNING', 'OVER');
+CREATE TYPE tournament_state AS ENUM ('PREP', 'WAITING', 'RUNNING', 'OVER');
 
 CREATE TABLE IF NOT EXISTS tournaments (
 	id SERIAL PRIMARY KEY,
 	name TEXT NOT NULL UNIQUE,
+	min_players INTEGER NOT NULL DEFAULT 2,
 	nbr_players INTEGER NOT NULL DEFAULT 0,
 	total_rounds INTEGER NOT NULL DEFAULT 0,
 	round INTEGER NOT NULL DEFAULT 0,
 	pairing INTEGER NOT NULL DEFAULT 0,
-	state tournament_state NOT NULL DEFAULT 'WAITING'
+	state tournament_state NOT NULL DEFAULT 'PREP',
+	current_round_over BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 
 CREATE OR REPLACE FUNCTION enforce_tournament_constraints() RETURNS trigger AS $$
 BEGIN
-	IF (NEW.remaining_rounds < 0) OR (NEW.total_rounds < 0) THEN
+	IF (NEW.pairing < 0) OR (NEW.round < 0) OR (NEW.total_rounds < 0) THEN
 		RAISE EXCEPTION 'Tournament can''t have a number of rounds negative';
 	END IF;
-  RETURN NEW;
+	IF (NEW.min_players < 2) THEN
+		RAISE EXCEPTION 'Tournaments can''t have a minimum of players lesser than 2';
+	END IF;
+	RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
