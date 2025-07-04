@@ -3,6 +3,8 @@ import  validateUserData from "../utils/userData";
 import { getTokenData } from "../utils/getTokenData";
 
 export default async function private_userRoutes(server: FastifyInstance, options: any, done: any) {
+
+  console.log('✅ private_userRoutes loaded');
         
     interface PrivateDataParams {
       email: string;
@@ -93,19 +95,21 @@ export default async function private_userRoutes(server: FastifyInstance, option
         twoFactorSecretTemp?: string,
     }
 
-  //A TESTER
   server.put<{ Body: DfaUpdateBody, Params: DfaUpdateParams }>('/2fa/update/:id', async (request, reply) => {
     try {
-      const towfactorSecret = request.body?.towfactorSecret;
+      const twoFactorSecret = request.body?.twoFactorSecret;
       const twoFactorSecretTemp = request.body?.twoFactorSecretTemp;
+      console.log("on est rentre");
       let put: DfaPut = {};
-      if (towfactorSecret)
+      if (twoFactorSecret)
       {
         put.twofa = true;
-        put.twoFactorSecret = towfactorSecret;
+        put.twoFactorSecret = twoFactorSecret;
       }
       if (twoFactorSecretTemp)
         put.twoFactorSecretTemp = twoFactorSecretTemp;
+      console.log("on check le secret", twoFactorSecret);
+      console.log("on check le secret temp", twoFactorSecretTemp);
       let user = server.pg.query('');
       if (!user)
         reply.status(230).send({ error: "1006" });
@@ -123,11 +127,13 @@ export default async function private_userRoutes(server: FastifyInstance, option
   }
 
   //A TESTER
-  server.delete<{Params: deleteUserParams}>('delete/:email', async (request, reply) => {
+  server.delete<{Params: deleteUserParams}>('/delete/:email', async (request, reply) => {
+    console.log('🎯 Route /delete/:email called');
     const token = request.cookies.jwt_transcendence;
     if (!token)
       return (reply.status(230).send({ error: "0403"}));
     const tokenPayload = getTokenData(token);
+    console.log("[CHECK DATA] =",tokenPayload)
     if (!tokenPayload?.isAdmin && !tokenPayload?.id)
       return (reply.status(230).send({ error: "0403"}));
     const dfa = tokenPayload?.dfa;

@@ -5,7 +5,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import nodemailer from 'nodemailer';
 import validatePassword from '../utils/password';
-import isConnected from '../JTW/jsonwebtoken';
+import isConnected from '../JWT/jsonwebtoken';
 import { error } from 'node:console';
 
 // Base URL for User service (inside Docker network)
@@ -108,26 +108,26 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
           id : user.user.id,
           email: user.user.email,
           name: user.user.name,
-          isAdmin: user.user.isAdmin,
+          isAdmin: user.user.admin,
           towfactorSecret: user.user.towfactorSecret,
         };
         console.log('[LA DATA] :', payloadBase);
         const jwtpayload = {
           data: { 
           ...payloadBase,
-          dfa: !user.towfa
+          dfa: !user.user.towfa
           }
         };
         console.log('[LA DATA SUITE] :', jwtpayload);
         const jwttoken = jwt.sign(jwtpayload, process.env.JWT_SECRET as string, { expiresIn: '24h' });
         console.log("token:", jwttoken);
         if (jwttoken) 
-          return reply.cookie('jtw_transcendance', jwttoken, {
+          return reply.cookie('jwt_transcendance', jwttoken, {
             path: '/',
             httpOnly: true,
             sameSite: 'none',
             secure: process.env.NODE_ENV === 'prod'
-          }).redirect("/login?oauth=true&need2fa=${user.twofa}");
+          }).redirect(`/login?oauth=true&need2fa=${user.user.twofa}`);
         else
           throw new Error("no token generated");
     } catch (err) {
@@ -172,8 +172,7 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
         password: string,
     }
     
-    app.post<{ Body: signUpBody }>('/signup', { preHandler:[validatePassword], config: {
-    } }, async (req, res) => {
+    app.post<{ Body: signUpBody }>('/signup', {preHandler:[validatePassword]}, async (req, res) => {
         const { email, name, password } = req.body;
         if (!email)
             return (res.status(230).send({ error: "1007" }));
@@ -196,9 +195,11 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
                 }),
             });
             const data = await response.json();
+            console.log('[DATA signup] =', data);
             if (response.status != 200)
                 return (res.status(response.status).send({ error: data.error}))
             const user = data;
+            console.log('[DATA signup user] =', user);
             if (!user)
                 throw(new Error("cannot upsert user in prisma"));
             console.log("🔐 JWT_SECRET =", process.env.JWT_SECRET);
@@ -212,9 +213,10 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
                 dfa: true
             }
             }, process.env.JWT_SECRET as string, { expiresIn: '24h' });
+            console.log('[TOKEN JWT Signup] =', token);
             if (!token)
                 throw(new Error("cannot generate user token"));
-            return (res.cookie("jtw_transcendance", token, {
+            return (res.cookie("jwt_transcendance", token, {
                 path: "/",
                 httpOnly: true,
                 sameSite: "none",
@@ -277,7 +279,7 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
         if (!pendingToken) {
           throw new Error("cannot generate pending token");
         }
-        return reply.cookie('jtw_transcendance', pendingToken, {
+        return reply.cookie('jwt_transcendance', pendingToken, {
           httpOnly: true,
           path: '/',
           secure: process.env.NODE_ENV === 'production',
@@ -297,7 +299,7 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
         throw (new Error("cannot generate user token"));
       // If no 2FA, send JWT token directly
       console.log("token:", token);
-      return reply.cookie('jtw_transcendance', token, {
+      return reply.cookie('jwt_transcendance', token, {
         httpOnly: true,
         path: '/',
         secure: true,
@@ -309,6 +311,14 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
     return reply.status(500).send({ error: 'Internal server error: login fetch failed' });
   }
 });
+
+  interface logoutBody {
+    token: string
+  }
+
+  app.delete<{ Body: logoutBody }>('/logout', {preHandler:[isConnected]},async (request, reply) => {
+    reply.clearCookie('jwt_transcendance', {}).status(200).send();
+  });
 
   app.get('/status', async function (request, reply) {
     await isConnected(request, reply, () => {

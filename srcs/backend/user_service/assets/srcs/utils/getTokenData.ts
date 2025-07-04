@@ -1,4 +1,4 @@
-import jtw, { JwtPayload } from 'jsonwebtoken';
+import jwt, { JwtPayload } from 'jsonwebtoken';
 
 export interface i_token {
     id: number;
@@ -10,6 +10,6 @@ export interface i_token {
 }
 
 export function getTokenData(token: any): i_token {
-    const decode = jtw.decode(token) as JwtPayload;
+    const decode = jwt.decode(token) as JwtPayload;
     return(decode.data);
 }
