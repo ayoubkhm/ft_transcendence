@@ -434,4 +434,5 @@ playTournBtn.addEventListener('click', () => {
   diffSelect!.classList.add('hidden');
   canvas.requestFullscreen?.().catch(() => {/* ignore */});
   startGame('tournament');
+
 });
