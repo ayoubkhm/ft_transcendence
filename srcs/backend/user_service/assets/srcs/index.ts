@@ -11,7 +11,7 @@ server.register(fastifyPostgres, {
 });
 server.register(cookiesPlugin, {});
 server.register(private_userRoutes, {
-  prefix: '/api/user/',
+  prefix: '/api/user',
 });
 
 server.listen({ host: '0.0.0.0', port: 3000 }, (err, address) =>
