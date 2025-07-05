@@ -56,6 +56,12 @@ export interface Player
     cpttch: number
     power: string
     i: number
+    /** Total number of power-ups this player has used */
+    powerUpsUsed: number;
+    /** Total vertical distance the paddle has moved (in pixels) */
+    distanceMoved: number;
+    /** Current consecutive scoring streak for this player */
+    streak: number;
 }
 
 // État complet d’une partie
@@ -69,6 +75,8 @@ export interface GameState
     isCustomon?: boolean;
     isGameOver?: boolean;
     timer : number;
+    /** Seconds remaining before game starts */
+    countdown?: number;
     winner?: 'left' | 'right';
 }
 
@@ -76,4 +84,5 @@ export interface GameState
 export type ClientInput =
   | { type: 'move_up';   ts: number }
   | { type: 'move_down'; ts: number }
-  | { type: 'stop';      ts: number };
+  | { type: 'stop';      ts: number }
+  | { type: 'forfeit';   ts: number };

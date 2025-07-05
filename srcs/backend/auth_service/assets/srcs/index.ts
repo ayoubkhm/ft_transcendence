@@ -35,8 +35,10 @@ app.decorate('authenticate', async (request: FastifyRequest, reply: FastifyReply
 // Determine OAuth2 callback URI; default to localhost with correct protocol per environment
 const callbackUri = process.env.CALLBACK_URL 
   ?? `${process.env.NODE_ENV === 'production' ? 'https' : 'http'}://localhost:3000/api/auth/login/google/callback`;
-console.log('🔔 callbackUri =', callbackUri);
-
+console.log('TEST =',process.env.NODE_ENV === 'production' ? 'https' : 'http')
+console.log('🔔 callbackUri =', callbackUri)
+console.log('🔔 mode =', process.env.NODE_ENV)
+console.log('🔐 secure =', process.env.NODE_ENV === 'production')
 console.log('🔐 GOOGLE_CLIENT_ID =', process.env.GOOGLE_CLIENT_ID)
 console.log('🔔 CALLBACK_URL     =', process.env.CALLBACK_URL)
 console.log('🔐 JWT_SECRET    =', process.env.JWT_SECRET)
