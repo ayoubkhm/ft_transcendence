@@ -46,9 +46,8 @@ export default async function private_userRoutes(server: FastifyInstance, option
       email: string,
       name: string,
       password?: string;
-      provider?: string,
       credential: string,
-      isAdmin?: boolean,
+      admin?: boolean,
       type?: string
     }
 
@@ -57,8 +56,7 @@ export default async function private_userRoutes(server: FastifyInstance, option
         const name = request.body.name;
         const password = request.body.password;
         const type = request.body.type;
-        const isAdmin = request.body.isAdmin;
-        const provider = request.body.provider;
+        const admin = request.body.admin;
         console.log("data::", email, name, password);
         
         // Simulate creating user data
@@ -68,7 +66,7 @@ export default async function private_userRoutes(server: FastifyInstance, option
     const data = await server.pg.query(`SELECT * FROM users WHERE email = $1`, [email]);
     console.log('[DATA] :', data.rows[0]);
     return reply.send({
-      user: data.rows[0]
+      ...data.rows[0]
     });
   } catch (error) {
     console.error('Insert user error:', error);
@@ -88,31 +86,32 @@ export default async function private_userRoutes(server: FastifyInstance, option
         twoFactorSecretTemp?: string,
     }
 
-    interface DfaPut
-    {
-        twofa?: boolean,
-        twoFactorSecret?: string,
-        twoFactorSecretTemp?: string,
-    }
-
   server.put<{ Body: DfaUpdateBody, Params: DfaUpdateParams }>('/2fa/update/:id', async (request, reply) => {
     try {
       const twoFactorSecret = request.body?.twoFactorSecret;
       const twoFactorSecretTemp = request.body?.twoFactorSecretTemp;
-      console.log("on est rentre");
-      let put: DfaPut = {};
+      const id = request.params.id
+      console.log("on est rentre", request.params.id);
       if (twoFactorSecret)
       {
-        put.twofa = true;
-        put.twoFactorSecret = twoFactorSecret;
+        await server.pg.query(
+          `UPDATE users
+          SET twofactorsecret = $1,
+              twofa           = true
+          WHERE id = $2`,
+          [twoFactorSecret, id]
+        );
       }
-      if (twoFactorSecretTemp)
-        put.twoFactorSecretTemp = twoFactorSecretTemp;
+      if (twoFactorSecretTemp){
+         await server.pg.query(
+            `UPDATE users
+            SET twofactorsecrettemp = $1
+            WHERE id = $2`,
+            [twoFactorSecretTemp, id]
+          );
+        }
       console.log("on check le secret", twoFactorSecret);
       console.log("on check le secret temp", twoFactorSecretTemp);
-      let user = server.pg.query('');
-      if (!user)
-        reply.status(230).send({ error: "1006" });
       reply.status(200).send({ message: "user_2fa_secret_updated" });
     }
     catch (error) {
@@ -126,7 +125,6 @@ export default async function private_userRoutes(server: FastifyInstance, option
     email: string
   }
 
-  //A TESTER
   server.delete<{Params: deleteUserParams}>('/delete/:email', async (request, reply) => {
     console.log('🎯 Route /delete/:email called');
     const token = request.cookies.jwt_transcendence;
@@ -134,7 +132,7 @@ export default async function private_userRoutes(server: FastifyInstance, option
       return (reply.status(230).send({ error: "0403"}));
     const tokenPayload = getTokenData(token);
     console.log("[CHECK DATA] =",tokenPayload)
-    if (!tokenPayload?.isAdmin && !tokenPayload?.id)
+    if (!tokenPayload?.admin && !tokenPayload?.id)
       return (reply.status(230).send({ error: "0403"}));
     const dfa = tokenPayload?.dfa;
     if (!dfa)

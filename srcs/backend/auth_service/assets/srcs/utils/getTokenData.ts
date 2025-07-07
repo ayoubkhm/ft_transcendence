@@ -4,7 +4,7 @@ export interface i_token {
     id: number;
     email: string;
     name: string;
-    isAdmin: Boolean;
+    admin: Boolean;
     twoFactorSecret: string | null;
     dfa: boolean;
 }
