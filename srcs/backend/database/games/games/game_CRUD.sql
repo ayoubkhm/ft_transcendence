@@ -69,7 +69,7 @@ RETURNS TABLE(success BOOLEAN, msg TEXT) AS $$
 DECLARE
 	game_deleted BOOLEAN NOT NULL := FALSE;
 BEGIN
-	DELETE FROM users WHERE id = _id RETURNING TRUE INTO game_deleted;
+	DELETE FROM games WHERE id = _id RETURNING TRUE INTO game_deleted;
 	IF game_deleted THEN
 		RETURN QUERY SELECT TRUE, 'Game deleted successfully';
 	ELSE
