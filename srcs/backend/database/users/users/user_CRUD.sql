@@ -3,15 +3,14 @@ CREATE OR REPLACE FUNCTION new_user(
 	_type TEXT DEFAULT 'guest',
 	_email TEXT DEFAULT NULL,
 	_password TEXT DEFAULT NULL,
-	_twofa BOOLEAN DEFAULT FALSE,
 	_online BOOLEAN DEFAULT TRUE
 )
 RETURNS TABLE(success BOOLEAN, msg TEXT, new_user_id INTEGER) AS $$
 DECLARE
 	_new_user_id INTEGER;
 BEGIN
-	INSERT INTO users (name, type, email, password, online, twofa)
-	VALUES (_name, _type, _email, _password, _online, _twofa)
+	INSERT INTO users (name, type, email, password, online)
+	VALUES (_name, _type, _email, _password, _online)
 	RETURNING id INTO _new_user_id;
 
 	RETURN QUERY SELECT TRUE, 'User created successfully', _new_user_id;
@@ -28,10 +27,8 @@ EXCEPTION
 END;
 $$ LANGUAGE plpgsql;
 
--- IF HASHAGE DU PASS DANS LA DB : TODO
 -- CREATE EXTENSION IF NOT EXISTS pgcrypto;
 -- -> hashed_password := crypt(_password, gen_salt('bf'));
-
 
 
 CREATE OR REPLACE FUNCTION update_user_email(_email TEXT, _newEmail TEXT)
