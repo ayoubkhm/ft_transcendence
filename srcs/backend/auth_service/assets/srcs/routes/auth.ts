@@ -8,34 +8,6 @@ import validatePassword from '../utils/password';
 import isConnected from '../JWT/jsonwebtoken';
 import { error } from 'node:console';
 
-// Base URL for User service (inside Docker network)
-const USER_SERVICE_URL = process.env.USER_SERVICE_URL || 'http://user_service:3000';
-
-// SMTP transporter (magic links)
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: Number(process.env.SMTP_PORT),
-  secure: false, // we'll rely on STARTTLS if needed
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
-
-// Helpers --------------------------------------------------
-/** 
- * Build the correct origin (http vs https) depending on environment and headers 
- */
-function getBaseUrl(request: FastifyRequest): string {
-  const forwarded = request.headers['x-forwarded-proto'];
-  // if behind a proxy (nginx), this header will be set
-  const proto =
-    typeof forwarded === 'string'
-      ? forwarded.split(',')[0].trim()
-      : (process.env.NODE_ENV === 'production' ? 'https' : 'http');
-
-  return `${proto}://${request.headers.host}`;
-}
 
 // Main -----------------------------------------------------
 export default function authRoutes(app: FastifyInstance, options: any, done: any) {
@@ -105,17 +77,17 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
         console.log('[USER DATA] :', user)
       }
         const payloadBase = {
-          id : user.user.id,
-          email: user.user.email,
-          name: user.user.name,
-          isAdmin: user.user.admin,
-          towfactorSecret: user.user.towfactorSecret,
+          id : user.id,
+          email: user.email,
+          name: user.name,
+          admin: user.admin,
+          towfactorSecret: user.towfactorSecret,
         };
         console.log('[LA DATA] :', payloadBase);
         const jwtpayload = {
           data: { 
           ...payloadBase,
-          dfa: !user.user.towfa
+          dfa: !user.towfa
           }
         };
         console.log('[LA DATA SUITE] :', jwtpayload);
@@ -127,7 +99,7 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
             httpOnly: true,
             sameSite: 'none',
             secure: process.env.NODE_ENV === 'prod'
-          }).redirect(`/login?oauth=true&need2fa=${user.user.twofa}`);
+          }).redirect(`/login?oauth=true&need2fa=${user.twofa}`);
         else
           throw new Error("no token generated");
     } catch (err) {
@@ -203,12 +175,13 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
             if (!user)
                 throw(new Error("cannot upsert user in prisma"));
             console.log("🔐 JWT_SECRET =", process.env.JWT_SECRET);
+            console.log("ID DE SIGNUP===>", user.id);
             const token = jwt.sign({
             data: {
                 id: user.id,
                 email: email,
                 name: name,
-                isAdmin: false,
+                admin: false,
                 twoFactorSecret: user.twoFactorSecret,
                 dfa: true
             }
@@ -263,16 +236,18 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
       console.log("data:::::::::::::::::::", data);
       if (response.status !== 200)
         return reply.status(response.status).send({ error: data.error || 'Unknown error' });
-      const user = data
+      const user = data;
       if (!user || !user.password)
         return reply.status(401).send({ error: 'Invalid email or password' });
       const isValid = await bcrypt.compare(password as string, user.password);
       if (!isValid)
         return reply.status(401).send({ error: 'Invalid email or password' });
-      if (user.isTwoFAEnabled) {
-        // Send a magic link as second factor
+      console.log("[USER DATA]: ", user);
+      if (user.twofa) {
+        
+        console.log("on est dans twofa TRUE", user);
         const pendingToken = jwt.sign(
-          { data: { id: user.id, email, name: user.name, isAdmin: user.isAdmin, twoFactorSecret: user.twoFactorSecret, dfa: false } },
+          { data: { id: user.id, email, name: user.name, admin: user.admin, twoFactorSecret: user.twoFactorSecret, dfa: false } },
           process.env.JWT_SECRET as string,
           { expiresIn: '24h' }
         );
@@ -286,11 +261,12 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
           sameSite: 'none',
         }).send({ response: "success", need2FA: true });
       } else {
+        console.log("on est dans twofa FALSE", user.id);
         const token = jwt.sign({ data: {
           id: user.id,
           email: email,
           name: user.name,
-          isAdmin: user.isAdmin,
+          admin: user.admin,
           twoFactorSecret: user.twoFactorSecret,
           dfa: true
         }}, process.env.JWT_SECRET as string, { expiresIn: '24h' });
