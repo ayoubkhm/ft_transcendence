@@ -1,7 +1,6 @@
 CREATE OR REPLACE FUNCTION new_2fa_user(
 	_name TEXT,
 	twofa_tmp_secret TEXT,
-	_type TEXT DEFAULT 'signed',
 	_email TEXT DEFAULT NULL,
 	_password TEXT DEFAULT NULL,
 	_online BOOLEAN DEFAULT TRUE
@@ -9,10 +8,15 @@ CREATE OR REPLACE FUNCTION new_2fa_user(
 RETURNS TABLE(success BOOLEAN, msg TEXT, new_user_id INTEGER) AS $$
 DECLARE
 	_new_user_id INTEGER;
+	_type TEXT;
 BEGIN
 	IF twofa_tmp_secret IS NULL THEN
 		RETURN QUERY SELECT FALSE, '2fa secret can''t be null', NULL::INTEGER;
 		RETURN ;
+	END IF;
+	_type := 'signed';
+	IF _password IS NULL THEN
+		_type := 'oauth';
 	END IF;
 
 	INSERT INTO users (name, type, email, password, online, active, twofa_secret, twofa_validated)
