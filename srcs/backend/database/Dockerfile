@@ -22,7 +22,8 @@ COPY messages/channels/channels.sql								/app/db-init/channels.template.sql
 COPY messages/dms/dms.sql										/app/db-init/dms.template.sql
 COPY messages/messages/messages.sql								/app/db-init/messages.template.sql
 COPY messages/messages/messages_CRUD.sql						/app/db-init/messages_CRUD.template.sql
-COPY init-db/init-db.sh 									/docker-entrypoint-initdb.d/init-db.sh
+COPY init-db/init-db.sh 										/docker-entrypoint-initdb.d/init-db.sh
+COPY test/										/app/db-test/
 
 RUN apt-get update && apt-get install -y gettext && rm -rf /var/lib/apt/lists/* && \
 	chown -R postgres:postgres /db && \
@@ -39,6 +40,9 @@ RUN apt-get update && apt-get install -y gettext && rm -rf /var/lib/apt/lists/* 
 		/app/db-init/dms.template.sql \
 		/app/db-init/messages.template.sql /app/db-init/messages_CRUD.template.sql \
 		> /app/db-init/init-db-all.template.sql && \
+	if [ -z "$TEST" ]; then \
+		sh -c 'cat /app/db-test/*.sql >> /app/db-init/init-db-all.template.sql'; \
+    fi && \
 	chmod +x /docker-entrypoint-initdb.d/init-db.sh /app/db-init/init-db-all.template.sql
 
 CMD ["postgres", "-c", "listen_addresses=*", "-c", "port=5432"]
