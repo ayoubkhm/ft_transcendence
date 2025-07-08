@@ -3,6 +3,7 @@ CREATE OR REPLACE FUNCTION new_user(
 	_type TEXT DEFAULT 'guest',
 	_email TEXT DEFAULT NULL,
 	_password TEXT DEFAULT NULL,
+	_avatar TEXT DEFAULT NULL,
 	is_2fa BOOLEAN DEFAULT FALSE,
 	_online BOOLEAN DEFAULT TRUE
 )
@@ -11,12 +12,12 @@ DECLARE
 	_new_user_id INTEGER;
 BEGIN
 	IF is_2fa THEN
-		INSERT INTO users (name, type, email, password, online, twofa_secret, twofa_validated, active)
-		VALUES (_name, _type, _email, _password, _online, NULL, FALSE, FALSE)
+		INSERT INTO users (name, type, email, password, avatar, online, twofa_secret, twofa_validated, active)
+		VALUES (_name, _type, _email, _password, _avatar, _online, NULL, FALSE, FALSE)
 		RETURNING id INTO _new_user_id;
 	ELSE
-		INSERT INTO users (name, type, email, password, online)
-		VALUES (_name, _type, _email, _password, _online)
+		INSERT INTO users (name, type, email, password, online, avatar)
+		VALUES (_name, _type, _email, _password, _online, _avatar)
 		RETURNING id INTO _new_user_id;
 	END IF;
 	
