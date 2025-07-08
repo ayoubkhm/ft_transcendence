@@ -5,6 +5,7 @@ import jwt from 'jsonwebtoken';
 import 'dotenv/config';
 import authRoutes from './routes/auth';
 import dfaRoutes from './routes/2FA';
+import passwordResetRoutes from './routes/passwordReset';
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -69,6 +70,7 @@ app.register(oauthPlugin, {
 // —–– 3) Tes routes custom (le callback)
 app.register(authRoutes, { prefix: '/api/auth' });
 app.register(dfaRoutes, { prefix: '/api/auth/2fa' });
+app.register(passwordResetRoutes, { prefix: '/api/auth' });
 
 // —–– 4) Démarrage
 app.listen({ host: '0.0.0.0', port: 3000 }, err => {
