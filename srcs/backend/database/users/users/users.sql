@@ -25,13 +25,11 @@ BEGIN
 		END IF;
 	ELSIF NEW.type = 'guest' AND (NEW.email IS NOT NULL OR NEW.password IS NOT NULL) THEN
 		RAISE EXCEPTION 'Guest users can''t have email or password';
-	ELSIF NEW.type = 'guest' AND (NEW.twofa_secret IS NOT NULL) THEN
+	ELSIF NEW.type = 'guest' AND (NEW.twofa_validated IS NOT NULL) THEN
 		RAISE EXCEPTION '2fa accounts can''t be guest';
 	END IF;
 	
-	IF (NEW.twofa_secret IS NULL AND NEW.twofa_validated IS NOT NULL) THEN
-		RAISE EXCEPTION '2fa account mismatch: 2fa secret null and 2fa_validated not null';
-	ELSIF (NEW.twofa_secret IS NOT NULL AND NEW.twofa_validated IS NULL) THEN
+	IF (NEW.twofa_secret IS NOT NULL AND NEW.twofa_validated IS NULL) THEN
 		RAISE EXCEPTION '2fa account mismatch: 2fa secret not null and 2fa_validated null';
 	END IF;
   RETURN NEW;
