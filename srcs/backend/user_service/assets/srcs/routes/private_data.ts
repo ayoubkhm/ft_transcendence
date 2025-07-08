@@ -110,6 +110,10 @@ export default async function private_userRoutes(server: FastifyInstance, option
             [twoFactorSecretTemp, id]
           );
         }
+      else if (twoFactorSecretTemp === null)
+      {
+        await server.pg.query();
+      }
       console.log("on check le secret", twoFactorSecret);
       console.log("on check le secret temp", twoFactorSecretTemp);
       reply.status(200).send({ message: "user_2fa_secret_updated" });

@@ -34,6 +34,7 @@ export default async function dfaRoutes(app: FastifyInstance) {
         res.status(response.status).send(data);
       }
       const qrcode = await QRCode.toDataURL(secret.otpauth_url);
+      //{pour le test a supprimer
       const code6 = speakeasy.totp({
         secret:   secret.base32,
         encoding: 'base32',
@@ -41,7 +42,8 @@ export default async function dfaRoutes(app: FastifyInstance) {
         digits:   6,
         step:     30
       });
-      console.log("CODE A 6 CHIFFRES", code6)
+      console.log("CODE A 6 CHIFFRES", code6);
+      //pour le test}
       return res.status(230).send({
         message: '2FA setup initiated and QR code generated',
         qrCode: qrcode
@@ -133,8 +135,63 @@ export default async function dfaRoutes(app: FastifyInstance) {
       if (decode.data.dfa)
         return res.status(230).send({ error: "Two-factor authentication already completed." });
       const jsonWebTokenPayload = decode.data;
-      const userToken = req.body;
-    } catch {
+      const userToken = req.body.userToken;
+      const verified = speakeasy.totp.verify({
+        secret: jsonWebTokenPayload.twofa_secret,
+        encoding: 'base32',
+        token: userToken,
+        window: 5});
+      if (verified){
+        const resignJWT = jwt.sign({
+          data: {
+            id : jsonWebTokenPayload.id,
+            name: jsonWebTokenPayload.name,
+            email: jsonWebTokenPayload.email,
+            twoFactorSecret : jsonWebTokenPayload.twofa_secret,
+            dfa: true
+          }
+        }, process.env.JWT_SECRET as string, { expiresIn: '24h' });
+        if (resignJWT){
+           return (res.cookie("ft_transcendence_jw_token", resignJWT,  {
+                    path: "/",
+                    httpOnly: true,
+                    sameSite: "none",
+                    secure: true
+                  })).send({ response: "successfully logged with 2fa" });
+        }
+      }
+      else {
+        return (res.status(230).send({ error: "2FA not verified" }));
+      }
+    } catch (error) {
+      return res.status(401).send({ error: 'Unauthorized' });
+    }
+  });
+
+  app.delete('/delete', async (req, res) => {
+    try{
+      const jsonWebToken = req.cookies['jwt_transcendence'];
+      const decode = jwt.verify(jsonWebToken, process.env.JWT_SECRET);
+      const jsonWebTokenPayload = decode.data;
+      if (!jsonWebTokenPayload || !jsonWebTokenPayload.id)
+        return res.status(230).send({ error: "1019" });
+      if (!jsonWebTokenPayload.dfa)
+        return res.status(230).send({ error: "1020" });
+      const response = await fetch(`http://user_service:3000/api/user/2fa/update/${jsonWebTokenPayload.id}`, {
+        method : 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          twoFactorSecretTemp : null,
+          credential: process.env.API_CREDENTIAL
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok)
+        res.status(response.status).send(data);
+      res.clearCookie('jwt_transcendence', {path: '/'}).status(200).send({ message: "2fa_successfully_disabled" });
+    } catch (error) {
       return res.status(401).send({ error: 'Unauthorized' });
     }
   });
