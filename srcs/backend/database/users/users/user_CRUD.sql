@@ -3,16 +3,23 @@ CREATE OR REPLACE FUNCTION new_user(
 	_type TEXT DEFAULT 'guest',
 	_email TEXT DEFAULT NULL,
 	_password TEXT DEFAULT NULL,
+	is_2fa BOOLEAN DEFAULT FALSE,
 	_online BOOLEAN DEFAULT TRUE
 )
 RETURNS TABLE(success BOOLEAN, msg TEXT, new_user_id INTEGER) AS $$
 DECLARE
 	_new_user_id INTEGER;
 BEGIN
-	INSERT INTO users (name, type, email, password, online)
-	VALUES (_name, _type, _email, _password, _online)
-	RETURNING id INTO _new_user_id;
-
+	IF is_2fa THEN
+		INSERT INTO users (name, type, email, password, online, twofa_secret, twofa_validated, active)
+		VALUES (_name, _type, _email, _password, _online, NULL, FALSE, FALSE)
+		RETURNING id INTO _new_user_id;
+	ELSE
+		INSERT INTO users (name, type, email, password, online)
+		VALUES (_name, _type, _email, _password, _online)
+		RETURNING id INTO _new_user_id;
+	END IF;
+	
 	RETURN QUERY SELECT TRUE, 'User created successfully', _new_user_id;
 
 EXCEPTION

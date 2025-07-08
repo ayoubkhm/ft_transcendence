@@ -1,42 +1,23 @@
-CREATE OR REPLACE FUNCTION new_2fa_user(
-	_name TEXT,
-	twofa_tmp_secret TEXT,
-	_email TEXT DEFAULT NULL,
-	_password TEXT DEFAULT NULL,
-	_online BOOLEAN DEFAULT TRUE
+CREATE OR REPLACE FUNCTION add_2fa_secret(
+	_id INTEGER,
+	new_2fa_secret TEXT
 )
-RETURNS TABLE(success BOOLEAN, msg TEXT, new_user_id INTEGER) AS $$
-DECLARE
-	_new_user_id INTEGER;
-	_type TEXT;
+RETURNS TABLE(success BOOLEAN, msg TEXT) AS $$
 BEGIN
-	IF twofa_tmp_secret IS NULL THEN
+	IF new_2fa_secret IS NULL THEN
 		RETURN QUERY SELECT FALSE, '2fa secret can''t be null', NULL::INTEGER;
-		RETURN ;
 	END IF;
-	_type := 'signed';
-	IF _password IS NULL THEN
-		_type := 'oauth';
-	END IF;
+	UPDATE users
+	SET twofa_secret = new_2fa_secret
+	WHERE id = _id;
 
-	INSERT INTO users (name, type, email, password, online, active, twofa_secret, twofa_validated)
-	VALUES (_name, _type, _email, _password, _online, FALSE, twofa_tmp_secret, FALSE)
-	RETURNING id INTO _new_user_id;
-
-	RETURN QUERY SELECT TRUE, '2fa User created successfully', _new_user_id;
+	RETURN QUERY SELECT TRUE, 'Successfully added 2fa secret to user';
 
 EXCEPTION
-	WHEN unique_violation THEN
-		IF SQLERRM LIKE '%users_email_key%' THEN
-			RETURN QUERY SELECT FALSE, 'Email is already in use', NULL::INTEGER;
-		ELSE
-			RETURN QUERY SELECT FALSE, 'Unique constraint violation on users (not normal)', NULL::INTEGER;
-		END IF;
 	WHEN OTHERS THEN
-		RETURN QUERY SELECT FALSE, SQLERRM, NULL::INTEGER;
+		RETURN QUERY SELECT FALSE, SQLERRM;
 END;
 $$ LANGUAGE plpgsql;
-
 
 
 CREATE OR REPLACE FUNCTION validate_2fa(
@@ -44,7 +25,6 @@ CREATE OR REPLACE FUNCTION validate_2fa(
 	new_2fa_secret TEXT
 )
 RETURNS TABLE(success BOOLEAN, msg TEXT) AS $$
-
 BEGIN
 	IF new_2fa_secret IS NULL THEN
 		RETURN QUERY SELECT FALSE, '2fa secret can''t be null', NULL::INTEGER;
@@ -62,6 +42,27 @@ EXCEPTION
 		RETURN QUERY SELECT FALSE, SQLERRM;
 END;
 $$ LANGUAGE plpgsql;
+
+
+
+CREATE OR REPLACE FUNCTION expire_2fa(
+	_id INTEGER
+)
+RETURNS TABLE(success BOOLEAN, msg TEXT) AS $$
+BEGIN
+	UPDATE users
+	SET twofa_secret = NULL,
+		twofa_validated = FALSE
+	WHERE id = _id;
+
+	RETURN QUERY SELECT TRUE, '2fa User has 2fa expired';
+
+EXCEPTION
+	WHEN OTHERS THEN
+		RETURN QUERY SELECT FALSE, SQLERRM;
+END;
+$$ LANGUAGE plpgsql;
+
 
 
 
