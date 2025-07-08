@@ -121,6 +121,7 @@ services:
       - POSTGRES_PASSWORD=${DB_SUPERPASS}
       - POSTGRES_DB=${DB_NAME}
       - PGDATA=/db
+      - TEST=${TEST_DB:-}
       # - POSTGRES_HOST_AUTH_METHOD=trust
     expose:
       - "5432"
