@@ -1,11 +1,13 @@
 import fastify from 'fastify'
 import cookiesPlugin from '@fastify/cookie';
+import multipart from '@fastify/multipart';
 import private_userRoutes from './routes/private_data';
 import fastifyPostgres from '@fastify/postgres';
 
 // Trust proxy headers (e.g., X-Forwarded-Proto) when behind SSL termination
 const server = fastify({ trustProxy: true });
 
+server.register(multipart);
 server.register(fastifyPostgres, {
   connectionString: 'postgresql://transcendence:imthebest@database_service:5432/db',
 });
