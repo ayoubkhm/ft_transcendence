@@ -1,15 +1,22 @@
-SELECT * FROM new_user('mehdi');
-SELECT * FROM new_user('goulven');
-SELECT * FROM new_user('ayoub');
-SELECT * FROM new_user('gino');
-SELECT * FROM new_user('octoross');
+DO $$
+BEGIN
 
-SELECT * FROM new_tournament('ouais');
+    PERFORM new_user('mehdi');
+    PERFORM new_user('goulven');
+    PERFORM new_user('ayoub');
+    PERFORM new_user('gino');
+    PERFORM new_user('octoross');
 
-SELECT * FROM join_tournament(1, 'ouais');
-SELECT * FROM join_tournament(3, 'ouais');
-SELECT * FROM join_tournament(4, 'ouais');
+    PERFORM new_tournament('ouais');
 
-UPDATE tournaments SET round = 1, total_rounds = 2 WHERE name = 'ouais';
+    PERFORM join_tournament(1, 'ouais');
+    PERFORM join_tournament(3, 'ouais');
+    PERFORM join_tournament(4, 'ouais');
 
-SELECT * FROM pair_tournament('ouais');
+    PERFORM start_tournament('ouais');
+    
+    RAISE NOTICE 'Initialisation terminée avec succès';
+
+EXCEPTION WHEN OTHERS THEN
+    RAISE EXCEPTION 'Erreur durant l''initialisation: %', SQLERRM;
+END $$;
