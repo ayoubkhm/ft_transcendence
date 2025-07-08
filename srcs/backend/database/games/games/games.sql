@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS games (
 	id SERIAL PRIMARY KEY,
 	p1_id INTEGER DEFAULT NULL REFERENCES users(id) ON DELETE SET NULL,
 	p2_id INTEGER DEFAULT NULL REFERENCES users(id) ON DELETE SET NULL,
-	state game_state NOT NULL DEFAULT 'RUNNING',
+	state game_state NOT NULL DEFAULT 'WAITING',
 	p1_score INT NOT NULL DEFAULT 0,
   	p2_score INT NOT NULL DEFAULT 0,
 	p1_bot BOOLEAN NOT NULL DEFAULT FALSE,
@@ -19,21 +19,28 @@ CREATE TABLE IF NOT EXISTS games (
 
 CREATE OR REPLACE FUNCTION enforce_game_constraints() RETURNS trigger AS $$
 BEGIN
-	IF NEW.p1_bot = TRUE AND NEW.p1_id IS NULL THEN
+	IF NEW.p1_bot = TRUE AND NEW.p1_id IS NOT NULL THEN
+    	RAISE EXCEPTION 'Player 1 is a bot and can''t have user id';
+	ELSIF NEW.p1_bot = FALSE AND NEW.p1_id IS NULL THEN
     	RAISE EXCEPTION 'Player 1 is not a bot and should have user id';
+	END IF;
 
-	ELSIF NEW.p2_bot = TRUE AND NEW.p2_id IS NULL THEN
+	IF NEW.p2_bot = FALSE AND NEW.p2_id IS NULL THEN
     	RAISE EXCEPTION 'Player 2 is not a bot and should have user id';
-	
+	ELSIF NEW.p2_bot = TRUE AND NEW.p2_id IS NOT NULL THEN
+    	RAISE EXCEPTION 'Player 2 is a bot and can''t have user id';
+	END IF;
+
+	IF NEW.type = 'TOURNAMENT' AND (NEW.tournament_id IS NULL OR NEW.tournament_round IS NULL) THEN
+		RAISE EXCEPTION 'Game is of tournament type but tournament_id or tournament_round is null';
 	ELSIF NEW.tournament_id IS NOT NULL AND NEW.type != 'TOURNAMENT' THEN
 		RAISE EXCEPTION 'For game to have tournament id, it should also have tournament type';
-	ELSIF NEW.tournament_id IS NULL AND NEW.type = 'TOURNAMENT' THEN
-		RAISE EXCEPTION 'For game to have tournament type, it should also have tournament id';
-	ELSIF NEW.tournament_round IS NOT NULL AND NEW.tournament_round < 1 THEN
+	ELSIF NEW.tournament_round IS NULL AND NEW.type != 'TOURNAMENT' THEN
+		RAISE EXCEPTION 'For game to have tournament round, it should also have tournament type';
+	END IF;
+
+	IF NEW.tournament_round IS NOT NULL AND NEW.tournament_round < 1 THEN
 		RAISE EXCEPTION 'Tournament round can''t be negative or zero';
-	ELSIF NEW.tournament_round IS NOT NULL AND NEW.tournament_id IS NULL THEN
-		RAISE EXCEPTION 'Can''t have tournament round if not a tournament';
-		
 	END IF;
 
   RETURN NEW;
