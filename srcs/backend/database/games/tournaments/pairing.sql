@@ -37,10 +37,13 @@ BEGIN
 	INTO rplayers_id
 	FROM unnest(players_id) AS player_id;
 
+	RAISE NOTICE 'Players order: %', rplayers_id;
+
 	i := 0;
 	WHILE i < (array_length(rplayers_id, 1) - 1) LOOP
-    	INSERT INTO games (p1_id, p2_id, state, tournament_id, tournament_round, type)
-    	VALUES (rplayers_id[i], rplayers_id[i + 1], 'WAITING', _id, _round, 'TOURNAMENT')
+		RAISE NOTICE 'LOOP 1: %s', i;
+    	INSERT INTO games (p1_id, p2_id, tournament_id, tournament_round, type)
+    	VALUES (rplayers_id[i], rplayers_id[i + 1], _id, _round, 'TOURNAMENT')
     	RETURNING id INTO bracket_game_id;
 
     	brackets_games_id := array_append(brackets_games_id, bracket_game_id);
@@ -48,8 +51,8 @@ BEGIN
 	END LOOP;
 
 	IF array_length(rplayers_id, 1) % 2 = 1 THEN
-		INSERT INTO games (p1_id, p2_bot, state, tournament_id, tournament_round, type)
-    	VALUES (rplayers_id[array_length(rplayers_id, 1) - 1], TRUE, 'WAITING', _id, _round, 'TOURNAMENT')
+		INSERT INTO games (p1_id, p2_bot, tournament_id, tournament_round, type)
+    	VALUES (rplayers_id[array_length(rplayers_id, 1) - 1], TRUE, _id, _round, 'TOURNAMENT')
     	RETURNING id INTO bracket_game_id;
 
     	brackets_games_id := array_append(brackets_games_id, bracket_game_id);
