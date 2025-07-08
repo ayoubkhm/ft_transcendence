@@ -81,13 +81,13 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
           email: user.email,
           name: user.name,
           admin: user.admin,
-          towfactorSecret: user.towfactorSecret,
+          twofactorSecret: user.twofa_secret,
         };
         console.log('[LA DATA] :', payloadBase);
         const jwtpayload = {
           data: { 
           ...payloadBase,
-          dfa: !user.towfa
+          dfa: !user.twofa_validated
           }
         };
         console.log('[LA DATA SUITE] :', jwtpayload);
@@ -99,7 +99,7 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
             httpOnly: true,
             sameSite: 'none',
             secure: process.env.NODE_ENV === 'prod'
-          }).redirect(`/login?oauth=true&need2fa=${user.twofa}`);
+          }).redirect(`/login?oauth=true&need2fa=${user.twofa_validated}`);
         else
           throw new Error("no token generated");
     } catch (err) {
@@ -182,7 +182,7 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
                 email: email,
                 name: name,
                 admin: false,
-                twoFactorSecret: user.twoFactorSecret,
+                twoFactorSecret: user.twofa_secret,
                 dfa: true
             }
             }, process.env.JWT_SECRET as string, { expiresIn: '24h' });
@@ -243,11 +243,11 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
       if (!isValid)
         return reply.status(401).send({ error: 'Invalid email or password' });
       console.log("[USER DATA]: ", user);
-      if (user.twofa) {
+      if (user.twofa_validated) {
         
         console.log("on est dans twofa TRUE", user);
         const pendingToken = jwt.sign(
-          { data: { id: user.id, email, name: user.name, admin: user.admin, twoFactorSecret: user.twoFactorSecret, dfa: false } },
+          { data: { id: user.id, email, name: user.name, admin: user.admin, twoFactorSecret: user.twofa_secret, dfa: false } },
           process.env.JWT_SECRET as string,
           { expiresIn: '24h' }
         );
@@ -267,7 +267,7 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
           email: email,
           name: user.name,
           admin: user.admin,
-          twoFactorSecret: user.twoFactorSecret,
+          twoFactorSecret: user.twofa_secret,
           dfa: true
         }}, process.env.JWT_SECRET as string, { expiresIn: '24h' });
       console.log("token:", token);
