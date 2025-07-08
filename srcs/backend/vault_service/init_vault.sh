@@ -1,46 +1,65 @@
 #!/bin/bash
 set -e
 
-# Nettoyage de l'ancien Vault
+# Nettoyage éventuel
 pkill vault || true
 rm -rf /vault/data/*
 
-# Démarrage de Vault en mode dev (pour dev/test uniquement)
-echo "🚀 Démarrage de Vault en mode dev..."
-vault server -dev -dev-root-token-id="root" -config=/vault/config/config.hcl > /tmp/vault.log 2>&1 &
-
-sleep 5
-
+# Export des variables d'environnement pour Vault CLI
 export VAULT_TOKEN="root"
-export VAULT_ADDR="http://127.0.0.1:8200"
+export VAULT_ADDR="http://vault:8200"
 
-# Activer AppRole auth method s’il n’est pas déjà activé
-vault auth enable approle || echo "AppRole already enabled"
+# Lancer Vault en mode dev en arrière-plan + redirection des logs
+echo "🚀 Démarrage de Vault en mode dev..."
+vault server -dev -dev-root-token-id="root" > /tmp/vault.log 2>&1 &
+VAULT_PID=$!
 
-# Créer un AppRole 'myapp' avec les politiques adaptées (ajuste selon besoin)
-vault write auth/approle/role/myapp token_policies="default" token_ttl=1h token_max_ttl=4h
+# Attente de l’init de Vault
+echo "⏳ Attente du démarrage de Vault..."
+MAX_RETRIES=15
+for ((i=1; i<=MAX_RETRIES; i++)); do
+  if vault status &>/dev/null; then
+    echo "✅ Vault est prêt (tentative $i)"
+    break
+  else
+    echo "⌛ Tentative $i/$MAX_RETRIES : Vault pas encore prêt..."
+    sleep 1
+  fi
 
-# Récupérer le role_id
+  if [ "$i" -eq "$MAX_RETRIES" ]; then
+    echo "❌ Vault ne s'est pas lancé correctement."
+    echo "📄 Logs Vault :"
+    tail -n 20 /tmp/vault.log
+    kill $VAULT_PID || true
+    exit 1
+  fi
+done
+
+# Activer AppRole s'il n’est pas déjà actif
+vault auth enable approle || echo "ℹ️ AppRole déjà activé"
+
+# Créer AppRole "myapp"
+vault write auth/approle/role/myapp \
+  token_policies="default" \
+  token_ttl=1h \
+  token_max_ttl=4h
+
+# Récupérer role_id et secret_id
 ROLE_ID=$(vault read -field=role_id auth/approle/role/myapp/role-id)
-
-# Générer un secret_id
 SECRET_ID=$(vault write -f -field=secret_id auth/approle/role/myapp/secret-id)
 
-# Stocker role_id et secret_id dans un secret Vault dédié
+# Stocker dans Vault
 vault kv put secret/approle/myapp role_id="$ROLE_ID" secret_id="$SECRET_ID"
+echo "✅ AppRole configuré et stocké"
 
-echo "✅ AppRole créé et secrets stockés dans Vault"
-
-# Génération et injection de la clé JWT (existant)
+# Générer une clé JWT
 JWT_SECRET=$(openssl rand -hex 64)
 vault kv put secret/jwt secret="$JWT_SECRET"
+echo "✅ Clé JWT générée et injectée"
 
-echo "✅ Clé JWT injectée dans Vault."
-
-# Reste de l’injection des secrets…
-
-# Affichage pour vérification
+# Vérification
 vault kv get secret/approle/myapp
 vault kv get secret/jwt
 
-wait
+# Attendre Vault pour bloquer le script (optionnel mais utile)
+wait $VAULT_PID
