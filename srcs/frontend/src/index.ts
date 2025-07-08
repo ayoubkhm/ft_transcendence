@@ -408,6 +408,13 @@ const signupConfirmInput    = document.getElementById('signup-confirm') as HTMLI
 if (!signupBtn || !signupModal || !signupModalForm || !signupModalCloseBtn || !signupCancelBtn || !signupEmailInput || !signupNameInput || !signupPasswordInput || !signupPassFeedback || !signupConfirmInput) {
   throw new Error('Missing signup modal elements');
 }
+// Google OAuth sign-up button
+const googleSignupBtn = document.getElementById('google-signup-btn') as HTMLButtonElement | null;
+if (!googleSignupBtn) throw new Error('Missing Google signup button');
+googleSignupBtn.addEventListener('click', (e) => {
+  e.preventDefault();
+  window.location.href = '/api/auth/login/google';
+});
 // Live password validation feedback
 signupPasswordInput.addEventListener('input', () => {
   const pwd = signupPasswordInput!.value;
@@ -442,8 +449,28 @@ logoutBtn.addEventListener('click', (e) => {
   localStorage.removeItem('username');
   updateAuthView();
 });
-// Initialize auth view
-updateAuthView();
+// Initialize auth view by checking server session
+async function initializeAuth() {
+  try {
+    const res = await fetch('/api/auth/status');
+    if (res.ok) {
+      const data = await res.json();
+      localStorage.setItem('loggedIn', 'true');
+      if (data.name) {
+        localStorage.setItem('username', data.name);
+      }
+    } else {
+      localStorage.removeItem('loggedIn');
+      localStorage.removeItem('username');
+    }
+  } catch (err) {
+    console.error('Auth status check failed', err);
+    localStorage.removeItem('loggedIn');
+    localStorage.removeItem('username');
+  }
+  updateAuthView();
+}
+initializeAuth();
 
 // Open Sign Up modal
 signupBtn.addEventListener('click', (e) => {
