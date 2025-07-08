@@ -89,7 +89,7 @@ export default async function dfaRoutes(app: FastifyInstance) {
       console.log("[U2]===>", user);
       console.log("tokeuser", req.body.userToken);
       let tokenValidates = speakeasy.totp.verify({
-	      secret: user.twofactorsecrettemp,
+	      secret: user.twofa_secret,
         encoding: "base32",
         token: req.body.userToken,
         window: 2,
@@ -102,7 +102,7 @@ export default async function dfaRoutes(app: FastifyInstance) {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            twoFactorSecret : user.twofactorsecrettemp,
+            twoFactorSecret : user.twofa_secret,
             credential: process.env.API_CREDENTIAL
           }),
         });

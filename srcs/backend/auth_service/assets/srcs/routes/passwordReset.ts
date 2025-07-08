@@ -1,11 +1,11 @@
 import { FastifyInstance } from "fastify";
 import jwt , { JwtPayload } from 'jsonwebtoken';
-import sendMail from ../sendMail;
-import import bcrypt from 'bcryptjs';
+import sendMail from '../mail';
+import bcrypt from 'bcrypt';
 
 const expireIn = 5;
 
-export default function passwordResetRoutes(server: FastifyInstance, options: any, done: any)
+export default function passwordResetRoutes(app: FastifyInstance, options: any, done: any)
 {
     interface passwordResetAskBody {
         email: string,
@@ -49,7 +49,7 @@ export default function passwordResetRoutes(server: FastifyInstance, options: an
         new_password:string
     }
 
-     server.post<{ Body: passwordResetSubmitBody }>('/passwordReset/submit', {}, async (req, res) => {
+    app.post<{ Body: passwordResetSubmitBody }>('/passwordReset/submit', {}, async (req, res) => {
         try {
             const actual_password = req.body.actual_password;
             const new_password = req.body.new_password;
