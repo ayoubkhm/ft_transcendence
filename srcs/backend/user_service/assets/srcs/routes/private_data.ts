@@ -61,7 +61,7 @@ export default async function private_userRoutes(server: FastifyInstance, option
         
         // Simulate creating user data
   try {
-    const result = await server.pg.query('SELECT * FROM new_user($1, $2, $3, $4)', [name, type, email, password]);
+    const result = await server.pg.query('SELECT * FROM new_user($1, $2, $3, $4, $5, $6)', [name, type, email, password, null ,true]);
     console.log('[CREATE] New user created:', result.rows[0]);
     const data = await server.pg.query(`SELECT * FROM users WHERE email = $1`, [email]);
     console.log('[DATA] :', data.rows[0]);
@@ -93,27 +93,11 @@ export default async function private_userRoutes(server: FastifyInstance, option
       const id = request.params.id
       console.log("on est rentre", request.params.id);
       if (twoFactorSecret)
-      {
-        await server.pg.query(
-          `UPDATE users
-          SET twofactorsecret = $1,
-              twofa           = true
-          WHERE id = $2`,
-          [twoFactorSecret, id]
-        );
-      }
-      if (twoFactorSecretTemp){
-         await server.pg.query(
-            `UPDATE users
-            SET twofactorsecrettemp = $1
-            WHERE id = $2`,
-            [twoFactorSecretTemp, id]
-          );
-        }
+        await server.pg.query('SELECT * FROM validate_2fa($1, $2)', [id, twoFactorSecret]);
+      if (twoFactorSecretTemp)
+        await server.pg.query('SELECT * FROM add_2fa_secret($1, $2)', [id, twoFactorSecretTemp]);
       else if (twoFactorSecretTemp === null)
-      {
-        await server.pg.query();
-      }
+        await server.pg.query('SELECT * FROM rm_2fa($1)', [id]);
       console.log("on check le secret", twoFactorSecret);
       console.log("on check le secret temp", twoFactorSecretTemp);
       reply.status(200).send({ message: "user_2fa_secret_updated" });
