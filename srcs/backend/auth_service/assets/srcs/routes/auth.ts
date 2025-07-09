@@ -3,7 +3,6 @@ import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import 'dotenv/config';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import nodemailer from 'nodemailer';
 import validatePassword from '../utils/password';
 import isConnected from '../JWT/jsonwebtoken';
 import { error } from 'node:console';
