@@ -55,7 +55,7 @@ app.register(oauthPlugin, {
     },
   },
   cookie: {
-    secure:   true,
+    secure:   process.env.NODE_ENV === 'prod',
     sameSite: 'lax',
     path:     '/'
   },
@@ -73,10 +73,15 @@ app.register(dfaRoutes, { prefix: '/api/auth/2fa' });
 app.register(passwordResetRoutes, { prefix: '/api/auth' });
 
 // —–– 4) Démarrage
-app.listen({ host: '0.0.0.0', port: 3000 }, err => {
-  if (err) {
+async function start() {
+  try {
+    await initJwt();
+    await app.listen({ host: '0.0.0.0', port: 3000 });
+    app.log.info('Auth service ready');
+  } catch (err) {
     app.log.error(err);
     process.exit(1);
   }
-  app.log.info('Auth service ready');
-});
+}
+
+start();

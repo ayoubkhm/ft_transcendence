@@ -7,14 +7,27 @@ let jwtSecret: string | null = null;
 async function loadJwtSecret() {
   if (jwtSecret) return;
 
-  // Utilise le client Vault avec gestion de token automatique
-  const vaultClient = await getVaultClient();
-  const secretData = await vaultClient.read('secret/data/jwt');
-  
-  jwtSecret = secretData.data.data.secret;
-  
-  if (!jwtSecret) throw new Error('JWT secret missing in Vault');
-  console.log('✅ JWT secret loaded from Vault');
+  // First, allow direct env var override (e.g., in development)
+  if (process.env.JWT_SECRET) {
+    jwtSecret = process.env.JWT_SECRET;
+    console.log('✅ JWT secret loaded from environment variable');
+    return;
+  }
+
+  // Attempt to load from Vault
+  try {
+    const vaultClient = await getVaultClient();
+    const secretData = await vaultClient.read('secret/data/jwt');
+    jwtSecret = secretData.data.data.secret;
+    if (!jwtSecret) {
+      throw new Error('JWT secret missing in Vault data');
+    }
+    console.log('✅ JWT secret loaded from Vault');
+  } catch (err: any) {
+    console.error('⚠️ Failed to load JWT secret from Vault:', err.message || err);
+    // If env var not set and Vault failed, cannot proceed
+    throw err;
+  }
 }
 
 // À appeler au démarrage du service pour charger la clé
