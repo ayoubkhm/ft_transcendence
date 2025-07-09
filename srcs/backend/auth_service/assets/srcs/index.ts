@@ -6,6 +6,7 @@ import 'dotenv/config';
 import authRoutes from './routes/auth';
 import dfaRoutes from './routes/2FA';
 import passwordResetRoutes from './routes/passwordReset';
+import { initJwt } from './JWT/jsonwebtoken';
 
 declare module 'fastify' {
   interface FastifyInstance {
