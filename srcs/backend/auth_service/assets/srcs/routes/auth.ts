@@ -313,10 +313,8 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
     reply.clearCookie('jwt_transcendance', {}).status(200).send();
   });
 
-  app.get('/status', async function (request, reply) {
-    await isConnected(request, reply, () => {
+  app.get('/status', {preHandler:[isConnected]},async (request, reply) => {
       return (reply.status(200).send({ message: "logged_in" }));
-    });
   });
 
   done();
