@@ -97,7 +97,7 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
           return reply.cookie('jwt_transcendance', jwttoken, {
             path: '/',
             httpOnly: true,
-            sameSite: 'none',
+            sameSite: 'lax',
             secure: process.env.NODE_ENV === 'prod'
           }).redirect(`/login?oauth=true&need2fa=${user.twofa_validated}`);
         else
@@ -108,15 +108,33 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
     }
   });
 
-        interface guestBody {
-        name: string,
-    }
+    function generateRandomName(lenght: number = 5): string {
+      const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!()*+,-./:;<=>?@[]^_`{|}~';
+      let result = '';
+      for (let i = 0; i<lenght; i++)
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+      return result;
+    } 
 
-  app.post<{Body: guestBody}>('/guest', async (req, res) => {
-    const name = req.body.name;
+  app.post('/guest', async (req, res) => {
+    const name = generateRandomName();
+    console.log("Nameg guest =", name);
     if (!name)
       return (res.status(230).send({ error: "1006" }));
     try {
+      const lookup = await fetch(`http://user_service:3000/api/user/lookup/${name}`, 
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name,
+          credential: process.env.API_CREDENTIAL
+        }),
+      });
+      if (lookup.ok)
+        return (res.status(lookup.status).send({ error: "Fatal error: guestName found"}));
       const response = await fetch(`http://user_service:3000/api/user/create`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -189,10 +207,10 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
             console.log('[TOKEN JWT Signup] =', token);
             if (!token)
                 throw(new Error("cannot generate user token"));
-            return (res.cookie("jwt_transcendance", token, {
+            return (res.cookie('jwt_transcendance', token, {
                 path: "/",
                 httpOnly: true,
-                sameSite: "none",
+                sameSite: 'lax',
                 secure: process.env.NODE_ENV === 'prod'
               }).send({ response: "successfully logged in", need2fa: false }));
         } catch (err) {
@@ -258,7 +276,7 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
           httpOnly: true,
           path: '/',
           secure: process.env.NODE_ENV === 'production',
-          sameSite: 'none',
+          sameSite: 'lax',
         }).send({ response: "success", need2FA: true });
       } else {
         console.log("on est dans twofa FALSE", user.id);
@@ -278,8 +296,8 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
       return reply.cookie('jwt_transcendance', token, {
         httpOnly: true,
         path: '/',
-        secure: true,
-        sameSite: 'none',
+        secure: process.env.NODE_ENV === 'prod',
+        sameSite: 'lax',
       }).send({ response: "success", need2FA: false });
     }
   } catch (err) {

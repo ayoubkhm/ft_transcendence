@@ -152,11 +152,11 @@ export default async function dfaRoutes(app: FastifyInstance) {
           }
         }, process.env.JWT_SECRET as string, { expiresIn: '24h' });
         if (resignJWT){
-           return (res.cookie("ft_transcendence_jw_token", resignJWT,  {
+           return (res.cookie('ft_transcendence_jw_token', resignJWT,  {
                     path: "/",
                     httpOnly: true,
-                    sameSite: "none",
-                    secure: true
+                    sameSite: 'lax',
+                    secure: process.env.NODE_ENV === 'prod'
                   })).send({ response: "successfully logged with 2fa" });
         }
       }
