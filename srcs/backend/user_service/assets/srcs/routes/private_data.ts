@@ -107,31 +107,31 @@ export default async function private_userRoutes(server: FastifyInstance, option
     return reply.status(500).send({ error: 'Internal server error' });
   }
   });
+  
+    interface passwordUpdateBody
+    {
+        password: string,
+        credential: string,
+    }
 
-  interface deleteUserParams
-  {
-    email: string
-  }
+    interface passwordUpdateParams
+    {
+        email: string,
+    }
 
-  server.delete<{Params: deleteUserParams}>('/delete/:email', async (request, reply) => {
-    console.log('🎯 Route /delete/:email called');
-    const token = request.cookies.jwt_transcendence;
-    if (!token)
-      return (reply.status(230).send({ error: "0403"}));
-    const tokenPayload = getTokenData(token);
-    console.log("[CHECK DATA] =",tokenPayload)
-    if (!tokenPayload?.admin && !tokenPayload?.id)
-      return (reply.status(230).send({ error: "0403"}));
-    const dfa = tokenPayload?.dfa;
-    if (!dfa)
-      return (reply.status(230).send({ error: "1020" }));
-    //sql delete avec email
-    const user = await server.pg.query('SELECT * FROM delete_user($1)', [request.params.email]);
-    if (!user)
-      return reply.status(230).send({ error: "1006" });
-    reply.send({ response: "user deleted" });
+  server.put<{Body: passwordUpdateBody, Params: passwordUpdateParams}>('/password/:email', async (request, reply) => {
+    try {
+      const newPassword = request.body?.password;
+      const email = request.params.email;
+      let changePassword = server.pg.query('SELECT * FROM update_user_password($1, $2)', [email, newPassword]);
+      if (!changePassword)
+        reply.status(230).send({ error: "Password dosent change" });
+      reply.status(200).send({ message: "user_password_updated" });
+    } catch (error) {
+      console.error('Insert user error:', error);
+      return reply.status(500).send({ error: 'Internal server error' });
+    }
   });
-
 
   done();
 }

@@ -152,7 +152,7 @@ export default async function dfaRoutes(app: FastifyInstance) {
           }
         }, process.env.JWT_SECRET as string, { expiresIn: '24h' });
         if (resignJWT){
-           return (res.cookie('ft_transcendence_jw_token', resignJWT,  {
+           return (res.cookie('jwt_transcendence', resignJWT,  {
                     path: "/",
                     httpOnly: true,
                     sameSite: 'lax',
