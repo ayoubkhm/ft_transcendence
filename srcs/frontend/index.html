@@ -198,10 +198,18 @@
     <button id="profile-modal-close" class="absolute top-2 right-2 text-white text-xl">&times;</button>
     <h2 class="text-xl font-bold mb-4">Your Profile</h2>
     <div class="mb-2"><strong>Username:</strong> <span id="profile-username"></span></div>
+    <div class="mb-2"><strong>ID:</strong> <span id="profile-id"></span></div>
+    <div class="mb-2"><strong>Type:</strong> <span id="profile-type"></span></div>
+    <div class="mb-2"><strong>Created:</strong> <span id="profile-created"></span></div>
+    <div class="mb-4"><strong>Status:</strong> <span id="profile-online"></span></div>
     <div class="mb-4"><strong>Email:</strong> <span id="profile-email"></span></div>
     <div class="mb-4"><strong>2FA Status:</strong> <span id="profile-2fa-status"></span></div>
     <button id="profile-setup-2fa-btn" class="px-4 py-2 bg-yellow-500 rounded text-white">Enable 2FA</button>
     <button id="profile-disable-2fa-btn" class="px-4 py-2 bg-red-500 rounded text-white hidden">Disable 2FA</button>
+    <button id="profile-na-2fa-btn" class="px-4 py-2 bg-gray-500 rounded text-white hidden" disabled>N/A</button>
+    <div class="mt-4">
+      <button id="profile-change-password-btn" class="px-4 py-2 bg-blue-500 rounded text-white">Change Password</button>
+    </div>
   </div>
 </div>
 <!-- 2FA Setup Modal -->
@@ -221,6 +229,22 @@
     </form>
   </div>
 </div>
+</div>
+<!-- Change Password Modal -->
+<div id="change-password-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+  <div class="bg-gray-800 rounded p-6 relative w-full max-w-md mx-2">
+    <button id="change-password-close" class="absolute top-2 right-2 text-white text-xl">&times;</button>
+    <h2 class="text-xl font-bold mb-4">Change Password</h2>
+    <form id="change-password-form" class="flex flex-col gap-2">
+      <input type="password" id="current-password" placeholder="Current password"
+             class="px-2 py-1 rounded bg-gray-700 text-white" required />
+      <input type="password" id="new-password" placeholder="New password"
+             class="px-2 py-1 rounded bg-gray-700 text-white" required />
+      <input type="password" id="confirm-password" placeholder="Confirm new password"
+             class="px-2 py-1 rounded bg-gray-700 text-white" required />
+      <button type="submit" class="px-4 py-2 bg-green-500 rounded text-white">Save</button>
+    </form>
+  </div>
 </div>
 <!-- 2FA Login Modal -->
 <div id="2fa-login-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">

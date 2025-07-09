@@ -5,7 +5,7 @@ import jwt from 'jsonwebtoken';
 import 'dotenv/config';
 import authRoutes from './routes/auth';
 import dfaRoutes from './routes/2FA';
-import passwordResetRoutes from './routes/passwordReset';
+import changePasswordRoutes from './routes/changePassword';
 import { initJwt } from './JWT/jsonwebtoken';
 
 declare module 'fastify' {
@@ -71,7 +71,9 @@ app.register(oauthPlugin, {
 // —–– 3) Tes routes custom (le callback)
 app.register(authRoutes, { prefix: '/api/auth' });
 app.register(dfaRoutes, { prefix: '/api/auth/2fa' });
-app.register(passwordResetRoutes, { prefix: '/api/auth' });
+//+route for changing password
+app.register(changePasswordRoutes, { prefix: '/api/auth' });
+
 
 // —–– 4) Démarrage
 initJwt(); // Initialize JWT with secret

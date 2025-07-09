@@ -353,8 +353,10 @@ loginModalForm.addEventListener('submit', async (e) => {
       body   : JSON.stringify({ email, password })
     });
     if (res.ok) {
-      // Mark as logged in and reload
+      // Mark as logged in and store credentials
       localStorage.setItem('loggedIn', 'true');
+      localStorage.setItem('authMethod', 'password');
+      localStorage.setItem('userEmail', email);  // store email for profile lookup
       window.location.reload();
     } else {
       alert('Login failed');
@@ -368,6 +370,8 @@ loginModalForm.addEventListener('submit', async (e) => {
 // Handle Google OAuth login
 googleLoginBtn.addEventListener('click', (e) => {
   e.preventDefault();
+  // Mark login method as Google OAuth
+  localStorage.setItem('authMethod', 'google');
   window.location.href = '/api/auth/login/google';
 });
 // Handle guest login button (not submitting form)
@@ -414,6 +418,8 @@ const googleSignupBtn = document.getElementById('google-signup-btn') as HTMLButt
 if (!googleSignupBtn) throw new Error('Missing Google signup button');
 googleSignupBtn.addEventListener('click', (e) => {
   e.preventDefault();
+  // Mark signup/login method as Google OAuth
+  localStorage.setItem('authMethod', 'google');
   window.location.href = '/api/auth/login/google';
 });
 // Live password validation feedback
@@ -456,6 +462,8 @@ logoutBtn.addEventListener('click', async (e) => {
   }
   localStorage.removeItem('loggedIn');
   localStorage.removeItem('username');
+  // Clear stored authentication method
+  localStorage.removeItem('authMethod');
   updateAuthView();
 });
 // Initialize auth view by checking server session
@@ -464,25 +472,27 @@ logoutBtn.addEventListener('click', async (e) => {
 async function initializeAuth() {
   try {
     const res = await fetch('/api/auth/status', { credentials: 'include' });
+    const data = await res.json();
     if (res.ok) {
-      const data = await res.json();
+      // Authenticated: set flags
       localStorage.setItem('loggedIn', 'true');
-      if (data.name) {
-        localStorage.setItem('username', data.name);
-      }
+      if (data.name) localStorage.setItem('username', data.name);
+      // twofaEnabled: default false for original backend
+      localStorage.setItem('twofaEnabled', data.twofaEnabled === true ? 'true' : 'false');
     } else {
-      const data = await res.json();
-      // If server indicates 2FA is required, show 2FA login modal
+      // Not authenticated or 2FA required
       if (res.status === 403 && data.error === 'Two-factor authentication required') {
         show2faLogin();
       }
       localStorage.removeItem('loggedIn');
       localStorage.removeItem('username');
+      localStorage.removeItem('twofaEnabled');
     }
   } catch (err) {
     console.error('Auth status check failed', err);
     localStorage.removeItem('loggedIn');
     localStorage.removeItem('username');
+    localStorage.removeItem('twofaEnabled');
   }
   updateAuthView();
 }
@@ -545,6 +555,8 @@ signupModalForm.addEventListener('submit', async (e) => {
     if (res.ok) {
       localStorage.setItem('loggedIn', 'true');
       localStorage.setItem('username', username);
+      localStorage.setItem('userEmail', email);  // store email for profile lookup
+      localStorage.setItem('authMethod', 'password');
       updateAuthView();
       signupModal!.classList.add('hidden');
     } else {
@@ -565,17 +577,76 @@ const profileEmail = document.getElementById('profile-email') as HTMLElement | n
 const profile2FAStatus = document.getElementById('profile-2fa-status') as HTMLElement | null;
 const profileSetup2FABtn = document.getElementById('profile-setup-2fa-btn') as HTMLButtonElement | null;
 const profileDisable2FABtn = document.getElementById('profile-disable-2fa-btn') as HTMLButtonElement | null;
-if (!profileBtn || !profileModal || !profileModalCloseBtn || !profileUsername || !profileEmail || !profile2FAStatus || !profileSetup2FABtn || !profileDisable2FABtn) {
+const profileNa2FABtn = document.getElementById('profile-na-2fa-btn') as HTMLButtonElement | null;
+const profileChangePasswordBtn = document.getElementById('profile-change-password-btn') as HTMLButtonElement | null;
+const profileId = document.getElementById('profile-id') as HTMLElement | null;
+const profileType = document.getElementById('profile-type') as HTMLElement | null;
+const profileCreated = document.getElementById('profile-created') as HTMLElement | null;
+const profileOnline = document.getElementById('profile-online') as HTMLElement | null;
+if (!profileBtn || !profileModal || !profileModalCloseBtn || !profileUsername || !profileEmail || !profileId || !profileType || !profileCreated || !profileOnline || !profile2FAStatus || !profileSetup2FABtn || !profileDisable2FABtn || !profileNa2FABtn || !profileChangePasswordBtn) {
   throw new Error('Missing profile modal elements');
 }
-profileBtn.addEventListener('click', (e) => {
+profileBtn.addEventListener('click', async (e) => {
   e.preventDefault();
-  profileUsername.textContent = localStorage.getItem('username') || '';
-  profileEmail.textContent = '';
-  profile2FAStatus.textContent = '';
-  // Reset button visibility
-  profileSetup2FABtn.classList.remove('hidden');
-  profileDisable2FABtn.classList.add('hidden');
+  const username = localStorage.getItem('username') || '';
+  const email = localStorage.getItem('userEmail') || '';
+  profileUsername.textContent = username;
+  profileEmail.textContent = email;
+  // Fetch public profile details
+  if (email) {
+    try {
+      const resp = await fetch(`/api/user/search/${encodeURIComponent(email)}`, { credentials: 'include' });
+      if (resp.ok) {
+        const { rows } = await resp.json();
+        const user = rows[0];
+        profileId.textContent = user.id;
+        profileType.textContent = user.type;
+        profileCreated.textContent = new Date(user.created_at).toLocaleString();
+        profileOnline.textContent = user.online ? 'Online' : 'Offline';
+      }
+    } catch (err) {
+      console.error('Profile lookup error:', err);
+    }
+  }
+  const authMethod = localStorage.getItem('authMethod');
+  if (authMethod === 'google') {
+    profile2FAStatus.textContent = 'N/A';
+    profileSetup2FABtn.classList.add('hidden');
+    profileDisable2FABtn.classList.add('hidden');
+    profileNa2FABtn.classList.remove('hidden');
+    profileModal.classList.remove('hidden');
+    return;
+  }
+  // For non-Google users, fetch current 2FA enabled status
+    try {
+      // Fetch current authentication and 2FA enabled status
+      const resp = await fetch('/api/auth/status', { credentials: 'include' });
+      if (resp.ok) {
+        const { twofaEnabled } = await resp.json();
+        profile2FAStatus.textContent = twofaEnabled ? 'Enabled' : 'Disabled';
+        if (twofaEnabled) {
+          profileDisable2FABtn.classList.remove('hidden');
+          profileSetup2FABtn.classList.add('hidden');
+          profileNa2FABtn.classList.add('hidden');
+        } else {
+          profileSetup2FABtn.classList.remove('hidden');
+          profileDisable2FABtn.classList.add('hidden');
+          profileNa2FABtn.classList.add('hidden');
+        }
+      } else {
+        // Fallback: unable to fetch status
+        profile2FAStatus.textContent = 'Unknown';
+        profileSetup2FABtn.classList.remove('hidden');
+        profileDisable2FABtn.classList.add('hidden');
+        profileNa2FABtn.classList.add('hidden');
+      }
+    } catch (err) {
+      console.error('Error fetching auth status:', err);
+      profile2FAStatus.textContent = 'Error';
+      profileSetup2FABtn.classList.remove('hidden');
+      profileDisable2FABtn.classList.add('hidden');
+      profileNa2FABtn.classList.add('hidden');
+    }
   profileModal.classList.remove('hidden');
 });
 profileModalCloseBtn.addEventListener('click', (e) => {
@@ -617,6 +688,69 @@ profileDisable2FABtn.addEventListener('click', async (e) => {
   } catch (err) {
     console.error('Disable 2FA error:', err);
     alert('Error disabling 2FA');
+  }
+});
+// Change password modal controls
+const changePasswordModal = document.getElementById('change-password-modal') as HTMLElement | null;
+const changePasswordClose = document.getElementById('change-password-close') as HTMLButtonElement | null;
+const changePasswordForm = document.getElementById('change-password-form') as HTMLFormElement | null;
+const currentPasswordInput = document.getElementById('current-password') as HTMLInputElement | null;
+const newPasswordInput = document.getElementById('new-password') as HTMLInputElement | null;
+const confirmPasswordInput = document.getElementById('confirm-password') as HTMLInputElement | null;
+if (!changePasswordModal || !changePasswordClose || !changePasswordForm || !currentPasswordInput || !newPasswordInput || !confirmPasswordInput) {
+  throw new Error('Missing change-password modal elements');
+}
+profileChangePasswordBtn.addEventListener('click', (e) => {
+  e.preventDefault();
+  profileModal.classList.add('hidden');
+  changePasswordModal.classList.remove('hidden');
+});
+// Close change-password modal
+changePasswordClose.addEventListener('click', (e) => {
+  e.preventDefault();
+  changePasswordModal.classList.add('hidden');
+});
+changePasswordModal.addEventListener('click', (e) => {
+  if (e.target === changePasswordModal) {
+    changePasswordModal.classList.add('hidden');
+  }
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !changePasswordModal.classList.contains('hidden')) {
+    changePasswordModal.classList.add('hidden');
+  }
+});
+// Handle change-password form submit
+changePasswordForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const current = currentPasswordInput.value.trim();
+  const npass = newPasswordInput.value.trim();
+  const cpass = confirmPasswordInput.value.trim();
+  if (!current || !npass || !cpass) {
+    alert('All fields are required');
+    return;
+  }
+  if (npass !== cpass) {
+    alert('New passwords do not match');
+    return;
+  }
+  try {
+    const res = await fetch('/api/auth/password', {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ currentPassword: current, newPassword: npass, confirmPassword: cpass })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      alert(data.message || 'Password changed successfully');
+      changePasswordModal.classList.add('hidden');
+    } else {
+      alert(data.error || 'Failed to change password');
+    }
+  } catch (err) {
+    console.error('Change password error:', err);
+    alert('Error changing password');
   }
 });
 
