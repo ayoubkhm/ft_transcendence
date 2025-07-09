@@ -442,9 +442,17 @@ function updateAuthView() {
     authGuest!.classList.remove('hidden');
   }
 }
-// Logout handler
-logoutBtn.addEventListener('click', (e) => {
+// Logout handler: call server to clear cookie, then update UI
+logoutBtn.addEventListener('click', async (e) => {
   e.preventDefault();
+  try {
+    await fetch('/api/auth/logout', {
+      method: 'DELETE',
+      credentials: 'include',
+    });
+  } catch (err) {
+    console.error('Logout request failed', err);
+  }
   localStorage.removeItem('loggedIn');
   localStorage.removeItem('username');
   updateAuthView();

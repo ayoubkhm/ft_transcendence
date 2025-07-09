@@ -74,15 +74,12 @@ app.register(dfaRoutes, { prefix: '/api/auth/2fa' });
 app.register(passwordResetRoutes, { prefix: '/api/auth' });
 
 // —–– 4) Démarrage
-async function start() {
-  try {
-    await initJwt();
-    await app.listen({ host: '0.0.0.0', port: 3000 });
-    app.log.info('Auth service ready');
-  } catch (err) {
-    app.log.error(err);
-    process.exit(1);
-  }
-}
-
-start();
+initJwt(); // Initialize JWT with secret
+app.listen({ host: '0.0.0.0', port: 3000 }, (err, address) =>
+{
+    if (err) {
+      console.error(err);
+      process.exit(1);
+    }
+    console.log(`ready`);
+})
