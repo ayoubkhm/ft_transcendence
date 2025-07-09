@@ -348,6 +348,7 @@ loginModalForm.addEventListener('submit', async (e) => {
   try {
     const res = await fetch('/api/auth/login', {
       method : 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body   : JSON.stringify({ email, password })
     });
@@ -458,9 +459,11 @@ logoutBtn.addEventListener('click', async (e) => {
   updateAuthView();
 });
 // Initialize auth view by checking server session
+// --------------------------------------------------------------------
+// Initialize authentication state, or trigger 2FA when required
 async function initializeAuth() {
   try {
-    const res = await fetch('/api/auth/status');
+    const res = await fetch('/api/auth/status', { credentials: 'include' });
     if (res.ok) {
       const data = await res.json();
       localStorage.setItem('loggedIn', 'true');
@@ -468,6 +471,11 @@ async function initializeAuth() {
         localStorage.setItem('username', data.name);
       }
     } else {
+      const data = await res.json();
+      // If server indicates 2FA is required, show 2FA login modal
+      if (res.status === 403 && data.error === 'Two-factor authentication required') {
+        show2faLogin();
+      }
       localStorage.removeItem('loggedIn');
       localStorage.removeItem('username');
     }
@@ -529,6 +537,7 @@ signupModalForm.addEventListener('submit', async (e) => {
   try {
     const res = await fetch('/api/auth/signup', {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, name: username, password }),
     });
@@ -543,7 +552,191 @@ signupModalForm.addEventListener('submit', async (e) => {
     }
   } catch (err) {
     console.error('Signup error:', err);
-    alert('Sign up error');
+  alert('Sign up error');
+  }
+});
+
+// ─── User Profile Modal ───────────────────────────────────────────
+const profileBtn = document.getElementById('profile-btn') as HTMLButtonElement | null;
+const profileModal = document.getElementById('profile-modal') as HTMLElement | null;
+const profileModalCloseBtn = document.getElementById('profile-modal-close') as HTMLButtonElement | null;
+const profileUsername = document.getElementById('profile-username') as HTMLElement | null;
+const profileEmail = document.getElementById('profile-email') as HTMLElement | null;
+const profile2FAStatus = document.getElementById('profile-2fa-status') as HTMLElement | null;
+const profileSetup2FABtn = document.getElementById('profile-setup-2fa-btn') as HTMLButtonElement | null;
+const profileDisable2FABtn = document.getElementById('profile-disable-2fa-btn') as HTMLButtonElement | null;
+if (!profileBtn || !profileModal || !profileModalCloseBtn || !profileUsername || !profileEmail || !profile2FAStatus || !profileSetup2FABtn || !profileDisable2FABtn) {
+  throw new Error('Missing profile modal elements');
+}
+profileBtn.addEventListener('click', (e) => {
+  e.preventDefault();
+  profileUsername.textContent = localStorage.getItem('username') || '';
+  profileEmail.textContent = '';
+  profile2FAStatus.textContent = '';
+  // Reset button visibility
+  profileSetup2FABtn.classList.remove('hidden');
+  profileDisable2FABtn.classList.add('hidden');
+  profileModal.classList.remove('hidden');
+});
+profileModalCloseBtn.addEventListener('click', (e) => {
+  e.preventDefault();
+  profileModal.classList.add('hidden');
+});
+profileModal.addEventListener('click', (e) => {
+  if (e.target === profileModal) {
+    profileModal.classList.add('hidden');
+  }
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !profileModal.classList.contains('hidden')) {
+    profileModal.classList.add('hidden');
+  }
+});
+profileSetup2FABtn.addEventListener('click', (e) => {
+  e.preventDefault();
+  profileModal.classList.add('hidden');
+  open2faSetupModal();
+});
+// Disable 2FA handler
+profileDisable2FABtn.addEventListener('click', async (e) => {
+  e.preventDefault();
+  try {
+    const res = await fetch('/api/auth/2fa/delete', {
+      method: 'DELETE',
+      credentials: 'include'
+    });
+    const data = await res.json();
+    if (res.ok) {
+      alert(data.message || '2FA successfully disabled');
+      profile2FAStatus.textContent = 'Disabled';
+      profileDisable2FABtn.classList.add('hidden');
+      profileSetup2FABtn.classList.remove('hidden');
+    } else {
+      alert(data.error || 'Failed to disable 2FA');
+    }
+  } catch (err) {
+    console.error('Disable 2FA error:', err);
+    alert('Error disabling 2FA');
+  }
+});
+
+// ─── Two-Factor Authentication (2FA) Setup ───────────────────────────────────
+const setup2faModal = document.getElementById('2fa-setup-modal') as HTMLElement | null;
+const setup2faCloseBtn = document.getElementById('2fa-setup-close') as HTMLButtonElement | null;
+const setup2faQr = document.getElementById('2fa-setup-qr') as HTMLImageElement | null;
+const setup2faTestCodeDiv = document.getElementById('2fa-setup-testcode') as HTMLElement | null;
+const setup2faForm = document.getElementById('2fa-setup-form') as HTMLFormElement | null;
+const setup2faCodeInput = document.getElementById('2fa-setup-code') as HTMLInputElement | null;
+if (!setup2faModal || !setup2faCloseBtn || !setup2faQr || !setup2faForm || !setup2faCodeInput) {
+  throw new Error('Missing 2FA setup elements');
+}
+async function open2faSetupModal() {
+  try {
+    const res = await fetch('/api/auth/2fa/setup/ask', { method: 'GET', credentials: 'include' });
+    if (!res.ok) {
+      const err = await res.json();
+      alert(err.error || 'Failed to initiate 2FA setup');
+      return;
+    }
+    const data = await res.json();
+    setup2faQr.src = data.qrCode;
+    // Show test code for easier verification (dev only)
+    if (setup2faTestCodeDiv && data.testCode) {
+      setup2faTestCodeDiv.textContent = `Test code: ${data.testCode}`;
+      setup2faTestCodeDiv.classList.remove('hidden');
+    }
+    setup2faModal.classList.remove('hidden');
+  } catch (err) {
+    console.error('2FA setup ask error:', err);
+    alert('Error initiating 2FA setup');
+  }
+}
+// Close modal
+setup2faCloseBtn.addEventListener('click', (e) => {
+  e.preventDefault();
+  setup2faModal.classList.add('hidden');
+});
+// Close on backdrop click
+setup2faModal.addEventListener('click', (e) => {
+  if (e.target === setup2faModal) {
+    setup2faModal.classList.add('hidden');
+  }
+});
+// Close on Escape key
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !setup2faModal.classList.contains('hidden')) {
+    setup2faModal.classList.add('hidden');
+  }
+});
+
+// Handle 2FA setup verification submit
+setup2faForm!.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const code = setup2faCodeInput!.value.trim();
+  try {
+    const res = await fetch('/api/auth/2fa/setup/submit', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userToken: code }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      alert(data.message || '2FA successfully enabled');
+      setup2faModal!.classList.add('hidden');
+      if (setup2faTestCodeDiv) {
+        setup2faTestCodeDiv.classList.add('hidden');
+      }
+    } else {
+      alert(data.error || '2FA setup verification failed');
+    }
+  } catch (err) {
+    console.error('2FA setup submit error:', err);
+    alert('Error verifying 2FA code');
+  }
+});
+
+// --------------------------------------------------------------------
+// Two-Factor Authentication (2FA) Login for existing sessions
+const twofaLoginModal = document.getElementById('2fa-login-modal') as HTMLElement | null;
+const twofaLoginClose = document.getElementById('2fa-login-close') as HTMLButtonElement | null;
+const twofaLoginForm = document.getElementById('2fa-login-form') as HTMLFormElement | null;
+const twofaLoginCodeInput = document.getElementById('2fa-login-code') as HTMLInputElement | null;
+if (!twofaLoginModal || !twofaLoginClose || !twofaLoginForm || !twofaLoginCodeInput) {
+  throw new Error('Missing 2FA login elements');
+}
+// Show the 2FA login modal
+function show2faLogin() {
+  twofaLoginModal.classList.remove('hidden');
+}
+// Close handlers
+twofaLoginClose.addEventListener('click', e => { e.preventDefault(); twofaLoginModal.classList.add('hidden'); });
+twofaLoginModal.addEventListener('click', e => { if (e.target === twofaLoginModal) twofaLoginModal.classList.add('hidden'); });
+// Handle 2FA login submit
+twofaLoginForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const code = twofaLoginCodeInput.value.trim();
+  try {
+    console.log('2FA login: sending code', code);
+    const res = await fetch('/api/auth/2fa/submit', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userToken: code }),
+    });
+    const data = await res.json();
+    console.log('2FA login response:', res.status, data);
+    if (res.ok) {
+      console.log('2FA login success, reloading');
+      localStorage.setItem('loggedIn', 'true');
+      window.location.reload();
+    } else {
+      console.warn('2FA login failed:', data.error);
+      alert(data.error || '2FA verification failed');
+    }
+  } catch (err) {
+    console.error('2FA login error:', err);
+    alert('Error verifying 2FA login');
   }
 });
 

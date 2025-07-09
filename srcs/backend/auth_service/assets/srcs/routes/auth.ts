@@ -314,10 +314,10 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
   });
 
   app.get('/status', async function (request, reply) {
-    await isConnected(request, reply, () => {
+    await isConnected(request, reply, ()=> {
       return (reply.status(200).send({ message: "logged_in" }));
+      })
     });
-  });
 
   done();
 }

@@ -7,7 +7,7 @@ export default async function dfaRoutes(app: FastifyInstance) {
   // Step 1: setup TOTP secret and provide QR code
   app.get('/setup/ask', {}, async (req, res) => {
     try {
-      const token = req.cookies['jwt_transcendence'];
+      const token = req.cookies['jwt_transcendance'];
       console.log('2FA setup token:', token);
       const decode = jwt.verify(token, process.env.JWT_SECRET);
       console.log("DECODE======>", decode);
@@ -60,7 +60,7 @@ export default async function dfaRoutes(app: FastifyInstance) {
 
   app.post<{Body: dfaSetupAskBody}>('/setup/submit', {}, async (req, res) => {
     try {
-      const token = req.cookies['jwt_transcendence'];
+      const token = req.cookies['jwt_transcendance'];
       console.log('2FA setup token:', token);
       const decode = jwt.verify(token, process.env.JWT_SECRET);
       console.log("DECODE2======>", decode);
@@ -111,7 +111,7 @@ export default async function dfaRoutes(app: FastifyInstance) {
         const fetchReply = await update2fa.json();
         if (!update2fa.ok)
           return res.status(update2fa.status).send(fetchReply);
-        res.clearCookie('jwt_transcendence', {path: '/'}).status(200).send({ message: "2fa_successfully_enabled" })
+        res.clearCookie('jwt_transcendance', {path: '/'}).status(200).send({ message: "2fa_successfully_enabled" })
       }
       else
         return res.status(230).send({ error: "10017"});
@@ -127,21 +127,26 @@ export default async function dfaRoutes(app: FastifyInstance) {
 
   app.post<{Body: dfaSubmitBody}>('/submit', {}, async (req, res) => {
     try {
-      const jsonWebToken = req.cookies['jwt_transcendence'];
+      const jsonWebToken = req.cookies['jwt_transcendance'];
       const decode = jwt.verify(jsonWebToken, process.env.JWT_SECRET);
       console.log("DECODE333=>>>", decode);
-      if (!decode || !decode.data || !decode.id)
+      if (!decode || !decode.data || !decode.data.id)
         return res.status(230).send({ error: "Fatal data" });
+      console.log("DECODE444=>>>", decode.data);
       if (decode.data.dfa)
         return res.status(230).send({ error: "Two-factor authentication already completed." });
+      console.log("DECODE666=>>>", decode.data.dfa);
       const jsonWebTokenPayload = decode.data;
+      console.log("jsonWebTokenPayload==>", jsonWebTokenPayload)
       const userToken = req.body.userToken;
       const verified = speakeasy.totp.verify({
-        secret: jsonWebTokenPayload.twofa_secret,
+        secret: jsonWebTokenPayload.twoFactorSecret,
         encoding: 'base32',
         token: userToken,
         window: 5});
+      console.log("verified??", verified);
       if (verified){
+        console.log("cest verifier");
         const resignJWT = jwt.sign({
           data: {
             id : jsonWebTokenPayload.id,
@@ -151,8 +156,10 @@ export default async function dfaRoutes(app: FastifyInstance) {
             dfa: true
           }
         }, process.env.JWT_SECRET as string, { expiresIn: '24h' });
+        const check = jwt.verify(resignJWT, process.env.JWT_SECRET);
+        console.log("jwt", check);
         if (resignJWT){
-           return (res.cookie('jwt_transcendence', resignJWT,  {
+           return (res.cookie('jwt_transcendance', resignJWT,  {
                     path: "/",
                     httpOnly: true,
                     sameSite: 'lax',
@@ -170,7 +177,7 @@ export default async function dfaRoutes(app: FastifyInstance) {
 
   app.delete('/delete', async (req, res) => {
     try{
-      const jsonWebToken = req.cookies['jwt_transcendence'];
+      const jsonWebToken = req.cookies['jwt_transcendance'];
       const decode = jwt.verify(jsonWebToken, process.env.JWT_SECRET);
       const jsonWebTokenPayload = decode.data;
       if (!jsonWebTokenPayload || !jsonWebTokenPayload.id)
@@ -190,7 +197,7 @@ export default async function dfaRoutes(app: FastifyInstance) {
       const data = await response.json();
       if (!response.ok)
         res.status(response.status).send(data);
-      res.clearCookie('jwt_transcendence', {path: '/'}).status(200).send({ message: "2fa_successfully_disabled" });
+      res.clearCookie('jwt_transcendance', {path: '/'}).status(200).send({ message: "2fa_successfully_disabled" });
     } catch (error) {
       return res.status(401).send({ error: 'Unauthorized' });
     }
