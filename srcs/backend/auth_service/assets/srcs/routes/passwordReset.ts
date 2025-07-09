@@ -16,7 +16,7 @@ export default function passwordResetRoutes(app: FastifyInstance, options: any, 
             const email = req.body.email;
             if (!email)
                 return res.status(230).send({ error: "email not found" });
-            const userLookupResponse = fetch(`http://user_service:3000/api/user/lookup/${email}`,{
+            const userLookupResponse = await fetch(`http://user_service:3000/api/user/lookup/${email}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -24,7 +24,7 @@ export default function passwordResetRoutes(app: FastifyInstance, options: any, 
             });
             const data = await userLookupResponse.json();
             if (!userLookupResponse.ok)
-                return res.status(userLookupResponse.status).send({ error: userLookupData.error})
+                return res.status(userLookupResponse.status).send({ error: data.error });
             const user = data;
             if (!user)
                 return res.status(230).send({ error: "1006" });
