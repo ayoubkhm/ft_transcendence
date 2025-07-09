@@ -41,18 +41,21 @@ export default function isConnected(request: any, reply: any, done: any) {
     return reply.code(500).send({ error: 'JWT secret not initialized' });
   }
 
-  const token = request.cookies.jwt_transcendance;
+  const token = request.cookies['jwt_transcendance'];
   if (!token || token === 'undefined') {
     return reply.code(401).send({ error: 'Not authenticated' });
   }
 
   try {
     const decoded: i_token = (jwt.verify(token, jwtSecret) as JwtPayload).data;
+    console.log("CACA");
+    console.log('JWT decoded:', decoded);
     const id = decoded.id;
     if (!id) {
       return reply.code(401).send({ error: 'Invalid token' });
     }
     const dfa = decoded.dfa;
+    console.log('DFA status:', dfa);
     if (dfa === false) {
       return reply.code(403).send({ error: 'Two-factor authentication required' });
     }
