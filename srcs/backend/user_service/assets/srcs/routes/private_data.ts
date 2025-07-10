@@ -5,6 +5,29 @@ import { getTokenData } from "../utils/getTokenData";
 export default async function private_userRoutes(server: FastifyInstance, options: any, done: any) {
 
   console.log('✅ private_userRoutes loaded');
+
+    interface profilePictureBody{
+        credential: string,
+        profPicture: string,
+        id: number
+    }
+
+    server.put<{Body: profilePictureBody}>('/profile_picture', async (request, reply) => {
+      const id = request.body?.id;
+      const pp = request.body?.profPicture;
+      if (!pp || !id)
+        return reply.status(230).send({ error: "0401" });
+      try {
+        const result = null;
+        //requete pour ajouter un pp via lid du mec connecter.
+        if (!result)
+          return reply.status(230).send({ error: "0401" });
+        reply.status(200).send();
+      } catch (error) {
+          console.log('error', error)
+          return reply.status(230).send({ error: "0401" });
+      }
+    });
         
     interface PrivateDataParams {
       email: string;
