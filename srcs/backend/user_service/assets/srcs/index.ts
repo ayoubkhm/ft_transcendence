@@ -11,6 +11,7 @@ const server = fastify({ trustProxy: true });
 
 server.register(multipart);
 server.register(fastifyPostgres, {
+  // TODO: replace value db
   connectionString: 'postgresql://transcendence:imthebest@database_service:5432/db',
 });
 server.register(cookiesPlugin, {});

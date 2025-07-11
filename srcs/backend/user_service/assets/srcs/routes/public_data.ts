@@ -71,6 +71,38 @@ export default function public_userRoutes (server: FastifyInstance, options: any
         reply.send({ response: "user deleted" });
     });
 
+    
+
+
+
+    server.get<{ Querystring: { input: string; }; Reply: { success: boolean; msg: string; suggestions: { id: number; name: string; }[] } }>('/suggest', async (request, reply) =>
+    {
+        const { input } = request.query;
+
+        try
+        {
+            const { rows } = await server.pg.query('SELECT * FROM suggest_users($1)', [input]);
+            if (!rows[0].success)
+                console.log(rows[0].msg);
+
+            return reply.send({
+                success: rows[0].success,
+                msg: rows[0].msg,
+                suggestions: rows[0].suggestions,
+            });
+        }
+        catch (error)
+        {
+            request.log.error(error);
+            return reply.status(500).send({
+                success: false,
+                msg: 'Internal server error (query failed)',
+                suggestions: [],
+            });
+        }
+    });
+
+
 
     done();
 }
