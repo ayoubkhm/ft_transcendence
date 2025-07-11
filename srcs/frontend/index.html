@@ -116,10 +116,10 @@
     <div class="bg-gray-800 rounded p-6 relative w-full max-w-sm mx-2">
       <button id="login-modal-close" class="absolute top-2 right-2 text-white text-xl">&times;</button>
         <form id="login-modal-form" class="flex flex-col gap-2">
-          <input type="email" id="login-email" placeholder="Email"
+          <input type="email" id="login-email" name="email" autocomplete="username" placeholder="Email"
                 class="px-2 py-1 rounded bg-gray-700 focus:outline-none text-white"
                 required />
-          <input type="password" id="login-password" placeholder="Password"
+          <input type="password" id="login-password" placeholder="Password" autocomplete="current-password"
                 class="px-2 py-1 rounded bg-gray-700 focus:outline-none text-white"
                 required />
           <div class="flex gap-2 mt-2 justify-center">
@@ -150,17 +150,17 @@
     <!-- Validation HTML5 active → pas de novalidate -->
     <form id="signup-modal-form" class="flex flex-col gap-2">
       <!-- Email (max 50) -->
-      <input type="email" id="signup-email" placeholder="Email"
+      <input type="email" id="signup-email" name="email" autocomplete="email" placeholder="Email"
              class="px-2 py-1 rounded bg-gray-700 text-white"
              maxlength="50" required />
 
       <!-- Username (1-20) -->
-      <input type="text" id="signup-name" placeholder="Username"
+      <input type="text" id="signup-name" name="username" autocomplete="username" placeholder="Username"
              class="px-2 py-1 rounded bg-gray-700 text-white"
              minlength="1" maxlength="20" required />
 
       <!-- Password ≥8, 1 digit, 1 special -->
-      <input type="password" id="signup-password" placeholder="Password"
+      <input type="password" id="signup-password" placeholder="Password" autocomplete="new-password"
              class="px-2 py-1 rounded bg-gray-700 text-white"
              pattern="(?=.*\d)(?=.*[!@#$%^&*]).{8,}"
              required />
@@ -169,7 +169,7 @@
       <div id="signup-pass-feedback" class="text-sm text-gray-400 mt-1"></div>
 
       <!-- Confirm password (même contrainte mini) -->
-      <input type="password" id="signup-confirm" placeholder="Confirm password"
+      <input type="password" id="signup-confirm" placeholder="Confirm password" autocomplete="new-password"
              class="px-2 py-1 rounded bg-gray-700 text-white"
              pattern="(?=.*\d)(?=.*[!@#$%^&*]).{8,}"
              required />
@@ -236,11 +236,15 @@
     <button id="change-password-close" class="absolute top-2 right-2 text-white text-xl">&times;</button>
     <h2 class="text-xl font-bold mb-4">Change Password</h2>
     <form id="change-password-form" class="flex flex-col gap-2">
-      <input type="password" id="current-password" placeholder="Current password"
+      <!-- Hidden username field for password managers -->
+      <input type="text" name="username" autocomplete="username"
+             style="position:absolute;width:1px;height:1px;padding:0;border:0;clip:rect(0,0,0,0);overflow:hidden;"
+             tabindex="-1" />
+      <input type="password" id="current-password" placeholder="Current password" autocomplete="current-password"
              class="px-2 py-1 rounded bg-gray-700 text-white" required />
-      <input type="password" id="new-password" placeholder="New password"
+      <input type="password" id="new-password" placeholder="New password" autocomplete="new-password"
              class="px-2 py-1 rounded bg-gray-700 text-white" required />
-      <input type="password" id="confirm-password" placeholder="Confirm new password"
+      <input type="password" id="confirm-password" placeholder="Confirm new password" autocomplete="new-password"
              class="px-2 py-1 rounded bg-gray-700 text-white" required />
       <button type="submit" class="px-4 py-2 bg-green-500 rounded text-white">Save</button>
     </form>
