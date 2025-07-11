@@ -47,9 +47,32 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER enforce_game_constraints
-BEFORE INSERT OR UPDATE ON games
+
+CREATE OR REPLACE FUNCTION enforce_ugame_constraints() RETURNS trigger AS $$
+BEGIN
+	IF NEW.type = 'TOURNAMENT' AND (NEW.tournament_id IS NULL OR NEW.tournament_round IS NULL) THEN
+		RAISE EXCEPTION 'Game is of tournament type but tournament_id or tournament_round is null';
+	ELSIF NEW.tournament_id IS NOT NULL AND NEW.type != 'TOURNAMENT' THEN
+		RAISE EXCEPTION 'For game to have tournament id, it should also have tournament type';
+	ELSIF NEW.tournament_round IS NULL AND NEW.type != 'TOURNAMENT' THEN
+		RAISE EXCEPTION 'For game to have tournament round, it should also have tournament type';
+	END IF;
+
+	IF NEW.tournament_round IS NOT NULL AND NEW.tournament_round < 1 THEN
+		RAISE EXCEPTION 'Tournament round can''t be negative or zero';
+	END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_game
+BEFORE INSERT ON games
 FOR EACH ROW EXECUTE FUNCTION enforce_game_constraints();
+
+CREATE TRIGGER trg_game_update
+BEFORE UPDATE ON games
+FOR EACH ROW EXECUTE FUNCTION enforce_ugame_constraints();
 
 GRANT ALL PRIVILEGES ON TABLE games TO ${DB_USER};
 

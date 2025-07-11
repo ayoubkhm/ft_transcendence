@@ -4,7 +4,7 @@ CREATE OR REPLACE FUNCTION new_friends(
 )
 RETURNS TABLE(success BOOLEAN, msg TEXT) AS $$
 DECLARE
-    _type BOOLEAN;
+    _type TEXT;
 BEGIN
     SELECT type INTO _type
     FROM users
@@ -22,7 +22,7 @@ BEGIN
         RETURN ;
     END IF;
 
-	INSERT INTO users (user_id1, user_id2)
+	INSERT INTO friends (user1_id, user2_id)
 	VALUES (_id1, _id2);
 	
 	RETURN QUERY SELECT TRUE, 'Friends successfully created';
@@ -40,9 +40,9 @@ CREATE OR REPLACE FUNCTION new_friends(
 )
 RETURNS TABLE(success BOOLEAN, msg TEXT) AS $$
 DECLARE
-    _type BOOLEAN;
-    _id1 BOOLEAN;
-    _id2 BOOLEAN;
+    _type TEXT;
+    _id1 INTEGER;
+    _id2 INTEGER;
 BEGIN
     SELECT type, id INTO _type, _id1
     FROM users
@@ -60,7 +60,7 @@ BEGIN
         RETURN ;
     END IF;
 
-	INSERT INTO users (user_id1, user_id2)
+	INSERT INTO friends (user1_id, user2_id)
 	VALUES (_id1, _id2);
 	
 	RETURN QUERY SELECT TRUE, 'Friends successfully created';
@@ -79,8 +79,8 @@ CREATE OR REPLACE FUNCTION new_friends(
 )
 RETURNS TABLE(success BOOLEAN, msg TEXT) AS $$
 DECLARE
-    _type BOOLEAN;
-    _id2 BOOLEAN;
+    _type TEXT;
+    _id2 INTEGER;
 BEGIN
     SELECT type INTO _type
     FROM users
@@ -98,7 +98,7 @@ BEGIN
         RETURN ;
     END IF;
 
-	INSERT INTO users (user_id1, user_id2)
+	INSERT INTO friends (user1_id, user2_id)
 	VALUES (_id1, _id2);
 	
 	RETURN QUERY SELECT TRUE, 'Friends successfully created';
@@ -117,8 +117,8 @@ CREATE OR REPLACE FUNCTION new_friends(
 )
 RETURNS TABLE(success BOOLEAN, msg TEXT) AS $$
 DECLARE
-    _type BOOLEAN;
-    _id1 BOOLEAN;
+    _type TEXT;
+    _id1 INTEGER;
 BEGIN
     SELECT type, id INTO _type, _id1
     FROM users
@@ -136,7 +136,7 @@ BEGIN
         RETURN ;
     END IF;
 
-	INSERT INTO users (user_id1, user_id2)
+	INSERT INTO friends (user1_id, user2_id)
 	VALUES (_id1, _id2);
 	
 	RETURN QUERY SELECT TRUE, 'Friends successfully created';
@@ -202,8 +202,8 @@ $$ LANGUAGE plpgsql;
 
 
 CREATE OR REPLACE FUNCTION delete_friends(
-    _email1 INTEGER,
-    _id2 TEXT)
+    _email1 TEXT,
+    _id2 INTEGER)
 RETURNS TABLE(success BOOLEAN, msg TEXT) AS $$
 DECLARE
 	friends_deleted BOOLEAN := FALSE;
@@ -227,9 +227,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 
-
 CREATE OR REPLACE FUNCTION delete_friends(
-    _email1 INTEGER,
+    _email1 TEXT,
     _email2 TEXT)
 RETURNS TABLE(success BOOLEAN, msg TEXT) AS $$
 DECLARE
@@ -253,12 +252,60 @@ END;
 $$ LANGUAGE plpgsql;
 
 
-CREATE OR REPLACE FUNCTION get_friends()
-RETURNS TABLE(success BOOLEAN, msg TEXT, user_friends []) AS $$
+
+CREATE OR REPLACE FUNCTION get_friends(_id INTEGER)
+RETURNS TABLE (success BOOLEAN, msg TEXT, user_friends public_user[]) AS $$
 DECLARE
+    _user_exists BOOLEAN;
+    _friends public_user[];
 BEGIN
-EXCEPTION
-	WHEN OTHERS THEN
-    	RETURN QUERY SELECT FALSE, SQLERRM;
+    SELECT EXISTS(SELECT 1 FROM users WHERE id = _id) INTO _user_exists;
+
+    IF NOT _user_exists THEN
+        RETURN QUERY SELECT FALSE, 'User not found', ARRAY[]::public_user[];
+        RETURN;
+    END IF;
+
+    SELECT ARRAY(
+        SELECT ROW(users.id, users.name, users.tag, users.email, users.avatar)::public_user
+        FROM friends
+        JOIN users
+        ON ((users.id = friends.user1_id AND friends.user2_id = _id)
+            OR (friends.user2_id = users.id AND friends.user1_id = _id))
+    ) INTO _friends;
+
+    _friends := COALESCE(_friends, ARRAY[]::public_user[]);
+    RETURN QUERY SELECT TRUE, 'Friends successfully retrieved', _friends;
 END;
-$$ LANGUAGE plgsql;
+$$ LANGUAGE plpgsql;
+
+
+
+
+CREATE OR REPLACE FUNCTION get_friends(_email TEXT)
+RETURNS TABLE (success BOOLEAN, msg TEXT, user_friends public_user[]) AS $$
+DECLARE
+    _id INTEGER;
+    _friends public_user[];
+BEGIN
+    SELECT id INTO _id
+    FROM users
+    WHERE email = _email;
+
+    IF NOT FOUND THEN
+        RETURN QUERY SELECT FALSE, 'User not found', ARRAY[]::public_user[];
+        RETURN;
+    END IF;
+
+    SELECT ARRAY(
+        SELECT ROW(users.id, users.name, users.tag, users.email, users.avatar)::public_user
+        FROM friends
+        JOIN users
+        ON ((users.id = friends.user1_id AND friends.user2_id = _id)
+            OR (friends.user2_id = users.id AND friends.user1_id = _id))
+    ) INTO _friends;
+
+    _friends := COALESCE(_friends, ARRAY[]::public_user[]);
+    RETURN QUERY SELECT TRUE, 'Friends successfully retrieved', _friends;
+END;
+$$ LANGUAGE plpgsql;

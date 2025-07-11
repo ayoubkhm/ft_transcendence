@@ -224,6 +224,65 @@ END;
 $$ LANGUAGE plpgsql;
 
 
+CREATE OR REPLACE FUNCTION update_user_avatar(_email TEXT, _avatar TEXT)
+RETURNS TABLE(success BOOLEAN, msg TEXT) AS $$
+DECLARE
+	user_found BOOLEAN := FALSE;
+BEGIN
+	IF _email IS NULL THEN
+		RETURN QUERY SELECT FALSE, 'User not found (email is null)';
+		RETURN ;
+	ELSIF _avatar IS NULL THEN
+		RETURN QUERY SELECT FALSE, 'New password can''t be null';
+		RETURN ;
+	END IF;
+	UPDATE users
+	SET avatar = _avatar
+	WHERE email = _email
+	RETURNING TRUE INTO user_found;
+
+	IF user_found THEN
+		RETURN QUERY SELECT TRUE, 'Password updated successfully';
+		RETURN ;
+	END IF;
+	RETURN QUERY SELECT FALSE, 'No user found with that email % (update avatar fail)', _email;
+	
+EXCEPTION
+	WHEN OTHERS THEN
+    	RETURN QUERY SELECT FALSE, SQLERRM;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION update_user_avatar(_id INTEGER, _avatar TEXT)
+RETURNS TABLE(success BOOLEAN, msg TEXT) AS $$
+DECLARE
+	user_found BOOLEAN := FALSE;
+BEGIN
+	IF _id IS NULL THEN
+		RETURN QUERY SELECT FALSE, 'User not found (id is null)';
+		RETURN ;
+	ELSIF _avatar IS NULL THEN
+		RETURN QUERY SELECT FALSE, 'New password can''t be null';
+		RETURN ;
+	END IF;
+	UPDATE users
+	SET avatar = _avatar
+	WHERE id = _id
+	RETURNING TRUE INTO user_found;
+
+	IF user_found THEN
+		RETURN QUERY SELECT TRUE, 'Password updated successfully';
+		RETURN ;
+	END IF;
+	RETURN QUERY SELECT FALSE, 'No user found with that id % (update avatar fail)', _id;
+	
+EXCEPTION
+	WHEN OTHERS THEN
+    	RETURN QUERY SELECT FALSE, SQLERRM;
+END;
+$$ LANGUAGE plpgsql;
+
+
 
 
 CREATE OR REPLACE FUNCTION delete_user(_email TEXT)
