@@ -10,6 +10,8 @@ export default defineConfig({
     allowedHosts: [
       '.ngrok-free.app',
       'localhost',
+      // Allow Docker network hostname when proxied through Nginx
+      'frontend',
     ],
   },
 });
