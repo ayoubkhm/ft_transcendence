@@ -7,7 +7,8 @@ BEGIN
 	FROM generate_series(0, 9999) AS tags_table(tag)
 	LEFT JOIN users users_table ON users_table.name = _name AND users_table.tag = tags_table.tag
 	WHERE users_table.tag IS NULL
-	ORDER BY tags_table.tag
+	-- ORDER BY tags_table.tag
+	ORDER BY random()
 	LIMIT 1;
 
 	IF new_tag IS NULL THEN
