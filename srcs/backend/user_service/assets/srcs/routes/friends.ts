@@ -126,7 +126,8 @@ export default async function friendsRoutes(server: FastifyInstance, options: an
             const id = getTokenData(token).id;
             if (!id)
                 return reply.status(230).send({ error: "0403" });
-            let user = null;
+            // Placeholder for fetched user; annotate to allow accessing properties
+            let user: any = null;
             //requete de liste des amis
             if (!user)
                 return reply.status(230).send({ error: "0404" });
@@ -145,7 +146,8 @@ export default async function friendsRoutes(server: FastifyInstance, options: an
             const id = getTokenData(token).id;
             if (!id)
                 return reply.status(230).send({ error: "0403" });
-            let user = null;
+            // Placeholder for fetched user; annotate to allow accessing properties
+            let user: any = null;
             //requete de friend requeste list
             if (!user)
                 return reply.status(230).send({ error: "0404" });
