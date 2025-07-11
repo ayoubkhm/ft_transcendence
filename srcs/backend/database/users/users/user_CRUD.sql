@@ -35,9 +35,6 @@ EXCEPTION
 END;
 $$ LANGUAGE plpgsql;
 
--- CREATE EXTENSION IF NOT EXISTS pgcrypto;
--- -> hashed_password := crypt(_password, gen_salt('bf'));
-
 
 CREATE OR REPLACE FUNCTION update_user_email(_email TEXT, _newEmail TEXT)
 RETURNS TABLE(success BOOLEAN, msg TEXT) AS $$
@@ -62,7 +59,38 @@ BEGIN
 	END IF;
 	RETURN QUERY SELECT FALSE, 'No user found with that email (update email fail)';
 	
+EXCEPTION
+	WHEN unique_violation THEN
+    	RETURN QUERY SELECT FALSE, 'Email is already in use';
+	WHEN OTHERS THEN
+    	RETURN QUERY SELECT FALSE, SQLERRM;
+END;
+$$ LANGUAGE plpgsql;
 
+CREATE OR REPLACE FUNCTION update_user_email(_id INTEGER, _newEmail TEXT)
+RETURNS TABLE(success BOOLEAN, msg TEXT) AS $$
+DECLARE
+	user_found BOOLEAN := FALSE;
+BEGIN
+	IF _id IS NULL THEN
+		RETURN QUERY SELECT FALSE, 'User not found (_id is null)';
+		RETURN ;
+	ELSIF _newEmail IS NULL THEN
+		RETURN QUERY SELECT FALSE, 'New email can''t be null';
+		RETURN ;
+	END IF;
+
+	UPDATE users
+	SET email = _newEmail
+	WHERE id = _id
+	RETURNING TRUE INTO user_found;
+
+	IF user_found THEN
+		RETURN QUERY SELECT TRUE, 'Email updated successfully';
+		RETURN ;
+	END IF;
+	RETURN QUERY SELECT FALSE, 'No user found with that id (update email fail)';
+	
 EXCEPTION
 	WHEN unique_violation THEN
     	RETURN QUERY SELECT FALSE, 'Email is already in use';
@@ -105,7 +133,36 @@ EXCEPTION
 END;
 $$ LANGUAGE plpgsql;
 
+CREATE OR REPLACE FUNCTION update_user_name(_id INTEGER, _name TEXT)
+RETURNS TABLE(success BOOLEAN, msg TEXT) AS $$
+DECLARE
+	user_found BOOLEAN := FALSE;
+BEGIN
+	IF _id IS NULL THEN
+		RETURN QUERY SELECT FALSE, 'User not found (id is null)';
+		RETURN ;
+	ELSIF _name IS NULL THEN
+		RETURN QUERY SELECT FALSE, 'New name can''t be null';
+		RETURN ;
+	END IF;
+	UPDATE users
+	SET name = _name
+	WHERE id = _id
+	RETURNING TRUE INTO user_found;
 
+	IF user_found THEN
+		RETURN QUERY SELECT TRUE, 'Username updated successfully';
+		RETURN ;
+	END IF;
+	RETURN QUERY SELECT FALSE, 'No user not found with that id (update name fail)';
+	
+EXCEPTION
+	-- WHEN unique_violation THEN
+    -- 	RETURN QUERY SELECT FALSE, 'Username is already taken';
+	WHEN OTHERS THEN
+    	RETURN QUERY SELECT FALSE, SQLERRM;
+END;
+$$ LANGUAGE plpgsql;
 
 
 CREATE OR REPLACE FUNCTION update_user_password(_email TEXT, _password TEXT)
@@ -137,6 +194,35 @@ EXCEPTION
 END;
 $$ LANGUAGE plpgsql;
 
+CREATE OR REPLACE FUNCTION update_user_password(_id INTEGER, _password TEXT)
+RETURNS TABLE(success BOOLEAN, msg TEXT) AS $$
+DECLARE
+	user_found BOOLEAN := FALSE;
+BEGIN
+	IF _id IS NULL THEN
+		RETURN QUERY SELECT FALSE, 'User not found (id is null)';
+		RETURN ;
+	ELSIF _password IS NULL THEN
+		RETURN QUERY SELECT FALSE, 'New password can''t be null';
+		RETURN ;
+	END IF;
+	UPDATE users
+	SET password = _password
+	WHERE id = _id
+	RETURNING TRUE INTO user_found;
+
+	IF user_found THEN
+		RETURN QUERY SELECT TRUE, 'Password updated successfully';
+		RETURN ;
+	END IF;
+	RETURN QUERY SELECT FALSE, 'No user found with that id (update password fail)';
+	
+EXCEPTION
+	WHEN OTHERS THEN
+    	RETURN QUERY SELECT FALSE, SQLERRM;
+END;
+$$ LANGUAGE plpgsql;
+
 
 
 
@@ -154,6 +240,70 @@ BEGIN
 EXCEPTION
 	WHEN OTHERS THEN
     	RETURN QUERY SELECT FALSE, SQLERRM;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION delete_user(_id INTEGER)
+RETURNS TABLE(success BOOLEAN, msg TEXT) AS $$
+DECLARE
+	user_deleted BOOLEAN := FALSE;
+BEGIN
+	DELETE FROM users WHERE id = _id RETURNING TRUE INTO user_deleted;
+	IF user_deleted THEN
+		RETURN QUERY SELECT TRUE, 'User deleted successfully';
+	ELSE
+		RETURN QUERY SELECT FALSE, 'No user found with that id (delete fail)';
+	END IF;
+EXCEPTION
+	WHEN OTHERS THEN
+    	RETURN QUERY SELECT FALSE, SQLERRM;
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION get_public(_id INTEGER)
+RETURNS TABLE(success BOOLEAN, msg TEXT, friend public_user) AS $$
+DECLARE
+	_name TEXT;
+	_tag INTEGER;
+	_email TEXT;
+	_avatar TEXT;
+BEGIN
+	SELECT name, tag, email, avatar INTO _name, _tag, _email, _avatar
+	FROM users
+	WHERE id = _id;
+	IF NOT FOUND THEN
+		RETURN QUERY SELECT FALSE, 'User not found with this id', NULL::public_user;
+		RETURN ;
+	END IF;
+	
+	RETURN QUERY SELECT TRUE, 'User public info successfully retrieved', ROW(_id, _name, _tag, _email, _avatar)::public_user;
+EXCEPTION
+	WHEN OTHERS THEN
+    	RETURN QUERY SELECT FALSE, SQLERRM, NULL::public_user;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION get_public(_email TEXT)
+RETURNS TABLE(success BOOLEAN, msg TEXT, friend public_user) AS $$
+DECLARE
+	_id INTEGER;
+	_name TEXT;
+	_tag INTEGER;
+	_avatar TEXT;
+BEGIN
+	SELECT id, name, tag, avatar INTO _id, _name, _tag, _avatar
+	FROM users
+	WHERE email = _email;
+	IF NOT FOUND THEN
+		RETURN QUERY SELECT FALSE, 'User not found with this email', NULL::public_user;
+		RETURN ;
+	END IF;
+	
+	RETURN QUERY SELECT TRUE, 'User public info successfully retrieved', ROW(_id, _name, _tag, _email, _avatar)::public_user;
+EXCEPTION
+	WHEN OTHERS THEN
+    	RETURN QUERY SELECT FALSE, SQLERRM, NULL::public_user;
 END;
 $$ LANGUAGE plpgsql;
 

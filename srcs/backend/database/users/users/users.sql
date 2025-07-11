@@ -1,3 +1,32 @@
+CREATE OR REPLACE FUNCTION generate_user_tag(_name TEXT)
+RETURNS INTEGER AS $$
+DECLARE
+	new_tag INTEGER;
+BEGIN
+	SELECT tags_table.tag INTO new_tag
+	FROM generate_series(0, 9999) AS tags_table(tag)
+	LEFT JOIN users users_table ON users_table.name = _name AND users_table.tag = tags_table.tag
+	WHERE users_table.tag IS NULL
+	ORDER BY tags_table.tag
+	LIMIT 1;
+
+	IF new_tag IS NULL THEN
+		RAISE EXCEPTION 'All tags used for name %', _name;
+	END IF;
+
+	RETURN new_tag;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TYPE public_user AS (
+    id INTEGER,
+    name TEXT,
+    tag INTEGER,
+    email TEXT,
+    avatar TEXT
+);
+
+
 CREATE TABLE IF NOT EXISTS users (
 	id SERIAL PRIMARY KEY,
 	name TEXT NOT NULL,
@@ -10,7 +39,8 @@ CREATE TABLE IF NOT EXISTS users (
 	twofa_secret TEXT DEFAULT NULL,		-- nullable pour compte pas 2fa
 	twofa_validated BOOLEAN DEFAULT NULL,
 	active BOOLEAN NOT NULL DEFAULT TRUE,		-- nullable pour 2fa pas validated
-	avatar TEXT DEFAULT NULL
+	avatar TEXT DEFAULT NULL,
+	tag INTEGER DEFAULT NULL
 );
 
 
@@ -43,3 +73,17 @@ FOR EACH ROW
 EXECUTE FUNCTION enforce_user_constraints();
 
 GRANT ALL PRIVILEGES ON TABLE users TO ${DB_USER};
+
+
+CREATE OR REPLACE FUNCTION assign_user_tag()
+RETURNS TRIGGER AS $$
+BEGIN
+	NEW.tag := generate_user_tag(NEW.name);
+	RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_assign_tag
+BEFORE INSERT ON users
+FOR EACH ROW
+EXECUTE FUNCTION assign_user_tag();
