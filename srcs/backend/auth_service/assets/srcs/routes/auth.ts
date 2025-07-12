@@ -93,7 +93,7 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
         const jwttoken = jwt.sign(jwtpayload, process.env.JWT_SECRET as string, { expiresIn: '24h' });
         console.log("token:", jwttoken);
         if (jwttoken) 
-          return reply.cookie('jwt_transcendance', jwttoken, {
+          return reply.cookie('jwt_transcendence', jwttoken, {
             path: '/',
             httpOnly: true,
             sameSite: 'lax',
@@ -206,7 +206,7 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
             console.log('[TOKEN JWT Signup] =', token);
             if (!token)
                 throw(new Error("cannot generate user token"));
-            return (res.cookie('jwt_transcendance', token, {
+            return (res.cookie('jwt_transcendence', token, {
                 path: "/",
                 httpOnly: true,
                 sameSite: 'lax',
@@ -271,7 +271,7 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
         if (!pendingToken) {
           throw new Error("cannot generate pending token");
         }
-        return reply.cookie('jwt_transcendance', pendingToken, {
+        return reply.cookie('jwt_transcendence', pendingToken, {
           httpOnly: true,
           path: '/',
           secure: process.env.NODE_ENV === 'production',
@@ -292,7 +292,7 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
         throw (new Error("cannot generate user token"));
       // If no 2FA, send JWT token directly
       console.log("token:", token);
-      return reply.cookie('jwt_transcendance', token, {
+      return reply.cookie('jwt_transcendence', token, {
         httpOnly: true,
         path: '/',
         secure: process.env.NODE_ENV === 'prod',
@@ -310,7 +310,7 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
   }
 
   app.delete<{ Body: logoutBody }>('/logout', {preHandler:[isConnected]},async (request, reply) => {
-    reply.clearCookie('jwt_transcendance', {}).status(200).send();
+    reply.clearCookie('jwt_transcendence', {}).status(200).send();
   });
 
   app.get('/status', async function (request, reply) {
