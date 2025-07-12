@@ -247,6 +247,12 @@ async function fetchAndDraw() {
       // Hide Forfeit and share-ID when game ends
       forfeitBtn!.classList.add('hidden');
       shareDiv!.classList.add('hidden');
+      // Clear stored reconnect data
+      localStorage.removeItem('gameId');
+      localStorage.removeItem('playerId');
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('mode');
+      localStorage.removeItem('difficulty');
     }
   } catch (err) {
     console.error('[fetchAndDraw]', err);
@@ -295,6 +301,13 @@ async function startGame(mode: GameMode, difficulty?: string) {
     gameId    = data.gameId;
     playerId  = data.playerId;
     authToken = data.token;
+    // persist game session for reconnect and update URL
+    localStorage.setItem('gameId', gameId);
+    localStorage.setItem('playerId', playerId);
+    localStorage.setItem('authToken', authToken);
+    localStorage.setItem('mode', mode);
+    if (difficulty) localStorage.setItem('difficulty', difficulty);
+    history.pushState({ view: 'game', gameId }, '', `#game/${gameId}`);
     // Show or hide shareable game ID for PvP games
     if (mode === 'pvp') {
       shareDiv!.classList.remove('hidden');
@@ -330,13 +343,16 @@ function togglePlayButtons(disabled: boolean) {
 // Open login modal
 loginBtn.addEventListener('click', (e) => {
   e.preventDefault();
+  // open login modal and push history entry
+  history.pushState({ view: 'login' }, '', '#login');
   loginModal!.classList.remove('hidden');
 });
 
 // Close login modal
 loginModalCloseBtn.addEventListener('click', (e) => {
   e.preventDefault();
-  loginModal!.classList.add('hidden');
+  // close login modal via back navigation
+  history.back();
 });
 
 // Handle login via form
@@ -385,17 +401,17 @@ guestLoginBtn.addEventListener('click', (e) => {
   updateAuthView();
 });
 
-// Close modal on Escape key
+// Close login modal on Escape key
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && !loginModal!.classList.contains('hidden')) {
-    loginModal!.classList.add('hidden');
+    history.back();
   }
 });
 
-// Close modal when clicking outside the modal content
+// Close login modal on backdrop click
 loginModal!.addEventListener('click', (e) => {
   if (e.target === loginModal) {
-    loginModal!.classList.add('hidden');
+    history.back();
   }
 });
 // -------------------- Sign Up Modal Setup --------------------
@@ -501,27 +517,31 @@ initializeAuth();
 // Open Sign Up modal
 signupBtn.addEventListener('click', (e) => {
   e.preventDefault();
+  // open signup modal and push history entry
+  history.pushState({ view: 'signup' }, '', '#signup');
   signupModal!.classList.remove('hidden');
 });
 // Close Sign Up modal via close button or cancel button
+// Close Sign Up modal via close button
 signupModalCloseBtn.addEventListener('click', (e) => {
   e.preventDefault();
-  signupModal!.classList.add('hidden');
+  history.back();
 });
+// Close Sign Up modal via cancel button
 signupCancelBtn.addEventListener('click', (e) => {
   e.preventDefault();
-  signupModal!.classList.add('hidden');
+  history.back();
 });
-// Close Sign Up modal on Esc key
+// Close Sign Up modal on Escape key
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && signupModal && !signupModal.classList.contains('hidden')) {
-    signupModal.classList.add('hidden');
+    history.back();
   }
 });
 // Close Sign Up modal on backdrop click
 signupModal.addEventListener('click', (e) => {
   if (e.target === signupModal) {
-    signupModal!.classList.add('hidden');
+    history.back();
   }
 });
 // Handle Sign Up form submission (basic validation)
@@ -586,8 +606,11 @@ const profileOnline = document.getElementById('profile-online') as HTMLElement |
 if (!profileBtn || !profileModal || !profileModalCloseBtn || !profileUsername || !profileEmail || !profileId || !profileType || !profileCreated || !profileOnline || !profile2FAStatus || !profileSetup2FABtn || !profileDisable2FABtn || !profileNa2FABtn || !profileChangePasswordBtn) {
   throw new Error('Missing profile modal elements');
 }
+// Open Profile modal
 profileBtn.addEventListener('click', async (e) => {
   e.preventDefault();
+  // open profile modal and push history entry
+  history.pushState({ view: 'profile' }, '', '#profile');
   const username = localStorage.getItem('username') || '';
   const email = localStorage.getItem('userEmail') || '';
   profileUsername.textContent = username;
@@ -649,18 +672,21 @@ profileBtn.addEventListener('click', async (e) => {
     }
   profileModal.classList.remove('hidden');
 });
+// Close Profile modal via close button
 profileModalCloseBtn.addEventListener('click', (e) => {
   e.preventDefault();
-  profileModal.classList.add('hidden');
+  history.back();
 });
+// Close Profile modal on backdrop click
 profileModal.addEventListener('click', (e) => {
   if (e.target === profileModal) {
-    profileModal.classList.add('hidden');
+    history.back();
   }
 });
+// Close Profile modal on Escape key
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && !profileModal.classList.contains('hidden')) {
-    profileModal.classList.add('hidden');
+    history.back();
   }
 });
 profileSetup2FABtn.addEventListener('click', (e) => {
@@ -932,6 +958,12 @@ pvpJoinConfirmBtn!.addEventListener('click', async (e) => {
     gameId    = data.gameId;
     playerId  = data.playerId;
     authToken = data.token;
+    // persist game session for reconnect and update URL
+    localStorage.setItem('gameId', gameId);
+    localStorage.setItem('playerId', playerId);
+    localStorage.setItem('authToken', authToken);
+    localStorage.setItem('mode', 'pvp');
+    history.pushState({ view: 'game', gameId }, '', `#game/${gameId}`);
     // Hide menu and join inputs
     pvpMenu!.classList.add('hidden');
     pvpJoinInput!.classList.add('hidden');
@@ -976,5 +1008,92 @@ pvpJoinConfirmBtn!.addEventListener('click', async (e) => {
 playTournBtn.addEventListener('click', () => {
   diffSelect!.classList.add('hidden');
   startGame('tournament');
+});
 
+// ================== Reconnect on reload ==================
+/**
+ * Reconnect to an in-progress game if user reloads or reopens the URL
+ */
+async function reconnectGame(rejoinId: string) {
+  const storedGameId = localStorage.getItem('gameId');
+  const storedPlayerId = localStorage.getItem('playerId');
+  const storedAuthToken = localStorage.getItem('authToken');
+  const mode = localStorage.getItem('mode') as GameMode | null;
+  if (storedGameId === rejoinId && storedPlayerId && storedAuthToken) {
+    gameId = storedGameId;
+    playerId = storedPlayerId;
+    authToken = storedAuthToken;
+    // Set up UI like startGame
+    togglePlayButtons(true);
+    // Show Forfeit button during active game
+    forfeitBtn!.classList.remove('hidden');
+    forfeitBtn!.disabled = false;
+    hero!.classList.add('hidden');
+    resultPre!.classList.add('hidden');
+    canvas.classList.remove('hidden');
+    // Show shareable ID for PvP
+    if (mode === 'pvp') {
+      shareDiv!.classList.remove('hidden');
+      gameIdInput!.value = gameId;
+    } else {
+      shareDiv!.classList.add('hidden');
+    }
+    canvas.focus();
+    lastInput = null;
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup',   onKeyUp);
+    await fetchAndDraw();
+    pollTimer = window.setInterval(fetchAndDraw, POLL_MS);
+  }
+}
+
+// -----------------------------------
+// SPA history routing and initial reconnect
+// Initialize SPA state based on URL hash
+const currentHash = location.hash;
+let initialState: any = { view: 'home' };
+if (currentHash === '#login') {
+  initialState = { view: 'login' };
+} else if (currentHash === '#signup') {
+  initialState = { view: 'signup' };
+} else if (currentHash === '#profile') {
+  initialState = { view: 'profile' };
+} else {
+  const m = currentHash.match(/^#game\/(.+)$/);
+  if (m) {
+    initialState = { view: 'game', gameId: m[1] };
+  }
+}
+// Replace history entry so state matches URL (including hash)
+history.replaceState(initialState, '', location.pathname + currentHash);
+// Route initial UI state (modals or reconnect)
+router(initialState);
+if (initialState.view === 'game' && initialState.gameId) {
+  reconnectGame(initialState.gameId);
+}
+
+
+/**
+ * Show or hide modals based on history state
+ */
+function router(state: any) {
+  // hide all top-level modals
+  loginModal!.classList.add('hidden');
+  signupModal!.classList.add('hidden');
+  profileModal!.classList.add('hidden');
+  // route
+  if (!state || state.view === 'home') {
+    // nothing to show
+  } else if (state.view === 'login') {
+    loginModal!.classList.remove('hidden');
+  } else if (state.view === 'signup') {
+    signupModal!.classList.remove('hidden');
+  } else if (state.view === 'profile') {
+    profileModal!.classList.remove('hidden');
+  }
+}
+
+// Handle back/forward navigation
+window.addEventListener('popstate', (e) => {
+  router(e.state);
 });
