@@ -2,7 +2,7 @@ import jwt, {JwtPayload} from 'jsonwebtoken';
 import {i_token} from '../utils/getTokenData';
 
 export default function isConnected(request: any, reply: any, done: any) {
-    const token = request.cookies.jwt_transcendance;
+    const token = request.cookies.jwt_transcendence;
     if (!token || token === 'undefined') {
         return reply.code(401).send({error: 'Not authenticated'});
     }

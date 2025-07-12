@@ -41,7 +41,7 @@ export default function isConnected(request: any, reply: any, done: any) {
     return reply.code(500).send({ error: 'JWT secret not initialized' });
   }
 
-  const token = request.cookies['jwt_transcendance'];
+  const token = request.cookies['jwt_transcendence'];
   if (!token || token === 'undefined') {
     return reply.code(401).send({ error: 'Not authenticated' });
   }

@@ -20,7 +20,7 @@ export default function changePasswordRoutes(app: FastifyInstance, options: any,
         return reply.status(400).send({ error: 'New passwords do not match' });
       }
       // Retrieve JWT from cookie
-      const token = (request.cookies as Record<string, string>)['jwt_transcendance'];
+      const token = (request.cookies as Record<string, string>)['jwt_transcendence'];
       if (!token) {
         return reply.status(401).send({ error: 'Not authenticated' });
       }

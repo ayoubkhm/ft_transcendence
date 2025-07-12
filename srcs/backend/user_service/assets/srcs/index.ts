@@ -19,6 +19,8 @@ server.register(private_userRoutes, { prefix: '/api/user',});
 server.register(public_userRoutes, { prefix: '/api/user',});
 server.register(friendsRoutes, { prefix: '/api/user',});
 
+console.log(server.printRoutes());
+
 server.listen({ host: '0.0.0.0', port: 3000 }, (err, address) =>
 {
     if (err) {
