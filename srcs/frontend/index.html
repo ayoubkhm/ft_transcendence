@@ -27,6 +27,10 @@
       <button id="profile-btn" class="px-4 py-2 bg-blue-500 rounded text-white">
         Profile
       </button>
+      <button id="friends-btn" class="px-4 py-2 bg-green-500 rounded text-white relative">
+        Friends
+        <span id="friends-badge" class="absolute top-0 right-0 transform translate-x-1/2 -translate-y-1/2 bg-red-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full hidden">0</span>
+      </button>
       <button id="logout-btn" class="px-4 py-2 bg-red-500 rounded text-white">
         Logout
       </button>
@@ -44,7 +48,7 @@
     <div class="flex flex-col items-start gap-4">
       <!-- Primary controls row -->
       <div class="flex items-center gap-4">
-      <button id="play-tourn-btn" class="px-4 py-2 bg-green-500 rounded">
+      <button id="play-tourn-btn" class="px-4 py-2 bg-yellow-500 rounded text-white">
         Tournament
       </button>
       <!-- Toggle for custom power-up mode -->
@@ -278,6 +282,50 @@
       <div class="mb-2">
         <strong>Avatar:</strong><br>
         <img id="public-profile-avatar" src="" alt="Avatar" class="w-24 h-24 rounded hidden" />
+      </div>
+      <div class="mt-4 text-center">
+        <button id="public-profile-add-btn" class="px-4 py-2 bg-blue-500 rounded text-white">
+          Add Friend
+        </button>
+      </div>
+    </div>
+  </div>
+  <!-- Friends Modal -->
+  <div id="friends-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-gray-800 rounded p-6 relative w-full max-w-2xl mx-2 text-white">
+      <button id="friends-modal-close" class="absolute top-2 right-2 text-white text-xl">&times;</button>
+      <h2 class="text-xl font-bold mb-4">Friends</h2>
+      <div class="flex gap-4">
+        <div class="w-1/2">
+          <h3 class="font-semibold mb-2">Your Friends</h3>
+          <ul id="friends-list" class="space-y-1 max-h-64 overflow-y-auto"></ul>
+        </div>
+        <div class="w-1/2">
+          <h3 class="font-semibold mb-2">Friend Requests</h3>
+          <ul id="friend-requests-list" class="space-y-1 max-h-64 overflow-y-auto"></ul>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Tournament Dashboard Modal -->
+  <div id="tournament-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-gray-800 rounded p-6 relative w-full max-w-3xl mx-2 text-white">
+      <button id="tournament-modal-close" class="absolute top-2 right-2 text-white text-xl">&times;</button>
+      <h2 class="text-xl font-bold mb-4">Tournament Dashboard</h2>
+      <div class="overflow-auto">
+        <table class="min-w-full bg-gray-700 text-left text-sm">
+          <thead>
+            <tr class="bg-gray-600">
+              <th class="px-2 py-1">ID</th>
+              <th class="px-2 py-1">Name</th>
+              <th class="px-2 py-1">State</th>
+              <th class="px-2 py-1">Max Players</th>
+              <th class="px-2 py-1">Participants</th>
+              <th class="px-2 py-1">Winner</th>
+            </tr>
+          </thead>
+          <tbody id="tournament-table-body" class="divide-y divide-gray-600"></tbody>
+        </table>
       </div>
     </div>
   </div>

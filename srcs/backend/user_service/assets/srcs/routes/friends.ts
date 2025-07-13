@@ -7,26 +7,57 @@ export default async function friendsRoutes(server: FastifyInstance, options: an
     interface postUserFriendRequestParams { id: number }
 
     //Cette route POST /api/user/friends/requests/:id te permet d’envoyer une demande d’ami à un autre user, dont l’ID est passé en paramètre :id. Voilà comment ça marche, étape par étape
+    // Send a friend request from the authenticated user to :id
     server.post<{ Params: postUserFriendRequestParams }>('/friends/requests/:id', async (request, reply) => {
         try {
-            const targetID = Number(request.params?.id);
+            const targetID = Number(request.params.id);
             const token = request.cookies['jwt_transcendence'];
-            if (!token)
-                return reply.status(230).send({ error: "user/friends error 0403" });
-            const id = getTokenData(token).id;
-            if (!id)
-                return reply.status(230).send({ error: "user/friends error 0404" });
-            const user = await server.pg.query('SELECT * FROM users id = $1', [Number(id)]);
-            if (!user)
-                return reply.status(230).send({error: "user/friends error 0405"});
-            const target = await server.pg.query('SELECT * FROM users id = $1', [targetID]);
-            if (!target)
-                return reply.status(230).send({error: "user/friends error 0406"});
-            //requete deja ami
-            //requete demande dami deja envoye
-            //sinon tu envoie une demande au target
-        } catch (error) {
-            return reply.status(230).send({ error: "0500" });
+            if (!token) {
+                return reply.code(401).send({ error: 'Not authenticated' });
+            }
+            const userId = getTokenData(token).id;
+            if (!userId) {
+                return reply.code(400).send({ error: 'Invalid user' });
+            }
+            if (userId === targetID) {
+                return reply.code(400).send({ error: 'Cannot friend yourself' });
+            }
+            // Verify target exists
+            const targetRes = await server.pg.query('SELECT 1 FROM users WHERE id = $1', [targetID]);
+            // If no rows returned, user does not exist
+            if ((targetRes.rowCount ?? 0) === 0) {
+                return reply.code(404).send({ error: 'User not found' });
+            }
+            // Check existing friendship
+            const friendRes = await server.pg.query(
+              `SELECT 1 FROM friends
+               WHERE (user1_id = $1 AND user2_id = $2)
+                  OR (user1_id = $2 AND user2_id = $1)`,
+              [userId, targetID]
+            );
+            if ((friendRes.rowCount ?? 0) > 0) {
+                return reply.code(409).send({ error: 'Already friends' });
+            }
+            // Check existing pending request
+            const pendRes = await server.pg.query(
+              `SELECT 1 FROM pending
+               WHERE type = 'friend'
+                 AND ((from_id = $1 AND to_id = $2)
+                      OR (from_id = $2 AND to_id = $1))`,
+              [userId, targetID]
+            );
+            if ((pendRes.rowCount ?? 0) > 0) {
+                return reply.code(409).send({ error: 'Friend request already pending' });
+            }
+            // Insert new pending request
+            await server.pg.query(
+              `INSERT INTO pending (from_id, to_id, type) VALUES ($1, $2, 'friend')`,
+              [userId, targetID]
+            );
+            return reply.send({ success: true, msg: 'Friend request sent' });
+        } catch (err) {
+            request.log.error(err);
+            return reply.code(500).send({ error: 'Internal server error' });
         }
     });
 
@@ -118,42 +149,55 @@ export default async function friendsRoutes(server: FastifyInstance, options: an
     });
 
     //tt la liste dami de la prsonne connecter
+    // GET /api/user/friends: list all friends of the current user
     server.get('/friends', async (request: any, reply: any) => {
         try {
-            const token = request.cookies['ft_transcendence_jw_token'];
-            if (!token)
-                return reply.status(230).send({ error: "0403" });
-            const id = getTokenData(token).id;
-            if (!id)
-                return reply.status(230).send({ error: "0403" });
-            // Placeholder for fetched user; annotate to allow accessing properties
-            let user: any = null;
-            //requete de liste des amis
-            if (!user)
-                return reply.status(230).send({ error: "0404" });
-            reply.send(user.friends);
-        } catch (error) {
-            return reply.status(230).send({ error: "0500" });
+            const token = request.cookies['jwt_transcendence'];
+            if (!token) {
+                return reply.code(401).send({ error: 'Not authenticated' });
+            }
+            const userId = getTokenData(token).id;
+            if (!userId) {
+                return reply.code(401).send({ error: 'Invalid token' });
+            }
+            const sql = `
+              SELECT u.id, u.name
+              FROM friends f
+              JOIN users u ON
+                (f.user1_id = $1 AND u.id = f.user2_id)
+                OR (f.user2_id = $1 AND u.id = f.user1_id)
+            `;
+            const { rows } = await server.pg.query(sql, [userId]);
+            return reply.send(rows);
+        } catch (err) {
+            request.log.error(err);
+            return reply.status(500).send({ error: 'Internal server error' });
         }
     });
 
     //tt la liste des demande dami
+    // GET /api/user/receivedFriendRequests: list incoming friend requests for the current user
     server.get('/receivedFriendRequests', async (request: any, reply: any) => {
         try {
-            const token = request.cookies['ft_transcendence_jw_token'];
-            if (!token)
-                return reply.status(230).send({ error: "0403" });
-            const id = getTokenData(token).id;
-            if (!id)
-                return reply.status(230).send({ error: "0403" });
-            // Placeholder for fetched user; annotate to allow accessing properties
-            let user: any = null;
-            //requete de friend requeste list
-            if (!user)
-                return reply.status(230).send({ error: "0404" });
-            reply.send(user.receivedFriendRequests);
-        } catch (error) {
-            return reply.status(230).send({ error: "0500" });
+            const token = request.cookies['jwt_transcendence'];
+            if (!token) {
+                return reply.code(401).send({ error: 'Not authenticated' });
+            }
+            const userId = getTokenData(token).id;
+            if (!userId) {
+                return reply.code(401).send({ error: 'Invalid token' });
+            }
+            const sql = `
+              SELECT u.id, u.name
+              FROM pending p
+              JOIN users u ON p.from_id = u.id
+              WHERE p.to_id = $1 AND p.type = 'friend'
+            `;
+            const { rows } = await server.pg.query(sql, [userId]);
+            return reply.send(rows);
+        } catch (err) {
+            request.log.error(err);
+            return reply.status(500).send({ error: 'Internal server error' });
         }
     });
 

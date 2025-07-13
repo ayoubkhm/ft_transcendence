@@ -534,7 +534,8 @@ async function initializeAuth() {
     }
   }
 }
-initializeAuth();
+// Initialize authentication and then update friends badge
+initializeAuth().then(() => updateFriendsBadge()).catch(console.error);
 // ─── User Search Suggestions ─────────────────────────────────
 const searchInput = document.getElementById('search-user') as HTMLInputElement | null;
 const suggestionsList = document.getElementById('search-suggestions') as HTMLUListElement | null;
@@ -570,7 +571,9 @@ if (searchInput && suggestionsList) {
                   return;
                 }
                 const user = data2.profile;
-                if (publicProfileModal && publicProfileName && publicProfileTag && publicProfileEmail && publicProfileAvatar) {
+                if (publicProfileModal && publicProfileName && publicProfileTag && publicProfileEmail && publicProfileAvatar && publicProfileAddBtn) {
+                  // Remember which user we're viewing
+                  currentProfileId = user.id;
                   publicProfileName.textContent = user.name;
                   publicProfileTag.textContent = user.tag.toString();
                   publicProfileEmail.textContent = user.email;
@@ -618,12 +621,179 @@ const publicProfileName = document.getElementById('public-profile-name') as HTML
 const publicProfileTag = document.getElementById('public-profile-tag') as HTMLElement | null;
 const publicProfileEmail = document.getElementById('public-profile-email') as HTMLElement | null;
 const publicProfileAvatar = document.getElementById('public-profile-avatar') as HTMLImageElement | null;
+const publicProfileAddBtn = document.getElementById('public-profile-add-btn') as HTMLButtonElement | null;
+// Currently viewed user's ID for friend requests
+let currentProfileId: number | null = null;
+// ─── Tournament Dashboard Modal Logic ─────────────────────────────────
+const tournamentModal = document.getElementById('tournament-modal') as HTMLElement | null;
+const tournamentModalClose = document.getElementById('tournament-modal-close') as HTMLButtonElement | null;
+const tournamentTableBody = document.getElementById('tournament-table-body') as HTMLTableSectionElement | null;
+// Close handlers for tournament modal
+if (tournamentModal && tournamentModalClose) {
+  tournamentModalClose.addEventListener('click', () => tournamentModal.classList.add('hidden'));
+  tournamentModal.addEventListener('click', (e) => {
+    if (e.target === tournamentModal) tournamentModal.classList.add('hidden');
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !tournamentModal.classList.contains('hidden')) {
+      tournamentModal.classList.add('hidden');
+    }
+  });
+}
 // Close handlers
 if (publicProfileModal && publicProfileClose) {
   publicProfileClose.addEventListener('click', () => publicProfileModal.classList.add('hidden'));
   publicProfileModal.addEventListener('click', (e) => {
     if (e.target === publicProfileModal) publicProfileModal.classList.add('hidden');
   });
+  // Add Friend button handler
+  if (publicProfileAddBtn) {
+    publicProfileAddBtn.addEventListener('click', async () => {
+      if (!currentProfileId) return;
+      try {
+        const res = await fetch(`/api/user/friends/requests/${currentProfileId}`, {
+          method: 'POST',
+          credentials: 'include'
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          publicProfileAddBtn.disabled = true;
+          publicProfileAddBtn.textContent = 'Request Sent';
+        } else {
+          alert(data.error || data.msg || 'Failed to send friend request');
+        }
+      } catch (err) {
+        console.error('Send friend request error:', err);
+        alert('Error sending friend request');
+      }
+    });
+  }
+}
+
+// ─── Friends Modal Logic ───────────────────────────────────────────
+const friendsBtn = document.getElementById('friends-btn') as HTMLButtonElement | null;
+const friendsModal = document.getElementById('friends-modal') as HTMLElement | null;
+const friendsModalClose = document.getElementById('friends-modal-close') as HTMLButtonElement | null;
+const friendsList = document.getElementById('friends-list') as HTMLUListElement | null;
+const friendRequestsList = document.getElementById('friend-requests-list') as HTMLUListElement | null;
+// Notification badge for pending friend requests
+const friendsBadge = document.getElementById('friends-badge') as HTMLElement | null;
+// Function to fetch and update pending friend requests count badge
+async function updateFriendsBadge() {
+  if (!friendsBadge) return;
+  try {
+    const res = await fetch('/api/user/receivedFriendRequests', { credentials: 'include' });
+    if (res.ok) {
+      const data = await res.json() as { id: number; name: string }[];
+      const count = data.length;
+      if (count > 0) {
+        friendsBadge.textContent = count.toString();
+        friendsBadge.classList.remove('hidden');
+      } else {
+        friendsBadge.classList.add('hidden');
+      }
+    } else {
+      friendsBadge.classList.add('hidden');
+    }
+  } catch (err) {
+    console.error('Failed to update friends badge', err);
+  }
+}
+if (friendsBtn && friendsModal && friendsModalClose && friendsList && friendRequestsList) {
+  friendsBtn.addEventListener('click', async (e) => {
+    e.preventDefault();
+    friendsList.innerHTML = '';
+    friendRequestsList.innerHTML = '';
+    try {
+      const resFriends = await fetch('/api/user/friends', { credentials: 'include' });
+      if (resFriends.ok) {
+        const data = await resFriends.json() as { id: number; name: string }[];
+        data.forEach(f => {
+          const li = document.createElement('li');
+          li.textContent = f.name;
+          li.className = 'px-2 py-1 bg-gray-700 rounded';
+          friendsList.appendChild(li);
+        });
+      }
+    } catch (err) {
+      console.error('Fetch friends failed:', err);
+    }
+    try {
+      const resReq = await fetch('/api/user/receivedFriendRequests', { credentials: 'include' });
+      if (resReq.ok) {
+        const data = await resReq.json() as { id: number; name: string }[];
+        data.forEach(r => {
+          const li = document.createElement('li');
+          li.className = 'flex items-center justify-between px-2 py-1 bg-gray-700 rounded';
+          const nameSpan = document.createElement('span');
+          nameSpan.textContent = r.name;
+          // Accept button
+          const acceptBtn = document.createElement('button');
+          acceptBtn.textContent = 'Accept';
+          acceptBtn.className = 'px-2 py-1 bg-green-500 rounded text-white text-sm';
+          acceptBtn.addEventListener('click', async () => {
+            try {
+              const res = await fetch(`/api/user/friends/requests/${r.id}`, {
+                method: 'PUT',
+                credentials: 'include'
+              });
+              const resp = await res.json();
+              if (res.ok && resp.success) {
+                li.remove();
+                updateFriendsBadge();
+              } else {
+                alert(resp.error || resp.msg || 'Failed to accept friend request');
+              }
+            } catch (err) {
+              console.error('Accept friend request error:', err);
+              alert('Error accepting friend request');
+            }
+          });
+          // Reject button
+          const rejectBtn = document.createElement('button');
+          rejectBtn.textContent = 'Reject';
+          rejectBtn.className = 'px-2 py-1 bg-red-500 rounded text-white text-sm';
+          rejectBtn.addEventListener('click', async () => {
+            try {
+              const res = await fetch(`/api/user/friends/requests/${r.id}`, {
+                method: 'DELETE',
+                credentials: 'include'
+              });
+              const resp = await res.json();
+              if (res.ok && resp.success) {
+                li.remove();
+                updateFriendsBadge();
+              } else {
+                alert(resp.error || resp.msg || 'Failed to reject friend request');
+              }
+            } catch (err) {
+              console.error('Reject friend request error:', err);
+              alert('Error rejecting friend request');
+            }
+          });
+          const actionsDiv = document.createElement('div');
+          actionsDiv.className = 'flex gap-2';
+          actionsDiv.append(acceptBtn, rejectBtn);
+          li.append(nameSpan, actionsDiv);
+          friendRequestsList.appendChild(li);
+        });
+      }
+    } catch (err) {
+      console.error('Fetch friend requests failed:', err);
+    }
+    friendsModal.classList.remove('hidden');
+  });
+  friendsModalClose.addEventListener('click', () => friendsModal.classList.add('hidden'));
+  friendsModal.addEventListener('click', (e) => {
+    if (e.target === friendsModal) friendsModal.classList.add('hidden');
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && friendsModal && !friendsModal.classList.contains('hidden')) {
+      friendsModal.classList.add('hidden');
+    }
+  });
+} else {
+  console.warn('Friends modal elements not found');
 }
 
 // Open Sign Up modal
@@ -1114,9 +1284,39 @@ pvpJoinConfirmBtn!.addEventListener('click', async (e) => {
   }
 });
 
-playTournBtn.addEventListener('click', () => {
+// Open Tournament Dashboard modal on click
+playTournBtn!.addEventListener('click', async (e) => {
+  e.preventDefault();
   diffSelect!.classList.add('hidden');
-  startGame('tournament');
+  // Fetch tournaments list
+  if (tournamentTableBody) {
+    tournamentTableBody.innerHTML = '';
+    try {
+      const res = await fetch('/api/tournaments/tournaments', { credentials: 'include' });
+      if (res.ok) {
+        // Load tournaments
+        const data = await res.json() as Array<{ id:number; name:string; state:string; min_players:number; nbr_players:number; winner:string|null }>;
+        data.forEach(t => {
+          const tr = document.createElement('tr');
+          tr.className = 'border-t border-gray-600';
+          tr.innerHTML = `
+            <td class="px-2 py-1">${t.id}</td>
+            <td class="px-2 py-1">${t.name}</td>
+            <td class="px-2 py-1">${t.state}</td>
+            <td class="px-2 py-1">${t.min_players}</td>
+            <td class="px-2 py-1">${t.nbr_players}</td>
+            <td class="px-2 py-1">${t.winner || ''}</td>
+          `;
+          tournamentTableBody.appendChild(tr);
+        });
+      } else {
+        console.error('Failed to load tournaments', await res.text());
+      }
+    } catch (err) {
+      console.error('Error fetching tournaments:', err);
+    }
+    tournamentModal!.classList.remove('hidden');
+  }
 });
 
 // ================== Reconnect on reload ==================
