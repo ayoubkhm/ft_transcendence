@@ -84,13 +84,26 @@ export default async function private_userRoutes(server: FastifyInstance, option
         
         // Simulate creating user data
   try {
-    const result = await server.pg.query('SELECT * FROM new_user($1, $2, $3, $4, $5, $6)', [name, type, email, password, null ,true]);
-    console.log('[CREATE] New user created:', result.rows[0]);
-    const data = await server.pg.query(`SELECT * FROM users WHERE email = $1`, [email]);
-    console.log('[DATA] :', data.rows[0]);
-    return reply.send({
-      ...data.rows[0]
-    });
+    // Attempt to create the user; new_user returns (success, msg, new_user_id)
+    const result = await server.pg.query(
+      'SELECT * FROM new_user($1, $2, $3, $4, $5, $6)',
+      [name, type, email, password, null, true]
+    );
+    const row = result.rows[0];
+    console.log('[CREATE] new_user result:', row);
+    // If creation failed (e.g., duplicate email), return conflict
+    if (!row || row.success === false) {
+      const errMsg = row && row.msg ? row.msg : 'User creation failed';
+      return reply.status(409).send({ error: errMsg });
+    }
+    // On success, fetch the full user record
+    const data = await server.pg.query(
+      'SELECT * FROM users WHERE email = $1',
+      [email]
+    );
+    const user = data.rows[0];
+    console.log('[DATA] new user record:', user);
+    return reply.send(user);
   } catch (error) {
     console.error('Insert user error:', error);
     return reply.status(500).send({ error: 'Internal server error' });
