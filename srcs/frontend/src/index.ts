@@ -444,7 +444,12 @@ signupPasswordInput.addEventListener('input', () => {
   const lengthOk = pwd.length >= 8;
   const digitOk = /\d/.test(pwd);
   const specialOk = /[!@#$%^&*]/.test(pwd);
-  signupPassFeedback!.textContent = `Length: ${pwd.length} (${lengthOk ? '✓' : '✘'}), Digit: ${digitOk ? '✓' : '✘'}, Special: ${specialOk ? '✓' : '✘'}`;
+  const uppercaseOk = /[A-Z]/.test(pwd);
+  signupPassFeedback!.textContent =
+    `Length: ${pwd.length} (${lengthOk ? '✓' : '✘'}), ` +
+    `Digit: ${digitOk ? '✓' : '✘'}, ` +
+    `Special: ${specialOk ? '✓' : '✘'}, ` +
+    `Uppercase: ${uppercaseOk ? '✓' : '✘'}`;
 });
 // Setup auth view toggles
 const authUser              = document.getElementById('auth-user') as HTMLElement | null;
@@ -555,8 +560,9 @@ signupModalForm.addEventListener('submit', async (e) => {
   const lengthOk = password.length >= 8;
   const digitOk = /\d/.test(password);
   const specialOk = /[!@#$%^&*]/.test(password);
-  if (!lengthOk || !digitOk || !specialOk) {
-    alert('Password must be at least 8 characters and include a number and special character.');
+  const uppercaseOk = /[A-Z]/.test(password);
+  if (!lengthOk || !digitOk || !specialOk || !uppercaseOk) {
+    alert('Password must be at least 8 characters and include a number, a special character, and an uppercase letter.');
     return;
   }
   if (password !== confirm) {
