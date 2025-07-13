@@ -75,9 +75,9 @@ export default function public_userRoutes (server: FastifyInstance, options: any
 
 
 
-    server.get<{ Querystring: { input: string; }; Reply: { success: boolean; msg: string; suggestions: { id: number; name: string; }[] } }>('/suggest', async (request, reply) =>
+    server.get<{ Params: { suggestion: string }, Reply: { success: boolean; msg: string; suggestions: { id: number; name: string; }[] } }>('/suggest/:suggestion', async (request, reply) =>
     {
-        const { input } = request.query;
+        const input = request.params.suggestion;
 
         try
         {
