@@ -1,6 +1,7 @@
 CREATE TYPE user_suggestion AS (
   id INTEGER,
-  name TEXT
+  name TEXT,
+  tag INTEGER
 );
 
 CREATE OR REPLACE FUNCTION suggest_users(
@@ -9,8 +10,8 @@ CREATE OR REPLACE FUNCTION suggest_users(
 RETURNS TABLE(success BOOLEAN, msg TEXT, suggestions user_suggestion[]) AS $$
 BEGIN
 
-    RETURN QUERY SELECT TRUE, 'Suggestions successfull', ARRAY(
-        SELECT ROW(users.id, users.name)::user_suggestion
+    RETURN QUERY SELECT TRUE, 'Suggestions successful', ARRAY(
+        SELECT ROW(users.id, users.name, users.tag)::user_suggestion
         FROM users
         WHERE (input = '' OR name ILIKE input || '%')
         ORDER BY users.name
