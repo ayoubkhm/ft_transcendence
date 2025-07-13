@@ -516,8 +516,115 @@ async function initializeAuth() {
     localStorage.removeItem('twofaEnabled');
   }
   updateAuthView();
+  // Fetch public profile for greeting
+  if (localStorage.getItem('loggedIn') === 'true') {
+    const email = localStorage.getItem('userEmail');
+    if (email) {
+      try {
+        const res = await fetch(`/api/user/search/${encodeURIComponent(email)}`, { credentials: 'include' });
+        if (res.ok) {
+          const data = await res.json() as { success: boolean; msg: string; profile: { name: string; tag: number; } | null };
+          if (data.success && data.profile) {
+            userGreeting!.textContent = `${data.profile.name}`;
+          }
+        }
+      } catch (err) {
+        console.error('Greeting profile fetch failed:', err);
+      }
+    }
+  }
 }
 initializeAuth();
+// ─── User Search Suggestions ─────────────────────────────────
+const searchInput = document.getElementById('search-user') as HTMLInputElement | null;
+const suggestionsList = document.getElementById('search-suggestions') as HTMLUListElement | null;
+if (searchInput && suggestionsList) {
+  let suggestTimer: number;
+  searchInput.addEventListener('input', () => {
+    const term = searchInput.value.trim();
+    window.clearTimeout(suggestTimer);
+    if (!term) {
+      suggestionsList.innerHTML = '';
+      suggestionsList.classList.add('hidden');
+      return;
+    }
+    suggestTimer = window.setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/user/suggest/${encodeURIComponent(term)}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json() as { success: boolean; msg: string; suggestions: { id: number; name: string }[] };
+        suggestionsList.innerHTML = '';
+        if (data.success && Array.isArray(data.suggestions)) {
+          data.suggestions.forEach(u => {
+            const li = document.createElement('li');
+            li.textContent = u.name;
+            li.className = 'px-2 py-1 hover:bg-gray-600 cursor-pointer';
+            li.addEventListener('click', async () => {
+              suggestionsList.classList.add('hidden');
+              searchInput.value = u.name;
+              try {
+                const res2 = await fetch(`/api/user/search/${u.id}`, { credentials: 'include' });
+                const data2 = await res2.json() as { success: boolean; msg: string; profile: { id: number; name: string; tag: number; email: string; avatar: string | null } | null };
+                if (!res2.ok || !data2.success || !data2.profile) {
+                  alert(data2.msg || 'User not found');
+                  return;
+                }
+                const user = data2.profile;
+                if (publicProfileModal && publicProfileName && publicProfileTag && publicProfileEmail && publicProfileAvatar) {
+                  publicProfileName.textContent = user.name;
+                  publicProfileTag.textContent = user.tag.toString();
+                  publicProfileEmail.textContent = user.email;
+                  if (user.avatar) {
+                    publicProfileAvatar.src = user.avatar;
+                    publicProfileAvatar.classList.remove('hidden');
+                  } else {
+                    publicProfileAvatar.classList.add('hidden');
+                  }
+                  publicProfileModal.classList.remove('hidden');
+                }
+              } catch (err) {
+                console.error('Fetch public profile failed:', err);
+                alert('Failed to load user profile');
+              }
+            });
+            suggestionsList.appendChild(li);
+          });
+        } else {
+          const li = document.createElement('li');
+          li.textContent = data.msg || 'No suggestions';
+          li.className = 'px-2 py-1 text-gray-400';
+          suggestionsList.appendChild(li);
+        }
+        suggestionsList.classList.remove('hidden');
+      } catch (err) {
+        console.error('Suggest fetch error:', err);
+      }
+    }, 300);
+  });
+  // Hide suggestions when clicking outside
+  document.addEventListener('click', (e) => {
+    if (e.target !== searchInput && !suggestionsList.contains(e.target as Node)) {
+      suggestionsList.classList.add('hidden');
+    }
+  });
+} else {
+  console.warn('Search input or suggestions list not found');
+}
+// ─── Public Profile Modal Logic ─────────────────────────────────
+// Elements
+const publicProfileModal = document.getElementById('public-profile-modal') as HTMLElement | null;
+const publicProfileClose = document.getElementById('public-profile-close') as HTMLButtonElement | null;
+const publicProfileName = document.getElementById('public-profile-name') as HTMLElement | null;
+const publicProfileTag = document.getElementById('public-profile-tag') as HTMLElement | null;
+const publicProfileEmail = document.getElementById('public-profile-email') as HTMLElement | null;
+const publicProfileAvatar = document.getElementById('public-profile-avatar') as HTMLImageElement | null;
+// Close handlers
+if (publicProfileModal && publicProfileClose) {
+  publicProfileClose.addEventListener('click', () => publicProfileModal.classList.add('hidden'));
+  publicProfileModal.addEventListener('click', (e) => {
+    if (e.target === publicProfileModal) publicProfileModal.classList.add('hidden');
+  });
+}
 
 // Open Sign Up modal
 signupBtn.addEventListener('click', (e) => {
@@ -606,10 +713,8 @@ const profileDisable2FABtn = document.getElementById('profile-disable-2fa-btn') 
 const profileNa2FABtn = document.getElementById('profile-na-2fa-btn') as HTMLButtonElement | null;
 const profileChangePasswordBtn = document.getElementById('profile-change-password-btn') as HTMLButtonElement | null;
 const profileId = document.getElementById('profile-id') as HTMLElement | null;
-const profileType = document.getElementById('profile-type') as HTMLElement | null;
-const profileCreated = document.getElementById('profile-created') as HTMLElement | null;
-const profileOnline = document.getElementById('profile-online') as HTMLElement | null;
-if (!profileBtn || !profileModal || !profileModalCloseBtn || !profileUsername || !profileEmail || !profileId || !profileType || !profileCreated || !profileOnline || !profile2FAStatus || !profileSetup2FABtn || !profileDisable2FABtn || !profileNa2FABtn || !profileChangePasswordBtn) {
+// Removed profileType, profileCreated, profileOnline as not needed
+if (!profileBtn || !profileModal || !profileModalCloseBtn || !profileUsername || !profileEmail || !profileId || !profile2FAStatus || !profileSetup2FABtn || !profileDisable2FABtn || !profileNa2FABtn || !profileChangePasswordBtn) {
   throw new Error('Missing profile modal elements');
 }
 // Open Profile modal
@@ -617,21 +722,19 @@ profileBtn.addEventListener('click', async (e) => {
   e.preventDefault();
   // open profile modal and push history entry
   history.pushState({ view: 'profile' }, '', '#profile');
-  const username = localStorage.getItem('username') || '';
-  const email = localStorage.getItem('userEmail') || '';
-  profileUsername.textContent = username;
-  profileEmail.textContent = email;
-  // Fetch public profile details
+  const email = localStorage.getItem('userEmail');
   if (email) {
     try {
-      const resp = await fetch(`/api/user/search/${encodeURIComponent(email)}`, { credentials: 'include' });
-      if (resp.ok) {
-        const { rows } = await resp.json();
-        const user = rows[0];
-        profileId.textContent = user.id;
-        profileType.textContent = user.type;
-        profileCreated.textContent = new Date(user.created_at).toLocaleString();
-        profileOnline.textContent = user.online ? 'Online' : 'Offline';
+      const res = await fetch(`/api/user/search/${encodeURIComponent(email)}`, { credentials: 'include' });
+      const data = await res.json() as { success: boolean; msg: string; profile: { id: number; name: string; tag: number; email: string; avatar: string | null } | null };
+      if (res.ok && data.success && data.profile) {
+        const user = data.profile;
+        profileUsername.textContent = user.name;
+        profileEmail.textContent = user.email;
+        profileId.textContent = user.id.toString();
+        // TODO: add profile.tag and avatar if needed
+      } else {
+        console.warn('Profile lookup failed:', data.msg);
       }
     } catch (err) {
       console.error('Profile lookup error:', err);
