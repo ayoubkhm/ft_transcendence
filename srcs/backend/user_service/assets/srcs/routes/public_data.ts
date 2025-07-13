@@ -12,16 +12,41 @@ export default function public_userRoutes (server: FastifyInstance, options: any
 
     server.get<{Params: getUserParams}>('/search/:email', async (request, reply) => {
         const value = request.params.email;
-        const isEmail = value.match(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/);
-        const isID = value.match(/^[0-9]$/);
-        let user = null;
-        if (isEmail)
-            user = await server.pg.query(`SELECT * FROM get_public($1)`, [value])
-        else if (isID)
-            user = await server.pg.query(`SELECT * FROM get_public($1)`, [Number(value)])
-        if (!user)
-            return reply.status(230).send({ error: "1006" });
-        reply.send(user);
+        // Determine whether to call by email or by ID
+        const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+        const isID = /^\d+$/.test(value);
+        if (!isEmail && !isID) {
+            return reply.status(400).send({ error: 'Invalid user identifier' });
+        }
+        // Fetch public profile, unwrapping composite to JSON via correct overload
+        let sql: string;
+        let params: unknown[];
+        if (isEmail) {
+          // Call text overload for email
+          sql = `
+            SELECT t.success,
+                   t.msg,
+                   to_json(t.friend) AS profile
+            FROM get_public($1::text) AS t
+          `;
+          params = [value];
+        } else {
+          // Call integer overload for ID
+          sql = `
+            SELECT t.success,
+                   t.msg,
+                   to_json(t.friend) AS profile
+            FROM get_public($1::int) AS t
+          `;
+          params = [Number(value)];
+        }
+        const result = await server.pg.query(sql, params);
+        const row = result.rows[0];
+        if (!row) {
+            return reply.status(404).send({ error: 'User not found' });
+        }
+        // row: { success: boolean, msg: string, friend: { id, name, tag, email, avatar } }
+        return reply.send(row);
     });
 
 
@@ -81,15 +106,25 @@ export default function public_userRoutes (server: FastifyInstance, options: any
 
         try
         {
-            const { rows } = await server.pg.query('SELECT * FROM suggest_users($1)', [input]);
-            if (!rows[0].success)
-                console.log(rows[0].msg);
-
-            return reply.send({
-                success: rows[0].success,
-                msg: rows[0].msg,
-                suggestions: rows[0].suggestions,
-            });
+        // Fetch suggestions, converting composite array to JSON array
+        const sql = `
+          SELECT t.success,
+                 t.msg,
+                 array_to_json(t.suggestions) AS suggestions
+          FROM suggest_users($1) AS t
+        `;
+        const { rows } = await server.pg.query(sql, [input]);
+        const row = rows[0];
+        if (!row.success) {
+            // Log but still return empty suggestions
+            request.log.warn('Suggest error: %s', row.msg);
+        }
+        return reply.send({
+            success: row.success,
+            msg: row.msg,
+            // suggestions is now a JSON array of { id, name }
+            suggestions: row.suggestions || [],
+        });
         }
         catch (error)
         {

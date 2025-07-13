@@ -16,8 +16,13 @@
   <header id="top-bar" class="p-4 flex justify-between items-center">
     <!-- Authenticated user view -->
     <div id="auth-user" class="hidden flex items-center gap-4">
-      <input id="search-user" type="search" placeholder="Search users"
-             class="px-2 py-1 rounded bg-gray-700 text-white placeholder-gray-400 focus:outline-none" />
+      <div class="relative">
+        <input id="search-user" type="search" placeholder="Search users"
+               class="px-2 py-1 rounded bg-gray-700 text-white placeholder-gray-400 focus:outline-none" />
+        <ul id="search-suggestions"
+            class="absolute left-0 right-0 bg-gray-800 text-white mt-1 rounded shadow max-h-48 overflow-y-auto hidden z-50">
+        </ul>
+      </div>
       <span id="user-greeting" class="text-white"></span>
       <button id="profile-btn" class="px-4 py-2 bg-blue-500 rounded text-white">
         Profile
@@ -199,9 +204,6 @@
     <h2 class="text-xl font-bold mb-4">Your Profile</h2>
     <div class="mb-2"><strong>Username:</strong> <span id="profile-username"></span></div>
     <div class="mb-2"><strong>ID:</strong> <span id="profile-id"></span></div>
-    <div class="mb-2"><strong>Type:</strong> <span id="profile-type"></span></div>
-    <div class="mb-2"><strong>Created:</strong> <span id="profile-created"></span></div>
-    <div class="mb-4"><strong>Status:</strong> <span id="profile-online"></span></div>
     <div class="mb-4"><strong>Email:</strong> <span id="profile-email"></span></div>
     <div class="mb-4"><strong>2FA Status:</strong> <span id="profile-2fa-status"></span></div>
     <button id="profile-setup-2fa-btn" class="px-4 py-2 bg-yellow-500 rounded text-white">Enable 2FA</button>
@@ -265,6 +267,20 @@
 </div>
 
 
+  <!-- Public Profile Modal -->
+  <div id="public-profile-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-gray-800 rounded p-6 relative w-full max-w-sm mx-2 text-white">
+      <button id="public-profile-close" class="absolute top-2 right-2 text-white text-xl">&times;</button>
+      <h2 class="text-xl font-bold mb-4">User Profile</h2>
+      <div class="mb-2"><strong>Name:</strong> <span id="public-profile-name"></span></div>
+      <div class="mb-2"><strong>Tag:</strong> <span id="public-profile-tag"></span></div>
+      <div class="mb-2"><strong>Email:</strong> <span id="public-profile-email"></span></div>
+      <div class="mb-2">
+        <strong>Avatar:</strong><br>
+        <img id="public-profile-avatar" src="" alt="Avatar" class="w-24 h-24 rounded hidden" />
+      </div>
+    </div>
+  </div>
   <!-- Logic SPA -->
   <script type="module" src="/src/index.ts"></script>
 </body>
