@@ -1,3 +1,5 @@
+import './tournament_brackets';
+
 // src/index.ts  – Main SPA logic
 
 /* -------------------- Constants -------------------- */
