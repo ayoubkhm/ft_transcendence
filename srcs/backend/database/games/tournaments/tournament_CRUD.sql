@@ -1,5 +1,5 @@
 CREATE OR REPLACE FUNCTION new_tournament(
-	_name TEXT DEFAULT 'tournament',
+	_name TEXT,
 	_owner_id INTEGER
 )
 RETURNS TABLE(success BOOLEAN, msg TEXT) AS $$
@@ -10,8 +10,13 @@ BEGIN
 		RETURN QUERY SELECT FALSE, 'Pls specify a tournament name not null';
 		RETURN ;
 	END IF;
+	IF _owner_id IS NULL THEN
+		RETURN QUERY SELECT FALSE, 'Pls specify a tournament owner id not null';
+		RETURN ;
+	END IF;
+
 	IF NOT EXISTS (
-		SELECT 1 FROM users WHERE id = _id
+		SELECT 1 FROM users WHERE id = _owner_id
 	) THEN
 		RETURN QUERY SELECT FALSE, FORMAT('User with id %s doesn''t exists', _id);
 		RETURN ;
