@@ -102,6 +102,23 @@ services:
       - "3002:3000"
     networks:
       - router
+  # ──────────────────────────────────────────────────────────
+  tournament_service:
+    container_name: tournament_service
+    restart: "no"
+    environment:
+      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASS}@database:5432/${DB_NAME}
+    build:
+      context: ./backend/tournament_service
+      dockerfile: Dockerfile
+      args:
+        - NODE_ENV=dev
+    expose:
+      - "3000"
+    ports:
+      - "3003:3000"
+    networks:
+      - router
 
   # ──────────────────────────────────────────────────────────
   database:
