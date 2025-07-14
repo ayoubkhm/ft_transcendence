@@ -133,3 +133,77 @@ EXCEPTION
 END;
 $$ LANGUAGE plpgsql;
 
+
+CREATE OR REPLACE FUNCTION set_tournament_name(_id INTEGER, _name TEXT)
+RETURNS TABLE(success BOOLEAN, msg TEXT) AS $$
+BEGIN
+	IF _name IS NULL OR LENGTH(TRIM(_name)) = 0 THEN
+		RETURN QUERY SELECT FALSE, 'Tournament name cannot be empty';
+		RETURN;
+	END IF;
+
+	UPDATE tournaments
+	SET name = _name
+	WHERE id = _id;
+
+	IF NOT FOUND THEN
+		RETURN QUERY SELECT FALSE, 'Tournament not found';
+		RETURN;
+	END IF;
+
+	RETURN QUERY SELECT TRUE, 'Tournament name updated';
+EXCEPTION
+	WHEN OTHERS THEN
+    	RETURN QUERY SELECT FALSE, SQLERRM;
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION set_tournament_min_players(_id INTEGER, _min INTEGER)
+RETURNS TABLE(success BOOLEAN, msg TEXT) AS $$
+BEGIN
+	IF _min IS NULL OR _min < 2 THEN
+		RETURN QUERY SELECT FALSE, 'Minimum players must be >= 2';
+		RETURN;
+	END IF;
+
+	UPDATE tournaments
+	SET min_players = _min
+	WHERE id = _id;
+
+	IF NOT FOUND THEN
+		RETURN QUERY SELECT FALSE, 'Tournament not found';
+		RETURN;
+	END IF;
+
+	RETURN QUERY SELECT TRUE, 'Minimum players updated';
+EXCEPTION
+	WHEN OTHERS THEN
+    	RETURN QUERY SELECT FALSE, SQLERRM;
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION set_tournament_max_players(_id INTEGER, _max INTEGER)
+RETURNS TABLE(success BOOLEAN, msg TEXT) AS $$
+BEGIN
+	IF _max IS NULL OR _max < 2 THEN
+		RETURN QUERY SELECT FALSE, 'Maximum players must be >= 2';
+		RETURN;
+	END IF;
+
+	UPDATE tournaments
+	SET max_players = _max
+	WHERE id = _id;
+
+	IF NOT FOUND THEN
+		RETURN QUERY SELECT FALSE, 'Tournament not found';
+		RETURN;
+	END IF;
+
+	RETURN QUERY SELECT TRUE, 'Maximum players updated';
+EXCEPTION
+	WHEN OTHERS THEN
+    	RETURN QUERY SELECT FALSE, SQLERRM;
+END;
+$$ LANGUAGE plpgsql;
