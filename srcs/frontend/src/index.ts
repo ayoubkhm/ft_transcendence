@@ -109,6 +109,7 @@ function draw(state: any) {
     ctx.textBaseline = prevBaseline;
     return;
   }
+  
   // Draw ball
   ctx.fillStyle = 'white';
   ctx.beginPath();
@@ -653,6 +654,34 @@ if (tournamentModal && tournamentModalClose) {
     }
   });
 }
+  // Create Tournament button handler
+  const tournamentCreateBtn = document.getElementById('tournament-create-btn') as HTMLButtonElement | null;
+  if (tournamentCreateBtn) {
+    tournamentCreateBtn.addEventListener('click', async () => {
+      const name = prompt('Enter tournament name:');
+      if (!name) return;
+      try {
+        const res = await fetch('/api/tournament', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name }),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          alert('Failed to create tournament: ' + (err.error || err.msg || res.statusText));
+          return;
+        }
+        alert('Tournament created successfully');
+        // Refresh the tournament list
+        playTournBtn!.click();
+      } catch (error) {
+        console.error('Error creating tournament:', error);
+        alert('Error creating tournament');
+      }
+    });
+  }
+
 // Close handlers
 if (publicProfileModal && publicProfileClose) {
   publicProfileClose.addEventListener('click', () => publicProfileModal.classList.add('hidden'));
