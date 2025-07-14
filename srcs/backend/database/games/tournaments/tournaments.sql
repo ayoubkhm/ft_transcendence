@@ -33,6 +33,10 @@ BEGIN
 		RAISE EXCEPTION 'Tournaments have a number of players negative';
 	END IF;
 	
+	IF (NEW.max_players < NEW.min_players) THEN
+		RAISE EXCEPTION 'Can''t have max players % < to min players %', NEW.max_players, NEW.min_players;
+	END IF;
+
 	RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
