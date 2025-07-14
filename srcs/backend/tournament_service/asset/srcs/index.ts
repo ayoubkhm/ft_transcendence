@@ -92,13 +92,13 @@ server.post<{
 //   -d '{"user_id": 1}'
 
 
-server.get('/api/alltournaments', async (request, reply) => {
+server.get('/api/tournaments/tournaments', async (request, reply) => {
   const client = await server.pg.connect();
   try {
-    const result = await client.query('SELECT * FROM tournaments');
+    const result = await client.query('SELECT id, state, name, min_players, max_players, nbr_players, owner_id FROM tournaments');
     return reply.send(result.rows);  // ← rows = tableau d'objets JS
   } catch (err) {
-    console.error('Error in /api/tournaments:', err);
+    console.error('Error in /api/tournaments/tournaments:', err);
     return reply.status(500).send({ error: 'Internal server error' });
   } finally {
     client.release();
@@ -119,6 +119,8 @@ server.get('/api/allusers', async (request, reply) => {
     client.release();
   }
 });
+
+
 // curl http://localhost:3003/api/allusers
 
 server.get<{Params: { id: string };}>('/api/allusersfromtournament/:id', async (request, reply) => {
@@ -137,19 +139,19 @@ server.get<{Params: { id: string };}>('/api/allusersfromtournament/:id', async (
 
 // curl http://localhost:3003/api/allusersfromtournament/1
 
-server.get<{Params: { id: string };}>('/api/atournament/:id', async (request, reply) => {
+server.get<{Params: { id: string };}>('/api/tournaments/tournaments/:id', async (request, reply) => {
   
   const tournamentId = parseInt(request.params.id, 10);
   if (isNaN(tournamentId))
     return reply.status(400).send({ error: 'Invalid tournament ID' });
   const client = await server.pg.connect();
   try {
-    const result = await client.query('SELECT * FROM tournaments WHERE id = $1',[tournamentId]);
+    const result = await client.query('SELECT id, state, name, nbr_players, owner_id FROM tournaments WHERE id = $1',[tournamentId]);
     if (result.rows.length === 0)
       return reply.status(404).send({ error: 'Tournament not found' });
     return reply.send(result.rows[0]); // ← renvoie un objet (pas un tableau)
   } catch (err) {
-    console.error('Error in /api/atournament/:id', err);
+    console.error('Error in /api/tournaments/tournaments/:id', err);
     return reply.status(500).send({ error: 'Internal server error' });
   } finally {
     client.release();
@@ -253,3 +255,39 @@ server.delete<{
 });
 
 // curl -X DELETE http://localhost:3003/api/tournament/PongCup
+
+
+server.post<{
+  Body: { name?: string };
+}>('/api/tournament/init', async (request, reply) => {
+  const { name } = request.body;
+
+  if (!name) {
+    return reply.status(400).send({ error: 'Missing tournament name' });
+  }
+
+  const client = await server.pg.connect();
+  try {
+    const result = await client.query(
+      'SELECT * FROM init_tournament($1::TEXT)',
+      [name]
+    );
+
+    if (result.rows.length === 0) {
+      return reply.status(500).send({ error: 'Tournament init failed: empty result' });
+    }
+
+    const { success, msg, games_id } = result.rows[0];
+    return reply.send({ success, msg, games_id });
+  } catch (err) {
+    console.error('Error in /api/tournament/init:', err);
+    return reply.status(500).send({ error: 'Internal server error' });
+  } finally {
+    client.release();
+  }
+});
+
+
+// curl -X POST http://localhost:3003/api/tournament/init \
+//   -H "Content-Type: application/json" \
+//   -d '{"name": "PongCup"}'
