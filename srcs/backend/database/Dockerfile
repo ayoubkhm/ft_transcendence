@@ -13,7 +13,7 @@ COPY games/tournaments/pairing.sql								/app/db-init/pairing.template.sql
 COPY users/channels_users/channels_users.sql					/app/db-init/channels_users.template.sql
 COPY users/friends/friends.sql									/app/db-init/friends.template.sql
 COPY users/friends/friends_CRUD.sql								/app/db-init/friends_CRUD.template.sql
-COPY users/invites/invites.sql									/app/db-init/invites.template.sql
+COPY invites/invites.sql										/app/db-init/invites.template.sql
 COPY users/tournaments_players/tournaments_players.sql			/app/db-init/tournaments_players.template.sql
 COPY users/tournaments_players/tournaments_players_CRUD.sql		/app/db-init/tournaments_players_CRUD.template.sql
 COPY users/users/user_CRUD.sql									/app/db-init/user_CRUD.template.sql
