@@ -555,13 +555,19 @@ if (searchInput && suggestionsList) {
       try {
         const res = await fetch(`/api/user/suggest/${encodeURIComponent(term)}`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json() as { success: boolean; msg: string; suggestions: { id: number; name: string }[] };
+        const data = await res.json() as { success: boolean; msg: string; suggestions: { id: number; name: string; tag: number }[] };
         suggestionsList.innerHTML = '';
         if (data.success && Array.isArray(data.suggestions)) {
           data.suggestions.forEach(u => {
             const li = document.createElement('li');
-            li.textContent = u.name;
-            li.className = 'px-2 py-1 hover:bg-gray-600 cursor-pointer';
+            li.className = 'px-2 py-1 hover:bg-gray-600 cursor-pointer flex items-center';
+            // Username text
+            li.appendChild(document.createTextNode(u.name));
+            // Inline tag in smaller grey font
+            const tagSpan = document.createElement('span');
+            tagSpan.className = 'text-gray-400 text-sm ml-1';
+            tagSpan.textContent = `#${u.tag}`;
+            li.appendChild(tagSpan);
             li.addEventListener('click', async () => {
               suggestionsList.classList.add('hidden');
               searchInput.value = u.name;
@@ -573,11 +579,17 @@ if (searchInput && suggestionsList) {
                   return;
                 }
                 const user = data2.profile;
-                if (publicProfileModal && publicProfileName && publicProfileTag && publicProfileEmail && publicProfileAvatar && publicProfileAddBtn) {
+                if (publicProfileModal && publicProfileName && publicProfileEmail && publicProfileAvatar && publicProfileAddBtn) {
                   // Remember which user we're viewing
                   currentProfileId = user.id;
-                  publicProfileName.textContent = user.name;
-                  publicProfileTag.textContent = user.tag.toString();
+                  // Clear existing name content and append username with inline tag
+                  publicProfileName.textContent = '';
+                  const nameNode = document.createTextNode(user.name);
+                  publicProfileName.appendChild(nameNode);
+                  const tagSpan = document.createElement('span');
+                  tagSpan.className = 'text-gray-400 text-sm ml-1';
+                  tagSpan.textContent = `#${user.tag}`;
+                  publicProfileName.appendChild(tagSpan);
                   publicProfileEmail.textContent = user.email;
                   if (user.avatar) {
                     publicProfileAvatar.src = user.avatar;
@@ -620,7 +632,6 @@ if (searchInput && suggestionsList) {
 const publicProfileModal = document.getElementById('public-profile-modal') as HTMLElement | null;
 const publicProfileClose = document.getElementById('public-profile-close') as HTMLButtonElement | null;
 const publicProfileName = document.getElementById('public-profile-name') as HTMLElement | null;
-const publicProfileTag = document.getElementById('public-profile-tag') as HTMLElement | null;
 const publicProfileEmail = document.getElementById('public-profile-email') as HTMLElement | null;
 const publicProfileAvatar = document.getElementById('public-profile-avatar') as HTMLImageElement | null;
 const publicProfileAddBtn = document.getElementById('public-profile-add-btn') as HTMLButtonElement | null;
@@ -899,12 +910,17 @@ profileBtn.addEventListener('click', async (e) => {
     try {
       const res = await fetch(`/api/user/search/${encodeURIComponent(email)}`, { credentials: 'include' });
       const data = await res.json() as { success: boolean; msg: string; profile: { id: number; name: string; tag: number; email: string; avatar: string | null } | null };
-      if (res.ok && data.success && data.profile) {
+        if (res.ok && data.success && data.profile) {
         const user = data.profile;
-        profileUsername.textContent = user.name;
+        // Show username with inline tag (#1234) in smaller, grey font
+        profileUsername.textContent = '';
+        profileUsername.appendChild(document.createTextNode(user.name));
+        const tagElem = document.createElement('span');
+        tagElem.className = 'text-gray-400 text-sm ml-1';
+        tagElem.textContent = `#${user.tag}`;
+        profileUsername.appendChild(tagElem);
         profileEmail.textContent = user.email;
         profileId.textContent = user.id.toString();
-        // TODO: add profile.tag and avatar if needed
       } else {
         console.warn('Profile lookup failed:', data.msg);
       }
