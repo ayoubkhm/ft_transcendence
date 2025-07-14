@@ -13,19 +13,8 @@ BEGIN
 		RAISE EXCEPTION 'Pls specify a tournament id not null';
 	END IF;
 
-	IF EXISTS (
-    	SELECT 1 FROM games
-    	WHERE tournament_id = _id
-			AND tournament_round = 1
-			AND state != 'WAITING'
-  	) THEN
-    	RAISE EXCEPTION 'Some games have already started: can'' pair tournament';
-	END IF;
-
 	DELETE FROM games
-	WHERE tournament_id = _id
-		AND tournament_round = 1;
-
+	WHERE tournament_id = _id;
 
 	SELECT ARRAY_AGG(player_id ORDER BY random())
 	INTO rplayers_id
@@ -41,20 +30,7 @@ BEGIN
     	i := i + 2;
 	END LOOP;
 
-	IF array_length(rplayers_id, 1) % 2 = 1 THEN
-		INSERT INTO games (p1_id, p2_bot, tournament_id, tournament_round, type)
-    	VALUES (rplayers_id[array_length(rplayers_id, 1)], TRUE, _id, 1, 'TOURNAMENT')
-    	RETURNING id INTO bracket_game_id;
-
-    	brackets_games_id := array_append(brackets_games_id, bracket_game_id);
-	END IF;
-
-	UPDATE tournaments
-	SET pairing = 1
-	WHERE id = _id;
-
 	RETURN brackets_games_id;
 END;
 $$ LANGUAGE plpgsql;
-
 
