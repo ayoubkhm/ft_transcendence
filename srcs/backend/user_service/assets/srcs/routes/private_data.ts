@@ -1,10 +1,63 @@
 import { FastifyInstance } from "fastify";
-import  validateUserData from "../utils/userData";
+import validateUserData from "../utils/userData";
 import { getTokenData } from "../utils/getTokenData";
+import fs from 'fs';
+import path from 'path';
+import { pipeline } from 'stream';
+import { promisify } from 'util';
 
 export default async function private_userRoutes(server: FastifyInstance, options: any, done: any) {
 
   console.log('✅ private_userRoutes loaded');
+  const pump = promisify(pipeline);
+  
+  // Route for avatar upload
+  server.post('/upload_avatar', async (request, reply) => {
+    console.log('[UPLOAD] Route atteinte');
+    // 1️⃣ Auth via JWT in cookie
+    const token = (request.cookies as any)?.jwt_transcendence;
+    if (!token) {
+      return reply.status(401).send({ error: 'Unauthorized' });
+    }
+    let payload;
+    try {
+      payload = getTokenData(token);
+    } catch {
+      return reply.status(401).send({ error: 'Invalid token' });
+    }
+    const userId = payload.id;
+    // 2️⃣ Prepare upload directory
+    const uploadDir = path.join(__dirname, '../../public/avatars');
+    fs.mkdirSync(uploadDir, { recursive: true });
+    // 3️⃣ Read multipart parts
+    const parts = request.parts();
+    for await (const part of parts) {
+      if (part.type === 'file' && part.fieldname === 'avatar') {
+        const ext = path.extname(part.filename || '');
+        const filename = `avatar_${userId}_${Date.now()}${ext}`;
+        const filePath = path.join(uploadDir, filename);
+        try {
+          await pump(part.file, fs.createWriteStream(filePath));
+        } catch (err) {
+          request.log.error(err, 'Upload error');
+          return reply.status(500).send({ error: 'Upload failed' });
+        }
+        const publicUrl = `/avatars/${filename}`;
+        // 4️⃣ Update DB
+        try {
+          await server.pg.query(
+            'UPDATE users SET avatar_url = $1 WHERE id = $2',
+            [publicUrl, userId]
+          );
+        } catch (err) {
+          request.log.error(err, 'DB update error');
+        }
+        // 5️⃣ Response
+        return reply.status(200).send({ avatar: publicUrl });
+      }
+    }
+    return reply.status(400).send({ error: 'No file uploaded under field "avatar"' });
+  });
 
     interface profilePictureBody{
         credential: string,
