@@ -38,20 +38,19 @@ export default async function friendsRoutes(server: FastifyInstance, options: an
             if ((friendRes.rowCount ?? 0) > 0) {
                 return reply.code(409).send({ error: 'Already friends' });
             }
-            // Check existing pending request
-            const pendRes = await server.pg.query(
-              `SELECT 1 FROM pending
+            const inviteRes = await server.pg.query(
+              `SELECT 1 FROM invites
                WHERE type = 'friend'
                  AND ((from_id = $1 AND to_id = $2)
                       OR (from_id = $2 AND to_id = $1))`,
               [userId, targetID]
             );
-            if ((pendRes.rowCount ?? 0) > 0) {
+            if ((inviteRes.rowCount ?? 0) > 0) {
                 return reply.code(409).send({ error: 'Friend request already pending' });
             }
-            // Insert new pending request
+            // Insert new invite request
             await server.pg.query(
-              `INSERT INTO pending (from_id, to_id, type) VALUES ($1, $2, 'friend')`,
+              `INSERT INTO invites (from_id, to_id, type) VALUES ($1, $2, 'friend')`,
               [userId, targetID]
             );
             return reply.send({ success: true, msg: 'Friend request sent' });
@@ -66,15 +65,36 @@ export default async function friendsRoutes(server: FastifyInstance, options: an
 
     server.put<{Params:acceptUserFriendRequestParams}>('/friends/requests/:id', async (request, reply) => {
         try {
-            const requestID = request.params?.id;
+            const requestID = Number(request.params.id);
             const token = request.cookies['jwt_transcendence'];
             if (!token)
                 return reply.status(230).send({ error: "0403" });
             const id = getTokenData(token).id;
             if (!id)
                 return reply.status(230).send({ error: "0404" });
-
+            if (isNaN(requestID))
+                return reply.status(230).send({ error: "0404" });
+            const inviteRes = await server.pg.query(
+                'SELECT 1 FROM invites WHERE from_id = $1 AND to_id = $2 AND type = \'friend\'',
+                [requestID, id]
+            );
+            if ((inviteRes.rowCount ?? 0) === 0)
+                return reply.status(230).send({ error: "0404" });
+            // Call integer-based new_friends overload to create the friendship
+            const friendRes = await server.pg.query(
+                'SELECT * FROM new_friends($1::int, $2::int)',
+                [id, requestID]
+            );
+            const { success, msg } = friendRes.rows[0];
+            if (!success)
+                return reply.status(230).send({ error: msg });
+            await server.pg.query(
+                'DELETE FROM invites WHERE from_id = $1 AND to_id = $2 AND type = \'friend\'',
+                [requestID, id]
+            );
+            return reply.send({ success: true, msg });
         } catch (error) {
+            request.log.error(error);
             return reply.status(230).send({ error: "0500" });
         }
     });
@@ -84,15 +104,28 @@ export default async function friendsRoutes(server: FastifyInstance, options: an
 
     server.delete<{Params:acceptUserFriendRequestParams}>('/friends/requests/:id', async (request, reply) => {
         try {
-            const requestID = request.params?.id;
+            const requestID = Number(request.params.id);
             const token = request.cookies['jwt_transcendence'];
             if (!token)
                 return reply.status(230).send({ error: "0403" });
             const id = getTokenData(token).id;
             if (!id)
                 return reply.status(230).send({ error: "0404" });
-
+            if (isNaN(requestID))
+                return reply.status(230).send({ error: "0404" });
+            const inviteRes = await server.pg.query(
+                'SELECT 1 FROM invites WHERE from_id = $1 AND to_id = $2 AND type = \'friend\'',
+                [requestID, id]
+            );
+            if ((inviteRes.rowCount ?? 0) === 0)
+                return reply.status(230).send({ error: "0404" });
+            await server.pg.query(
+                'DELETE FROM invites WHERE from_id = $1 AND to_id = $2 AND type = \'friend\'',
+                [requestID, id]
+            );
+            return reply.send({ success: true, msg: 'Friend request rejected' });
         } catch (error) {
+            request.log.error(error);
             return reply.status(230).send({ error: "0500" });
         }
     });
@@ -181,7 +214,7 @@ export default async function friendsRoutes(server: FastifyInstance, options: an
             }
             const sql = `
               SELECT u.id, u.name
-              FROM pending p
+              FROM invites p
               JOIN users u ON p.from_id = u.id
               WHERE p.to_id = $1 AND p.type = 'friend'
             `;

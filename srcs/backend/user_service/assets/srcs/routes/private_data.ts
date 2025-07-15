@@ -26,8 +26,8 @@ export default async function private_userRoutes(server: FastifyInstance, option
       return reply.status(401).send({ error: 'Invalid token' });
     }
     const userId = payload.id;
-    // 2️⃣ Prepare upload directory
-    const uploadDir = path.join(__dirname, '../../public/avatars');
+    // 2️⃣ Prepare upload directory (now at container path /usr/src/avatar)
+    const uploadDir = '/usr/src/avatar';
     fs.mkdirSync(uploadDir, { recursive: true });
     // 3️⃣ Read multipart parts
     const parts = request.parts();
@@ -42,7 +42,8 @@ export default async function private_userRoutes(server: FastifyInstance, option
           request.log.error(err, 'Upload error');
           return reply.status(500).send({ error: 'Upload failed' });
         }
-        const publicUrl = `/avatars/${filename}`;
+        // URL under user API so it is proxied by Nginx
+        const publicUrl = `/api/user/avatars/${filename}`;
         // 4️⃣ Update DB
         try {
           await server.pg.query(
