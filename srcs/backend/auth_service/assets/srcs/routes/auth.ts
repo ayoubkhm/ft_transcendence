@@ -5,6 +5,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import validatePassword from '../utils/password';
 import isConnected from '../JWT/jsonwebtoken';
+import { getTokenData } from '../utils/getTokenData';
 import { error } from 'node:console';
 
 
@@ -313,11 +314,31 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
     reply.clearCookie('jwt_transcendence', {}).status(200).send();
   });
 
+  // Check authentication status and return user info if logged in and 2FA validated
   app.get('/status', async function (request, reply) {
-    await isConnected(request, reply, ()=> {
-      return (reply.status(200).send({ message: "logged_in" }));
-      })
-    });
+    const token = request.cookies['jwt_transcendence'];
+    if (!token || token === 'undefined') {
+      return reply.status(401).send({ error: 'Not authenticated' });
+    }
+    try {
+      // Decode token payload (contains user data under .data)
+      const { email, name, dfa } = getTokenData(token);
+      // If 2FA not yet validated, signal requirement
+      if (dfa === false) {
+        return reply.status(403).send({ error: 'Two-factor authentication required' });
+      }
+      // Successful authentication
+      return reply.status(200).send({
+        message: 'logged_in',
+        email,
+        name,
+        twofaEnabled: true
+      });
+    } catch (err) {
+      console.error('Auth status decode failed:', err);
+      return reply.status(401).send({ error: 'Invalid token' });
+    }
+  });
 
   done();
 }

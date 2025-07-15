@@ -486,6 +486,8 @@ logoutBtn.addEventListener('click', async (e) => {
   }
   localStorage.removeItem('loggedIn');
   localStorage.removeItem('username');
+  // Clear stored email for profile lookup
+  localStorage.removeItem('userEmail');
   // Clear stored authentication method
   localStorage.removeItem('authMethod');
   updateAuthView();
@@ -501,7 +503,9 @@ async function initializeAuth() {
       // Authenticated: set flags
       localStorage.setItem('loggedIn', 'true');
       if (data.name) localStorage.setItem('username', data.name);
-      // twofaEnabled: default false for original backend
+      // Store email for profile lookup
+      if (data.email) localStorage.setItem('userEmail', data.email);
+      // twofaEnabled: server indicates 2FA status
       localStorage.setItem('twofaEnabled', data.twofaEnabled === true ? 'true' : 'false');
     } else {
       // Not authenticated or 2FA required
