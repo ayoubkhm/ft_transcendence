@@ -376,7 +376,8 @@ loginModalForm.addEventListener('submit', async (e) => {
       localStorage.setItem('loggedIn', 'true');
       localStorage.setItem('authMethod', 'password');
       localStorage.setItem('userEmail', email);  // store email for profile lookup
-      window.location.reload();
+      // After successful login, navigate to main menu
+      window.location.replace(`${location.pathname}${location.search}`);
     } else {
       alert('Login failed');
     }
@@ -907,7 +908,8 @@ signupModalForm.addEventListener('submit', async (e) => {
       localStorage.setItem('userEmail', email);  // store email for profile lookup
       localStorage.setItem('authMethod', 'password');
       updateAuthView();
-      signupModal!.classList.add('hidden');
+      // Close signup modal via history navigation
+      history.back();
     } else {
       alert(data.error || 'Sign up failed');
     }
@@ -1028,7 +1030,7 @@ profileSetup2FABtn.addEventListener('click', (e) => {
 // Disable 2FA handler
 profileDisable2FABtn.addEventListener('click', async (e) => {
   e.preventDefault();
-  profileModal.classList.add('hidden');
+  // Only close profile modal on successful disable via history navigation
   try {
     const res = await fetch('/api/auth/2fa/delete', {
       method: 'DELETE',
@@ -1037,9 +1039,8 @@ profileDisable2FABtn.addEventListener('click', async (e) => {
     const data = await res.json();
     if (res.ok) {
       alert(data.message || '2FA successfully disabled');
-      profile2FAStatus.textContent = 'false';
-      profileDisable2FABtn.classList.add('hidden');
-      profileSetup2FABtn.classList.remove('hidden');
+      // Return to main menu
+      history.back();
     } else {
       alert(data.error || 'Failed to disable 2FA');
     }
@@ -1179,6 +1180,8 @@ setup2faForm!.addEventListener('submit', async (e) => {
       if (setup2faTestCodeDiv) {
         setup2faTestCodeDiv.classList.add('hidden');
       }
+      // Return to main menu after enabling 2FA
+      history.back();
     } else {
       alert(data.error || '2FA setup verification failed');
     }
@@ -1219,9 +1222,10 @@ twofaLoginForm.addEventListener('submit', async (e) => {
     const data = await res.json();
     console.log('2FA login response:', res.status, data);
     if (res.ok) {
-      console.log('2FA login success, reloading');
+      console.log('2FA login success, navigating to main menu');
       localStorage.setItem('loggedIn', 'true');
-      window.location.reload();
+      // Navigate to main menu after successful 2FA login
+      window.location.replace(`${location.pathname}${location.search}`);
     } else {
       console.warn('2FA login failed:', data.error);
       alert(data.error || '2FA verification failed');
@@ -1458,4 +1462,70 @@ function router(state: any) {
 // Handle back/forward navigation
 window.addEventListener('popstate', (e) => {
   router(e.state);
+});
+// Profile avatar upload with preview
+document.addEventListener('DOMContentLoaded', () => {
+  const uploadAvatarBtn = document.getElementById('profile-upload-avatar-btn');
+  if (!uploadAvatarBtn) return;
+
+  // Create hidden file input
+  const fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.accept = 'image/*';
+  fileInput.style.display = 'none';
+  document.body.appendChild(fileInput);
+
+  // Create preview image element, hidden by default
+  const previewImg = document.createElement('img');
+  previewImg.style.maxWidth = '150px';
+  previewImg.style.marginTop = '10px';
+  previewImg.style.borderRadius = '8px';
+  previewImg.style.display = 'none';
+  uploadAvatarBtn.parentElement?.appendChild(previewImg);
+
+  // Open file picker on button click
+  uploadAvatarBtn.addEventListener('click', () => {
+    fileInput.click();
+  });
+
+  // Handle file selection: preview and upload
+  fileInput.addEventListener('change', async (event) => {
+    const target = event.target as HTMLInputElement;
+    if (target.files && target.files.length > 0) {
+      const file = target.files[0];
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        if (e.target?.result) {
+          previewImg.src = e.target.result as string;
+          previewImg.style.display = 'block';
+        }
+      };
+      reader.readAsDataURL(file);
+      // Upload to server
+      try {
+        const formData = new FormData();
+        formData.append('avatar', file);
+        const res = await fetch('/api/user/upload_avatar', {
+          method: 'POST',
+          credentials: 'include',
+          body: formData,
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.avatar) {
+            previewImg.src = data.avatar;
+            alert('Avatar uploaded successfully');
+          } else {
+            alert('Upload failed');
+          }
+        } else {
+          const err = await res.json();
+          alert(err.error || 'Upload failed');
+        }
+      } catch (err) {
+        console.error('Upload error:', err);
+        alert('Error uploading avatar');
+      }
+    }
+  });
 });
