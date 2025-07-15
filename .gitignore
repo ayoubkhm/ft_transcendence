@@ -29,3 +29,5 @@ yarn-error.log*
 
 qr.sh
 qr.png
+
+docker-compose-dev.yml
