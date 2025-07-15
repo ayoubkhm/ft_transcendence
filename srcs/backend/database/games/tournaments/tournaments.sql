@@ -1,4 +1,4 @@
-CREATE TYPE tournament_state AS ENUM ('PREP', 'WAITING', 'RUNNING', 'OVER');
+CREATE TYPE tournament_state AS ENUM ('PREP', 'RUNNING', 'OVER');
 
 CREATE TABLE IF NOT EXISTS tournaments (
 	id SERIAL PRIMARY KEY,

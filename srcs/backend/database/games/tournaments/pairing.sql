@@ -3,7 +3,7 @@ CREATE OR REPLACE FUNCTION pair_tournament (
 	players_id INTEGER[],
 	_nbr_players INTEGER
 )
-RETURNS JSON AS $$
+RETURNS jsonb AS $$
 DECLARE
 	rplayers_id INTEGER[];
 	i INTEGER;
@@ -96,5 +96,37 @@ BEGIN
 	END LOOP;
 
 	RETURN brackets_json;
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION get_brackets(_id INTEGER)
+RETURNS TABLE(success BOOLEAN, msg TEXT, brackets jsonb) AS $$
+BEGIN
+	IF _id IS NULL THEN
+		RETURN QUERY SELECT FALSE, 'No tournament id provided (null): no brackets', '[]'::jsonb;
+	END IF;
+
+	RETURN QUERY SELECT TRUE, 'Brackets successfully retrieved', (
+		SELECT jsonb_agg(
+			jsonb_build_object(
+				'round', sub.tournament_round,
+				'matchs', sub.matchs
+			)
+		)
+		FROM (
+			SELECT
+				games_table.tournament_round,
+				jsonb_agg(to_jsonb(games_table)
+				ORDER BY games_table.id) AS matchs
+			FROM games games_table
+			WHERE games_table.tournament_id = _id
+			GROUP BY games_table.tournament_round
+			ORDER BY games_table.tournament_round
+		) AS sub
+	);
+EXCEPTION
+	WHEN OTHERS THEN
+		RETURN QUERY SELECT FALSE, SQLERRM, '[]'::jsonb;
 END;
 $$ LANGUAGE plpgsql;
