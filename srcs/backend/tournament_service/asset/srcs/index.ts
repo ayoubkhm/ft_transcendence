@@ -13,6 +13,41 @@ server.register(FastifyPostgres, {
 });
 server.register(bracketsRoute, { prefix: '/api/tournaments' });
 
+// Allow GET for join via query param: GET /api/tournament/:id/join?user_id=xxx
+server.get<{
+  Params: { id: string };
+  Querystring: { user_id?: string };
+}>('/api/tournament/:id/join', async (request, reply) => {
+  const tournamentId = parseInt(request.params.id, 10);
+  const userId = request.query.user_id ? parseInt(request.query.user_id, 10) : undefined;
+  if (isNaN(tournamentId) || !userId) {
+    return reply.status(400).send({ error: 'Invalid tournament ID or missing user_id' });
+  }
+  const client = await server.pg.connect();
+  try {
+    const tournamentRes = await client.query(
+      'SELECT name FROM tournaments WHERE id = $1',
+      [tournamentId]
+    );
+    if (tournamentRes.rows.length === 0) {
+      return reply.status(404).send({ error: 'Tournament not found' });
+    }
+    const tournamentName = tournamentRes.rows[0].name;
+    const result = await client.query(
+      'SELECT * FROM join_tournament($1::INTEGER, $2::TEXT)',
+      [userId, tournamentName]
+    );
+    if (result.rows.length === 0) {
+      return reply.status(500).send({ error: 'Join tournament failed' });
+    }
+    return reply.send(result.rows[0]);
+  } catch (err) {
+    console.error('Error in GET /api/tournament/:id/join:', err);
+    return reply.status(500).send({ error: 'Internal server error' });
+  } finally {
+    client.release();
+  }
+});
 // ─── Lancement du serveur ───────────────────────────────────
 server.listen({ port: 3000, host: '0.0.0.0' })
   .then((address) => {
@@ -22,6 +57,7 @@ server.listen({ port: 3000, host: '0.0.0.0' })
     console.error('❌ Failed to start server:', err);
     process.exit(1);
   });
+
 
 
   server.post('/api/tournament', async (request, reply) => {
@@ -323,6 +359,7 @@ server.put<{
 });
 
 
+
 // curl -X PUT http://localhost:3003/api/tournament/1/name \
 //   -H "Content-Type: application/json" \
 //   -d '{"name": "Champions League"}'
@@ -386,6 +423,15 @@ server.put<{
     client.release();
   }
 });
+// ─── Lancement du serveur ───────────────────────────────────
+server.listen({ port: 3000, host: '0.0.0.0' })
+  .then((address) => {
+    console.log(`🚀 Tournament service listening at ${address}`);
+  })
+  .catch((err) => {
+    console.error('❌ Failed to start server:', err);
+    process.exit(1);
+  });
 
 
 // curl -X PUT http://localhost:3003/api/tournament/1/max_players \
