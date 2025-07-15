@@ -1371,21 +1371,45 @@ playTournBtn!.addEventListener('click', async (e) => {
           // Wire up Join button
           const joinBtn = tr.querySelector<HTMLButtonElement>('.join-btn');
           joinBtn?.addEventListener('click', async () => {
+            // Ensure user is logged in and email is stored
+            const email = localStorage.getItem('userEmail');
+            if (!email) {
+              alert('Please log in to join a tournament');
+              return;
+            }
+            // Lookup user ID by email
+            let userId: number;
             try {
-              const res = await fetch(`/api/tournament/${t.id}/join`, {
+            const lookupRes = await fetch(`/api/user/lookup/${encodeURIComponent(email)}`, {
                 method: 'POST',
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ user_id: parseInt(playerId, 10) })
+                body: JSON.stringify({})
               });
-              if (res.ok) {
+              if (!lookupRes.ok) throw new Error(await lookupRes.text());
+              const userData = await lookupRes.json();
+              userId = userData.id;
+            } catch (err) {
+              console.error('User lookup error:', err);
+              alert('Failed to retrieve your user ID');
+              return;
+            }
+            // Join the tournament
+            try {
+              const resJoin = await fetch(`/api/tournament/${t.id}/join`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: userId })
+              });
+              if (resJoin.ok) {
                 alert('Successfully joined tournament');
               } else {
-                const err = await res.json().catch(() => ({}));
-                alert('Failed to join tournament: ' + (err.error || err.msg || res.statusText));
+                const errBody = await resJoin.json().catch(() => ({}));
+                alert('Failed to join tournament: ' + (errBody.error || errBody.msg || resJoin.statusText));
               }
-            } catch (error) {
-              console.error('Error joining tournament:', error);
+            } catch (err) {
+              console.error('Error joining tournament:', err);
               alert('Error joining tournament');
             }
           });
