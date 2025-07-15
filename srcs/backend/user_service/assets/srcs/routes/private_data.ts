@@ -1,10 +1,63 @@
 import { FastifyInstance } from "fastify";
-import  validateUserData from "../utils/userData";
+import validateUserData from "../utils/userData";
 import { getTokenData } from "../utils/getTokenData";
+import fs from 'fs';
+import path from 'path';
+import { pipeline } from 'stream';
+import { promisify } from 'util';
 
 export default async function private_userRoutes(server: FastifyInstance, options: any, done: any) {
 
   console.log('✅ private_userRoutes loaded');
+  const pump = promisify(pipeline);
+  
+  // Route for avatar upload
+  server.post('/upload_avatar', async (request, reply) => {
+    console.log('[UPLOAD] Route atteinte');
+    // 1️⃣ Auth via JWT in cookie
+    const token = (request.cookies as any)?.jwt_transcendence;
+    if (!token) {
+      return reply.status(401).send({ error: 'Unauthorized' });
+    }
+    let payload;
+    try {
+      payload = getTokenData(token);
+    } catch {
+      return reply.status(401).send({ error: 'Invalid token' });
+    }
+    const userId = payload.id;
+    // 2️⃣ Prepare upload directory
+    const uploadDir = path.join(__dirname, '../../public/avatars');
+    fs.mkdirSync(uploadDir, { recursive: true });
+    // 3️⃣ Read multipart parts
+    const parts = request.parts();
+    for await (const part of parts) {
+      if (part.type === 'file' && part.fieldname === 'avatar') {
+        const ext = path.extname(part.filename || '');
+        const filename = `avatar_${userId}_${Date.now()}${ext}`;
+        const filePath = path.join(uploadDir, filename);
+        try {
+          await pump(part.file, fs.createWriteStream(filePath));
+        } catch (err) {
+          request.log.error(err, 'Upload error');
+          return reply.status(500).send({ error: 'Upload failed' });
+        }
+        const publicUrl = `/avatars/${filename}`;
+        // 4️⃣ Update DB
+        try {
+          await server.pg.query(
+            'UPDATE users SET avatar = $1 WHERE id = $2',
+            [publicUrl, userId]
+          );
+        } catch (err) {
+          request.log.error(err, 'DB update error');
+        }
+        // 5️⃣ Response
+        return reply.status(200).send({ avatar: publicUrl });
+      }
+    }
+    return reply.status(400).send({ error: 'No file uploaded under field "avatar"' });
+  });
 
     interface profilePictureBody{
         credential: string,
@@ -34,10 +87,45 @@ export default async function private_userRoutes(server: FastifyInstance, option
     }
 
     interface PrivateDataBody {
-      credential: string;
+      credential?: string;
     }
 
   server.post<{ Params: PrivateDataParams, Body: PrivateDataBody }>('/lookup/:email', async (request, reply) => {
+  // Authentication: allow if valid API credential or JWT for self/admin
+  const apiCred = request.body?.credential;
+  const token = (request.cookies as any)?.jwt_transcendence;
+  if (!apiCred && !token) {
+    return reply.status(401).send({ error: 'Unauthorized' });
+  }
+  if (apiCred) {
+    if (apiCred !== process.env.API_CREDENTIAL) {
+      return reply.status(403).send({ error: 'Forbidden' });
+    }
+  }
+  if (token) {
+    let tokData;
+    try {
+      tokData = getTokenData(token);
+    } catch {
+      return reply.status(403).send({ error: 'Forbidden' });
+    }
+    const identifier = request.params.email;
+    const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier);
+    const isID = /^\d+$/.test(identifier);
+    if (isEmail) {
+      if (tokData.email !== identifier && !tokData.admin) {
+        return reply.status(403).send({ error: 'Forbidden' });
+      }
+    } else if (isID) {
+      if (tokData.id !== Number(identifier) && !tokData.admin) {
+        return reply.status(403).send({ error: 'Forbidden' });
+      }
+    } else {
+      if (tokData.name !== identifier && !tokData.admin) {
+        return reply.status(403).send({ error: 'Forbidden' });
+      }
+    }
+  }
   const value = request.params.email;
 
   const isEmail = value.match(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/);

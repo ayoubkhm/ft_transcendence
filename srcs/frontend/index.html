@@ -209,12 +209,18 @@
     <div class="mb-2"><strong>Username:</strong> <span id="profile-username"></span></div>
     <div class="mb-2"><strong>ID:</strong> <span id="profile-id"></span></div>
     <div class="mb-4"><strong>Email:</strong> <span id="profile-email"></span></div>
+    <div class="mb-4"><strong>Online:</strong> <span id="profile-online-status"></span></div>
     <div class="mb-4"><strong>2FA Status:</strong> <span id="profile-2fa-status"></span></div>
     <button id="profile-setup-2fa-btn" class="px-4 py-2 bg-yellow-500 rounded text-white">Enable 2FA</button>
     <button id="profile-disable-2fa-btn" class="px-4 py-2 bg-red-500 rounded text-white hidden">Disable 2FA</button>
     <button id="profile-na-2fa-btn" class="px-4 py-2 bg-gray-500 rounded text-white hidden" disabled>N/A</button>
     <div class="mt-4">
       <button id="profile-change-password-btn" class="px-4 py-2 bg-blue-500 rounded text-white">Change Password</button>
+    </div>
+    <!-- Avatar upload control -->
+    <div class="mt-2">
+      <button id="profile-upload-avatar-btn" class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded text-white">Upload Avatar</button>
+      <input type="file" id="avatar-file-input" accept="image/*" style="display:none" />
     </div>
   </div>
 </div>
@@ -322,9 +328,9 @@
               <th class="px-2 py-1">ID</th>
               <th class="px-2 py-1">Name</th>
               <th class="px-2 py-1">State</th>
-              <th class="px-2 py-1">Max Players</th>
-              <th class="px-2 py-1">Participants</th>
+              <th class="px-2 py-1">Participants/Max Players</th>
               <th class="px-2 py-1">Winner</th>
+              <th class="px-2 py-1">Actions</th>
             </tr>
           </thead>
           <tbody id="tournament-table-body" class="divide-y divide-gray-600"></tbody>
