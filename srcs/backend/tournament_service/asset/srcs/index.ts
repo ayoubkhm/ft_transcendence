@@ -291,3 +291,101 @@ server.post<{
 // curl -X POST http://localhost:3003/api/tournament/init \
 //   -H "Content-Type: application/json" \
 //   -d '{"name": "PongCup"}'
+
+
+server.put<{
+  Params: { id: string };
+  Body: { name?: string };
+}>('/api/tournament/:id/name', async (request, reply) => {
+  const tournamentId = parseInt(request.params.id, 10);
+  const { name } = request.body;
+
+  if (isNaN(tournamentId) || !name) {
+    return reply.status(400).send({ error: 'Invalid tournament ID or missing name' });
+  }
+
+  const client = await server.pg.connect();
+  try {
+    const result = await client.query(
+      'SELECT * FROM set_tournament_name($1::INTEGER, $2::TEXT)',
+      [tournamentId, name]
+    );
+
+    return reply.send(result.rows[0]);
+  } catch (err) {
+    console.error('Error in /api/tournament/:id/name:', err);
+    return reply.status(500).send({ error: 'Internal server error' });
+  } finally {
+    client.release();
+  }
+});
+
+
+// curl -X PUT http://localhost:3003/api/tournament/1/name \
+//   -H "Content-Type: application/json" \
+//   -d '{"name": "Champions League"}'
+
+server.put<{
+  Params: { id: string };
+  Body: { min_players?: number };
+}>('/api/tournament/:id/min_players', async (request, reply) => {
+  const tournamentId = parseInt(request.params.id, 10);
+  const { min_players } = request.body;
+
+  if (isNaN(tournamentId) || typeof min_players !== 'number') {
+    return reply.status(400).send({ error: 'Invalid tournament ID or missing/invalid min_players' });
+  }
+
+  const client = await server.pg.connect();
+  try {
+    const result = await client.query(
+      'SELECT * FROM set_tournament_min_players($1::INTEGER, $2::INTEGER)',
+      [tournamentId, min_players]
+    );
+
+    return reply.send(result.rows[0]);
+  } catch (err) {
+    console.error('Error in /api/tournament/:id/min_players:', err);
+    return reply.status(500).send({ error: 'Internal server error' });
+  } finally {
+    client.release();
+  }
+});
+
+
+// curl -X PUT http://localhost:3003/api/tournament/1/min_players \
+//   -H "Content-Type: application/json" \
+//   -d '{"min_players": 4}'
+
+
+server.put<{
+  Params: { id: string };
+  Body: { max_players?: number };
+}>('/api/tournament/:id/max_players', async (request, reply) => {
+  const tournamentId = parseInt(request.params.id, 10);
+  const { max_players } = request.body;
+
+  if (isNaN(tournamentId) || typeof max_players !== 'number') {
+    return reply.status(400).send({ error: 'Invalid tournament ID or missing/invalid max_players' });
+  }
+
+  const client = await server.pg.connect();
+  try {
+    const result = await client.query(
+      'SELECT * FROM set_tournament_max_players($1::INTEGER, $2::INTEGER)',
+      [tournamentId, max_players]
+    );
+
+    return reply.send(result.rows[0]);
+  } catch (err) {
+    console.error('Error in /api/tournament/:id/max_players:', err);
+    return reply.status(500).send({ error: 'Internal server error' });
+  } finally {
+    client.release();
+  }
+});
+
+
+// curl -X PUT http://localhost:3003/api/tournament/1/max_players \
+//   -H "Content-Type: application/json" \
+//   -d '{"max_players": 16}'
