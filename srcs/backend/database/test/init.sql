@@ -7,7 +7,7 @@ BEGIN
     PERFORM new_user('gino');
     PERFORM new_user('octoross', 'signed', 'ocemail', '456');
 
-    PERFORM new_tournament('ouais');
+    PERFORM new_tournament('ouais', 5);
 
     PERFORM join_tournament(1, 'ouais');
     PERFORM join_tournament(3, 'ouais');
