@@ -173,7 +173,7 @@ services:
       - user_service
       - frontend
     ports:
-      - "443:443"          # 🔐 HTTPS vers l’hôte
+      - "4443:443"          # 🔐 HTTPS vers l’hôte
       - "8080:80"            # HTTP for development
     networks:
       - router
