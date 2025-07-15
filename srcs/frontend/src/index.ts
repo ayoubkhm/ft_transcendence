@@ -1,4 +1,26 @@
 import './tournament_brackets';
+// Initialize feature modules
+import './lib/api';
+import './lib/dom';
+import './lib/router';
+import { setupLoginModal } from './components/auth/LoginModal';
+import { drawGame } from './components/game/GameCanvas';
+import './components/game/GameControls';
+import { setupTournamentDashboard } from './components/tournament/TournamentDashboard';
+import { setupBracketsView } from './components/tournament/BracketsView';
+import { setupFriendsModal } from './components/friends/FriendsModal';
+import { setupUserSearch } from './components/search/UserSearch';
+import { setupSignupModal } from './components/auth/SignupModal';
+import './components/twofa/TwoFASetup';
+// Initialize auth modals
+setupLoginModal();
+setupSignupModal();
+
+// Initialize feature modules
+setupUserSearch();
+setupFriendsModal();
+setupTournamentDashboard();
+setupBracketsView();
 
 // src/index.ts  – Main SPA logic
 
@@ -231,7 +253,7 @@ async function fetchAndDraw() {
     const res = await fetch(`/api/game/${gameId}/state`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const state = await res.json();
-    draw(state);
+    drawGame(ctx, state, images);
 
     if (state.isGameOver && pollTimer) {
       clearInterval(pollTimer);
