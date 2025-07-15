@@ -34,10 +34,45 @@ export default async function private_userRoutes(server: FastifyInstance, option
     }
 
     interface PrivateDataBody {
-      credential: string;
+      credential?: string;
     }
 
   server.post<{ Params: PrivateDataParams, Body: PrivateDataBody }>('/lookup/:email', async (request, reply) => {
+  // Authentication: allow if valid API credential or JWT for self/admin
+  const apiCred = request.body?.credential;
+  const token = (request.cookies as any)?.jwt_transcendence;
+  if (!apiCred && !token) {
+    return reply.status(401).send({ error: 'Unauthorized' });
+  }
+  if (apiCred) {
+    if (apiCred !== process.env.API_CREDENTIAL) {
+      return reply.status(403).send({ error: 'Forbidden' });
+    }
+  }
+  if (token) {
+    let tokData;
+    try {
+      tokData = getTokenData(token);
+    } catch {
+      return reply.status(403).send({ error: 'Forbidden' });
+    }
+    const identifier = request.params.email;
+    const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier);
+    const isID = /^\d+$/.test(identifier);
+    if (isEmail) {
+      if (tokData.email !== identifier && !tokData.admin) {
+        return reply.status(403).send({ error: 'Forbidden' });
+      }
+    } else if (isID) {
+      if (tokData.id !== Number(identifier) && !tokData.admin) {
+        return reply.status(403).send({ error: 'Forbidden' });
+      }
+    } else {
+      if (tokData.name !== identifier && !tokData.admin) {
+        return reply.status(403).send({ error: 'Forbidden' });
+      }
+    }
+  }
   const value = request.params.email;
 
   const isEmail = value.match(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/);
