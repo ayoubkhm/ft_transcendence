@@ -7,6 +7,15 @@ const server = Fastify();
 
 // Trust proxy headers (e.g., X-Forwarded-Proto) when behind SSL termination
 
+server.listen({ port: 3000, host: '0.0.0.0' })
+  .then((address) => {
+    console.log(`🚀 Tournament service listening at ${address}`);
+  })
+  .catch((err) => {
+    console.error('❌ Failed to start server:', err);
+    process.exit(1);
+  });
+
 // ─── Plugin PostgreSQL ──────────────────────────────────────
 server.register(FastifyPostgres, {
   connectionString: process.env.DATABASE_URL,
