@@ -1352,7 +1352,7 @@ playTournBtn!.addEventListener('click', async (e) => {
       const res = await fetch('/api/tournaments/tournaments', { credentials: 'include' });
       if (res.ok) {
         // Load tournaments
-        const data = await res.json() as Array<{ id:number; name:string; state:string; min_players:number; nbr_players:number; winner:string|null }>;
+        const data = await res.json() as Array<{ id: number; name: string; state: string; max_players: number; nbr_players: number; winner: string | null }>;
         data.forEach(t => {
           const tr = document.createElement('tr');
           tr.className = 'border-t border-gray-600';
@@ -1360,11 +1360,53 @@ playTournBtn!.addEventListener('click', async (e) => {
             <td class="px-2 py-1">${t.id}</td>
             <td class="px-2 py-1">${t.name}</td>
             <td class="px-2 py-1">${t.state}</td>
-            <td class="px-2 py-1">${t.min_players}</td>
-            <td class="px-2 py-1">${t.nbr_players}</td>
+            <td class="px-2 py-1">${t.nbr_players}/${t.max_players}</td>
             <td class="px-2 py-1">${t.winner || ''}</td>
+            <td class="px-2 py-1 space-x-1">
+              <button class="join-btn bg-blue-500 hover:bg-blue-600 text-white text-xs px-2 py-1 rounded" data-id="${t.id}">Join</button>
+              <button class="spectate-btn bg-gray-500 hover:bg-gray-600 text-white text-xs px-2 py-1 rounded" data-id="${t.id}">Spectate</button>
+            </td>
           `;
           tournamentTableBody.appendChild(tr);
+          // Wire up Join button
+          const joinBtn = tr.querySelector<HTMLButtonElement>('.join-btn');
+          joinBtn?.addEventListener('click', async () => {
+            try {
+              const res = await fetch(`/api/tournament/${t.id}/join`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: parseInt(playerId, 10) })
+              });
+              if (res.ok) {
+                alert('Successfully joined tournament');
+              } else {
+                const err = await res.json().catch(() => ({}));
+                alert('Failed to join tournament: ' + (err.error || err.msg || res.statusText));
+              }
+            } catch (error) {
+              console.error('Error joining tournament:', error);
+              alert('Error joining tournament');
+            }
+          });
+          // Wire up Spectate button
+          const spectateBtn = tr.querySelector<HTMLButtonElement>('.spectate-btn');
+          spectateBtn?.addEventListener('click', async () => {
+            try {
+              const res = await fetch(`/api/tournaments/tournaments/${t.id}`, { credentials: 'include' });
+              if (res.ok) {
+                const detail = await res.json();
+                console.log('Tournament details:', detail);
+                alert('Tournament details fetched (see console)');
+              } else {
+                console.error('Failed to fetch tournament details', await res.text());
+                alert('Failed to fetch tournament details');
+              }
+            } catch (error) {
+              console.error('Error fetching tournament details:', error);
+              alert('Error fetching tournament details');
+            }
+          });
         });
       } else {
         console.error('Failed to load tournaments', await res.text());

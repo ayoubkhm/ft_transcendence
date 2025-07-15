@@ -46,7 +46,7 @@ export default async function private_userRoutes(server: FastifyInstance, option
         // 4️⃣ Update DB
         try {
           await server.pg.query(
-            'UPDATE users SET avatar_url = $1 WHERE id = $2',
+            'UPDATE users SET avatar = $1 WHERE id = $2',
             [publicUrl, userId]
           );
         } catch (err) {
