@@ -4,24 +4,29 @@ import multipart from '@fastify/multipart';
 import fastifyPostgres from '@fastify/postgres';
 import fastifyStatic from '@fastify/static';
 import path from 'path';
+import fs from 'fs';
 
 import private_userRoutes from './routes/private_data';
 import public_userRoutes from './routes/public_data';
 import friendsRoutes from './routes/friends';
 // import tournamentsRoutes from './routes/tournaments';
-import fastifyPostgres from '@fastify/postgres';
 /* import jwt from 'jsonwebtoken'; */
 
 const server = fastify({ trustProxy: true });
 
-const avatarsPath = path.join(__dirname, '../../public/avatars');
+// Serve avatar files from the container's /usr/src/avatar directory
+const avatarsPath = '/usr/src/avatar';
+// Ensure the avatars directory exists
+fs.mkdirSync(avatarsPath, { recursive: true });
 console.log('Serving static avatars from:', avatarsPath);
 
 // Enregistre le plugin pour servir les fichiers statiques AVANT les routes
+// Register static file serving for avatars (must come before routes)
+// Serve avatars under the same API namespace so it passes through Nginx /api/user proxy
 server.register(fastifyStatic, {
-  root: path.join(__dirname, '../../public/avatars'), // chemin vers le dossier avatars
-  prefix: '/avatars/', // correspond à l’URL /avatars/*
-  // Optionnel : cacheControl, maxAge, etc.
+  root: avatarsPath,          // serves files under public/avatars
+  prefix: '/api/user/avatars/', // URL /api/user/avatars/*
+  // Optionally configure cacheControl, maxAge, etc.
 });
 
 server.register(multipart);

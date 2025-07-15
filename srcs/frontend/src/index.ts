@@ -1,4 +1,26 @@
 import './tournament_brackets';
+// Initialize feature modules
+import './lib/api';
+import './lib/dom';
+import './lib/router';
+import { setupLoginModal } from './components/auth/LoginModal';
+import { drawGame } from './components/game/GameCanvas';
+import './components/game/GameControls';
+import { setupTournamentDashboard } from './components/tournament/TournamentDashboard';
+import { setupBracketsView } from './components/tournament/BracketsView';
+import { setupFriendsModal } from './components/friends/FriendsModal';
+import { setupUserSearch } from './components/search/UserSearch';
+import { setupSignupModal } from './components/auth/SignupModal';
+import './components/twofa/TwoFASetup';
+// Initialize auth modals
+setupLoginModal();
+setupSignupModal();
+
+// Initialize feature modules
+setupUserSearch();
+setupFriendsModal();
+setupTournamentDashboard();
+setupBracketsView();
 
 // src/index.ts  – Main SPA logic
 
@@ -231,7 +253,7 @@ async function fetchAndDraw() {
     const res = await fetch(`/api/game/${gameId}/state`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const state = await res.json();
-    draw(state);
+    drawGame(ctx, state, images);
 
     if (state.isGameOver && pollTimer) {
       clearInterval(pollTimer);
@@ -256,6 +278,10 @@ async function fetchAndDraw() {
       localStorage.removeItem('authToken');
       localStorage.removeItem('mode');
       localStorage.removeItem('difficulty');
+      // Navigate back to main menu in SPA
+      const homeState = { view: 'home' };
+      history.replaceState(homeState, '', location.pathname);
+      router(homeState);
     }
   } catch (err) {
     console.error('[fetchAndDraw]', err);
@@ -603,6 +629,10 @@ if (searchInput && suggestionsList) {
                   } else {
                     publicProfileAvatar.classList.add('hidden');
                   }
+                  // open public profile modal via history
+                  history.pushState({ view: 'publicProfile', id: user.id }, '', `#user/${user.id}`);
+                  // hide friends modal when opening public profile
+                  if (friendsModal) friendsModal.classList.add('hidden');
                   publicProfileModal.classList.remove('hidden');
                 }
               } catch (err) {
@@ -649,13 +679,14 @@ const tournamentModalClose = document.getElementById('tournament-modal-close') a
 const tournamentTableBody = document.getElementById('tournament-table-body') as HTMLTableSectionElement | null;
 // Close handlers for tournament modal
 if (tournamentModal && tournamentModalClose) {
-  tournamentModalClose.addEventListener('click', () => tournamentModal.classList.add('hidden'));
+  // Close via history to maintain SPA behavior
+  tournamentModalClose.addEventListener('click', (e) => { e.preventDefault(); history.back(); });
   tournamentModal.addEventListener('click', (e) => {
-    if (e.target === tournamentModal) tournamentModal.classList.add('hidden');
+    if (e.target === tournamentModal) history.back();
   });
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && !tournamentModal.classList.contains('hidden')) {
-      tournamentModal.classList.add('hidden');
+      history.back();
     }
   });
 }
@@ -689,9 +720,17 @@ if (tournamentModal && tournamentModalClose) {
 
 // Close handlers
 if (publicProfileModal && publicProfileClose) {
-  publicProfileClose.addEventListener('click', () => publicProfileModal.classList.add('hidden'));
+  publicProfileClose.addEventListener('click', (e) => {
+    e.preventDefault(); history.back();
+  });
   publicProfileModal.addEventListener('click', (e) => {
-    if (e.target === publicProfileModal) publicProfileModal.classList.add('hidden');
+    if (e.target === publicProfileModal) history.back();
+  });
+  // Close on Escape key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && publicProfileModal && !publicProfileModal.classList.contains('hidden')) {
+      history.back();
+    }
   });
   // Add Friend button handler
   if (publicProfileAddBtn) {
@@ -723,9 +762,9 @@ const friendsModal = document.getElementById('friends-modal') as HTMLElement | n
 const friendsModalClose = document.getElementById('friends-modal-close') as HTMLButtonElement | null;
 const friendsList = document.getElementById('friends-list') as HTMLUListElement | null;
 const friendRequestsList = document.getElementById('friend-requests-list') as HTMLUListElement | null;
-// Notification badge for pending friend requests
+// Notification badge for friend invites
 const friendsBadge = document.getElementById('friends-badge') as HTMLElement | null;
-// Function to fetch and update pending friend requests count badge
+// Function to fetch and update friend invites count badge
 async function updateFriendsBadge() {
   if (!friendsBadge) return;
   try {
@@ -758,7 +797,43 @@ if (friendsBtn && friendsModal && friendsModalClose && friendsList && friendRequ
         data.forEach(f => {
           const li = document.createElement('li');
           li.textContent = f.name;
-          li.className = 'px-2 py-1 bg-gray-700 rounded';
+          li.className = 'px-2 py-1 bg-gray-700 rounded cursor-pointer';
+          li.addEventListener('click', async () => {
+            try {
+              const res2 = await fetch(`/api/user/search/${f.id}`, { credentials: 'include' });
+              const data2 = await res2.json() as { success: boolean; msg: string; profile: { id: number; name: string; tag: number; email: string; avatar: string | null } | null };
+              if (!res2.ok || !data2.success || !data2.profile) {
+                alert(data2.msg || 'Failed to load profile');
+                return;
+              }
+              const user = data2.profile;
+              if (publicProfileModal && publicProfileName && publicProfileEmail && publicProfileAvatar && publicProfileAddBtn) {
+                currentProfileId = user.id;
+                publicProfileName.textContent = '';
+                const nameNode = document.createTextNode(user.name);
+                publicProfileName.appendChild(nameNode);
+                const tagSpan = document.createElement('span');
+                tagSpan.className = 'text-gray-400 text-sm ml-1';
+                tagSpan.textContent = `#${user.tag}`;
+                publicProfileName.appendChild(tagSpan);
+                publicProfileEmail.textContent = user.email;
+                if (user.avatar) {
+                  publicProfileAvatar.src = user.avatar;
+                  publicProfileAvatar.classList.remove('hidden');
+                } else {
+                  publicProfileAvatar.classList.add('hidden');
+                }
+                publicProfileAddBtn.disabled = true;
+                publicProfileAddBtn.textContent = 'Friends';
+                  // open public profile modal via history
+                  history.pushState({ view: 'publicProfile', id: user.id }, '', `#user/${user.id}`);
+                  publicProfileModal.classList.remove('hidden');
+              }
+            } catch (err) {
+              console.error('Open friend profile error:', err);
+              alert('Error loading profile');
+            }
+          });
           friendsList.appendChild(li);
         });
       }
@@ -828,15 +903,19 @@ if (friendsBtn && friendsModal && friendsModalClose && friendsList && friendRequ
     } catch (err) {
       console.error('Fetch friend requests failed:', err);
     }
+    // open friends modal via history
+    history.pushState({ view: 'friends' }, '', '#friends');
     friendsModal.classList.remove('hidden');
   });
-  friendsModalClose.addEventListener('click', () => friendsModal.classList.add('hidden'));
+  friendsModalClose.addEventListener('click', (e) => {
+    e.preventDefault(); history.back();
+  });
   friendsModal.addEventListener('click', (e) => {
-    if (e.target === friendsModal) friendsModal.classList.add('hidden');
+    if (e.target === friendsModal) history.back();
   });
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && friendsModal && !friendsModal.classList.contains('hidden')) {
-      friendsModal.classList.add('hidden');
+      history.back();
     }
   });
 } else {
@@ -1438,6 +1517,8 @@ playTournBtn!.addEventListener('click', async (e) => {
     } catch (err) {
       console.error('Error fetching tournaments:', err);
     }
+    // push SPA state and show tournament modal
+    history.pushState({ view: 'tournaments' }, '', '#tournaments');
     tournamentModal!.classList.remove('hidden');
   }
 });
@@ -1490,10 +1571,20 @@ if (currentHash === '#login') {
   initialState = { view: 'signup' };
 } else if (currentHash === '#profile') {
   initialState = { view: 'profile' };
+} else if (currentHash === '#friends') {
+  initialState = { view: 'friends' };
+} else if (currentHash === '#tournaments') {
+  initialState = { view: 'tournaments' };
 } else {
-  const m = currentHash.match(/^#game\/(.+)$/);
-  if (m) {
-    initialState = { view: 'game', gameId: m[1] };
+  // public profile via hash #user/<id>
+  const pu = currentHash.match(/^#user\/(\d+)$/);
+  if (pu) {
+    initialState = { view: 'publicProfile', id: Number(pu[1]) };
+  } else {
+    const m = currentHash.match(/^#game\/(.+)$/);
+    if (m) {
+      initialState = { view: 'game', gameId: m[1] };
+    }
   }
 }
 // Replace history entry so state matches URL (including hash)
@@ -1509,10 +1600,31 @@ if (initialState.view === 'game' && initialState.gameId) {
  * Show or hide modals based on history state
  */
 function router(state: any) {
+  // SPA game view – show or hide game UI based on state
+  if (state && state.view === 'game') {
+    // In-game UI
+    hero!.classList.add('hidden');
+    canvas.classList.remove('hidden');
+    forfeitBtn!.classList.remove('hidden');
+    shareDiv!.classList.add('hidden');
+    togglePlayButtons(true);
+  } else {
+    // Out-of-game UI
+    canvas.classList.add('hidden');
+    forfeitBtn!.classList.add('hidden');
+    shareDiv!.classList.add('hidden');
+    hero!.classList.remove('hidden');
+    togglePlayButtons(false);
+  }
+  // hide all top-level modals
   // hide all top-level modals
   loginModal!.classList.add('hidden');
   signupModal!.classList.add('hidden');
   profileModal!.classList.add('hidden');
+  publicProfileModal!.classList.add('hidden');
+  friendsModal!.classList.add('hidden');
+  // hide tournament modal
+  tournamentModal!.classList.add('hidden');
   // route
   if (!state || state.view === 'home') {
     // nothing to show
@@ -1522,6 +1634,12 @@ function router(state: any) {
     signupModal!.classList.remove('hidden');
   } else if (state.view === 'profile') {
     profileModal!.classList.remove('hidden');
+  } else if (state.view === 'friends') {
+    friendsModal!.classList.remove('hidden');
+  } else if (state.view === 'publicProfile') {
+    publicProfileModal!.classList.remove('hidden');
+  } else if (state.view === 'tournaments') {
+    tournamentModal!.classList.remove('hidden');
   }
 }
 
