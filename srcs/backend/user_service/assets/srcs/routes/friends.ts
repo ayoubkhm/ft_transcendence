@@ -69,10 +69,10 @@ export default async function friendsRoutes(server: FastifyInstance, options: an
             const requestID = request.params?.id;
             const token = request.cookies['jwt_transcendence'];
             if (!token)
-                return reply.status(230).send({ error: "user/friends error 0403" });
+                return reply.status(230).send({ error: "0403" });
             const id = getTokenData(token).id;
             if (!id)
-                return reply.status(230).send({ error: "user/friends error 0404" });
+                return reply.status(230).send({ error: "0404" });
 
         } catch (error) {
             return reply.status(230).send({ error: "0500" });
@@ -87,10 +87,10 @@ export default async function friendsRoutes(server: FastifyInstance, options: an
             const requestID = request.params?.id;
             const token = request.cookies['jwt_transcendence'];
             if (!token)
-                return reply.status(230).send({ error: "user/friends error 0403" });
+                return reply.status(230).send({ error: "0403" });
             const id = getTokenData(token).id;
             if (!id)
-                return reply.status(230).send({ error: "user/friends error 0404" });
+                return reply.status(230).send({ error: "0404" });
 
         } catch (error) {
             return reply.status(230).send({ error: "0500" });
@@ -106,12 +106,11 @@ export default async function friendsRoutes(server: FastifyInstance, options: an
             const id = request.params.id;
             const cred = request.body.credential;
             if (!cred || cred != process.env.API_CREDENTIAL)
-                return reply.status(230).send({ error: "user/friends error 0401" });
-            let user = null; 
-            //server.pg.query();
-            if (!user)
+                return reply.status(230).send({ error: "0401" });
+            const user = await server.pg.query(`SELECT * FROM get_friends(${id})`);
+            if (!user.rows[0].success)
                 return reply.status(230).send({ error: "0404" });
-            reply.send(user); 
+            reply.send(user.rows[0].user_friends); 
         } catch (error) {
              return reply.status(230).send({ error: "0500" });
         }
@@ -125,23 +124,16 @@ export default async function friendsRoutes(server: FastifyInstance, options: an
             if (!token)
                 return reply.status(230).send({ error: "0403" });
             const id = getTokenData(token).id;
-            const targetID = request.params.id;
+            console.log("ID", id);
+            const targetID = Number(request.params.id);
+            console.log("ID", targetID);
             if (!id || !targetID)
                 return reply.status(230).send({ error: "0403" });
-            let user = null;
-            //server.pg.query pour choper tt les amis de id.
-            if (!user)
+            if (id === targetID)
                 return reply.status(230).send({ error: "0404" });
-            const userFriends = null;
-            //server.pg.query verfier si le id et target id sont amis
-            const targetFriends = null;
-            //server.pg.query verfier que le target id et ami avec id
-            if (!userFriends)
-                return reply.status(230).send({ error: "0404" });
-            //server.pg.query supprimer la relation entre id et le target
-            //if targetfriends exsite supprime la relation entre target et id
-
-
+            const delFriends= await server.pg.query(`SELECT * FROM delete_friends(${id}, ${targetID})`);
+            if (!delFriends.rows[0].success)
+                reply.status(230).send({ error: "0404" });
             reply.status(200).send();
         } catch (error) {
             return reply.status(230).send({ error: "0500" });
