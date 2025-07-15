@@ -11,7 +11,7 @@ BEGIN
                 AND to_id = _to_user_id)
     RETURNING TRUE INTO invite_deleted;
 
-    IF NOT invite_deleted THEN
+    IF ((invite_deleted IS NULL) OR (invite_deleted = FALSE)) THEN
         RETURN QUERY SELECT FALSE, 'Invite not found';
         RETURN ;
     END IF;
@@ -21,7 +21,6 @@ BEGIN
                 AND to_id = _from_user_id);
 
     IF _type = 'friend' THEN
-        RAISE NOTICE 'HERE mothefucker';
         RETURN QUERY SELECT * FROM new_friends(_from_user_id, _to_user_id);
     ELSE
         RETURN QUERY SELECT FALSE, 'Invite type not handled';
