@@ -925,22 +925,38 @@ const profileDisable2FABtn = document.getElementById('profile-disable-2fa-btn') 
 const profileNa2FABtn = document.getElementById('profile-na-2fa-btn') as HTMLButtonElement | null;
 const profileChangePasswordBtn = document.getElementById('profile-change-password-btn') as HTMLButtonElement | null;
 const profileId = document.getElementById('profile-id') as HTMLElement | null;
+const profileOnlineStatus = document.getElementById('profile-online-status') as HTMLElement | null;
 // Removed profileType, profileCreated, profileOnline as not needed
-if (!profileBtn || !profileModal || !profileModalCloseBtn || !profileUsername || !profileEmail || !profileId || !profile2FAStatus || !profileSetup2FABtn || !profileDisable2FABtn || !profileNa2FABtn || !profileChangePasswordBtn) {
+if (!profileBtn || !profileModal || !profileModalCloseBtn || !profileUsername || !profileEmail || !profileId || !profile2FAStatus || !profileSetup2FABtn || !profileDisable2FABtn || !profileNa2FABtn || !profileChangePasswordBtn || !profileOnlineStatus) {
   throw new Error('Missing profile modal elements');
 }
 // Open Profile modal
 profileBtn.addEventListener('click', async (e) => {
   e.preventDefault();
+  // Will hold fetched user data
+  let user: any = null;
   // open profile modal and push history entry
   history.pushState({ view: 'profile' }, '', '#profile');
   const email = localStorage.getItem('userEmail');
   if (email) {
     try {
-      const res = await fetch(`/api/user/search/${encodeURIComponent(email)}`, { credentials: 'include' });
-      const data = await res.json() as { success: boolean; msg: string; profile: { id: number; name: string; tag: number; email: string; avatar: string | null } | null };
-        if (res.ok && data.success && data.profile) {
-        const user = data.profile;
+      const res = await fetch(`/api/user/lookup/${encodeURIComponent(email)}`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      });
+      if (res.ok) {
+        user = await res.json() as {
+          id: number;
+          name: string;
+          tag: number;
+          email: string;
+          avatar: string | null;
+          type: string;
+          online: boolean;
+          twofa_secret: string | null;
+        };
         // Show username with inline tag (#1234) in smaller, grey font
         profileUsername.textContent = '';
         profileUsername.appendChild(document.createTextNode(user.name));
@@ -951,51 +967,36 @@ profileBtn.addEventListener('click', async (e) => {
         profileEmail.textContent = user.email;
         profileId.textContent = user.id.toString();
       } else {
-        console.warn('Profile lookup failed:', data.msg);
+        console.warn('Profile lookup failed:', await res.text());
       }
     } catch (err) {
       console.error('Profile lookup error:', err);
     }
   }
-  const authMethod = localStorage.getItem('authMethod');
-  if (authMethod === 'google') {
+  if (!user) {
+    // No user data, abort
+    return;
+  }
+  // Show online & 2FA status based on private lookup
+  profileOnlineStatus.textContent = user.online ? 'true' : 'false';
+
+  if (user.type === 'oauth') {
     profile2FAStatus.textContent = 'N/A';
     profileSetup2FABtn.classList.add('hidden');
     profileDisable2FABtn.classList.add('hidden');
     profileNa2FABtn.classList.remove('hidden');
-    profileModal.classList.remove('hidden');
-    return;
-  }
-  // For non-Google users, fetch current 2FA enabled status
-    try {
-      // Fetch current authentication and 2FA enabled status
-      const resp = await fetch('/api/auth/status', { credentials: 'include' });
-      if (resp.ok) {
-        const { twofaEnabled } = await resp.json();
-        profile2FAStatus.textContent = twofaEnabled ? 'Enabled' : 'Disabled';
-        if (twofaEnabled) {
-          profileDisable2FABtn.classList.remove('hidden');
-          profileSetup2FABtn.classList.add('hidden');
-          profileNa2FABtn.classList.add('hidden');
-        } else {
-          profileSetup2FABtn.classList.remove('hidden');
-          profileDisable2FABtn.classList.add('hidden');
-          profileNa2FABtn.classList.add('hidden');
-        }
-      } else {
-        // Fallback: unable to fetch status
-        profile2FAStatus.textContent = 'Unknown';
-        profileSetup2FABtn.classList.remove('hidden');
-        profileDisable2FABtn.classList.add('hidden');
-        profileNa2FABtn.classList.add('hidden');
-      }
-    } catch (err) {
-      console.error('Error fetching auth status:', err);
-      profile2FAStatus.textContent = 'Error';
+  } else {
+    profileNa2FABtn.classList.add('hidden');
+    if (user.twofa_secret) {
+      profile2FAStatus.textContent = 'true';
+      profileSetup2FABtn.classList.add('hidden');
+      profileDisable2FABtn.classList.remove('hidden');
+    } else {
+      profile2FAStatus.textContent = 'false';
       profileSetup2FABtn.classList.remove('hidden');
       profileDisable2FABtn.classList.add('hidden');
-      profileNa2FABtn.classList.add('hidden');
     }
+  }
   profileModal.classList.remove('hidden');
 });
 // Close Profile modal via close button
@@ -1023,6 +1024,7 @@ profileSetup2FABtn.addEventListener('click', (e) => {
 // Disable 2FA handler
 profileDisable2FABtn.addEventListener('click', async (e) => {
   e.preventDefault();
+  profileModal.classList.add('hidden');
   try {
     const res = await fetch('/api/auth/2fa/delete', {
       method: 'DELETE',
@@ -1031,7 +1033,7 @@ profileDisable2FABtn.addEventListener('click', async (e) => {
     const data = await res.json();
     if (res.ok) {
       alert(data.message || '2FA successfully disabled');
-      profile2FAStatus.textContent = 'Disabled';
+      profile2FAStatus.textContent = 'false';
       profileDisable2FABtn.classList.add('hidden');
       profileSetup2FABtn.classList.remove('hidden');
     } else {
