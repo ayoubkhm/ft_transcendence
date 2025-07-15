@@ -1,6 +1,7 @@
 import Fastify from 'fastify';
 import FastifyPostgres from '@fastify/postgres';
 import 'dotenv/config';
+import bracketsRoute from './brackets'
 
 const server = Fastify();
 
@@ -10,6 +11,7 @@ const server = Fastify();
 server.register(FastifyPostgres, {
   connectionString: process.env.DATABASE_URL,
 });
+server.register(bracketsRoute, { prefix: '/api/tournaments' });
 
 // Allow GET for join via query param: GET /api/tournament/:id/join?user_id=xxx
 server.get<{
