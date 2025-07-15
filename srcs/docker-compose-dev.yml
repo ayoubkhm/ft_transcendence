@@ -146,6 +146,11 @@ services:
     networks:
       - router
 
+# TODO remove -> pour tests brackets
+    # ports:
+    #   - "5432:5432"
+
+
   # ──────────────────────────────────────────────────────────
   frontend:
     container_name: frontend
