@@ -49,15 +49,6 @@ server.get<{
   }
 });
 
-// ─── Lancement du serveur ───────────────────────────────────
-server.listen({ port: 3000, host: '0.0.0.0' })
-  .then((address) => {
-    console.log(`🚀 Tournament service listening at ${address}`);
-  })
-  .catch((err) => {
-    console.error('❌ Failed to start server:', err);
-    process.exit(1);
-  });
 
 server.post<{Body: {name?: string; owner_id?: number;};}>('/api/tournament', async (request, reply) => {
   
@@ -415,15 +406,6 @@ server.put<{
     client.release();
   }
 });
-// ─── Lancement du serveur ───────────────────────────────────
-server.listen({ port: 3000, host: '0.0.0.0' })
-  .then((address) => {
-    console.log(`🚀 Tournament service listening at ${address}`);
-  })
-  .catch((err) => {
-    console.error('❌ Failed to start server:', err);
-    process.exit(1);
-  });
 
 
 // curl -X PUT http://localhost:3003/api/tournament/1/max_players \
