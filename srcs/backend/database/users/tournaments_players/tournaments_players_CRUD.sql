@@ -46,23 +46,35 @@ CREATE OR REPLACE FUNCTION leave_tournament (
 RETURNS TABLE(success BOOLEAN, msg TEXT) AS $$
 DECLARE
 	_tournament_id INTEGER;
+	_state tournament_state;
 	_player_deleted BOOLEAN;
 BEGIN
-	SELECT id INTO _tournament_id
+	SELECT id, state INTO _tournament_id, _state
 	FROM tournaments
 	WHERE name = _name;
 	
-	IF _tournament_id IS NULL THEN
+	IF NOT FOUND THEN
 		RETURN QUERY SELECT FALSE, 'Tournament not found';
 		RETURN ;
 	END IF;
 
+	IF _state != 'PREP' THEN
+		RETURN QUERY SELECT FALSE, 'Can''t leave ongoing/over tournament';
+		RETURN ;
+	END IF;
 
-	DELETE FROM tournaments_players WHERE player_id = _id AND tournament_id = _tournament_id RETURNING TRUE INTO _player_deleted;
+	DELETE FROM tournaments_players
+	WHERE player_id = _id
+		AND tournament_id = _tournament_id
+	RETURNING TRUE INTO _player_deleted;
+	
 	IF _player_deleted THEN
 		UPDATE tournaments SET nbr_players = nbr_players - 1
 		WHERE id = _tournament_id;
 		RETURN QUERY SELECT TRUE, 'Player deleted successfully from tournament';
+
+		DELETE FROM games
+		WHERE tournament_id = _tournament_id;
 	ELSE
 		RETURN QUERY SELECT FALSE, 'No player found for this tournament';
 	END IF;

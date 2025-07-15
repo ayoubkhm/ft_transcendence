@@ -3,6 +3,5 @@ CREATE TABLE IF NOT EXISTS tournaments_players (
 	tournament_id INTEGER NOT NULL REFERENCES tournaments(id) ON DELETE CASCADE,
 	joined_at TIMESTAMP NOT NULL DEFAULT NOW(),
 	at_round INTEGER DEFAULT 0,
-	current_round_over BOOLEAN DEFAULT FALSE,
 	stil_in BOOLEAN NOT NULL DEFAULT TRUE
 );
