@@ -376,7 +376,8 @@ loginModalForm.addEventListener('submit', async (e) => {
       localStorage.setItem('loggedIn', 'true');
       localStorage.setItem('authMethod', 'password');
       localStorage.setItem('userEmail', email);  // store email for profile lookup
-      window.location.reload();
+      // After successful login, navigate to main menu
+      window.location.replace(`${location.pathname}${location.search}`);
     } else {
       alert('Login failed');
     }
@@ -486,6 +487,8 @@ logoutBtn.addEventListener('click', async (e) => {
   }
   localStorage.removeItem('loggedIn');
   localStorage.removeItem('username');
+  // Clear stored email for profile lookup
+  localStorage.removeItem('userEmail');
   // Clear stored authentication method
   localStorage.removeItem('authMethod');
   updateAuthView();
@@ -501,7 +504,9 @@ async function initializeAuth() {
       // Authenticated: set flags
       localStorage.setItem('loggedIn', 'true');
       if (data.name) localStorage.setItem('username', data.name);
-      // twofaEnabled: default false for original backend
+      // Store email for profile lookup
+      if (data.email) localStorage.setItem('userEmail', data.email);
+      // twofaEnabled: server indicates 2FA status
       localStorage.setItem('twofaEnabled', data.twofaEnabled === true ? 'true' : 'false');
     } else {
       // Not authenticated or 2FA required
@@ -903,7 +908,8 @@ signupModalForm.addEventListener('submit', async (e) => {
       localStorage.setItem('userEmail', email);  // store email for profile lookup
       localStorage.setItem('authMethod', 'password');
       updateAuthView();
-      signupModal!.classList.add('hidden');
+      // Close signup modal via history navigation
+      history.back();
     } else {
       alert(data.error || 'Sign up failed');
     }
@@ -925,22 +931,38 @@ const profileDisable2FABtn = document.getElementById('profile-disable-2fa-btn') 
 const profileNa2FABtn = document.getElementById('profile-na-2fa-btn') as HTMLButtonElement | null;
 const profileChangePasswordBtn = document.getElementById('profile-change-password-btn') as HTMLButtonElement | null;
 const profileId = document.getElementById('profile-id') as HTMLElement | null;
+const profileOnlineStatus = document.getElementById('profile-online-status') as HTMLElement | null;
 // Removed profileType, profileCreated, profileOnline as not needed
-if (!profileBtn || !profileModal || !profileModalCloseBtn || !profileUsername || !profileEmail || !profileId || !profile2FAStatus || !profileSetup2FABtn || !profileDisable2FABtn || !profileNa2FABtn || !profileChangePasswordBtn) {
+if (!profileBtn || !profileModal || !profileModalCloseBtn || !profileUsername || !profileEmail || !profileId || !profile2FAStatus || !profileSetup2FABtn || !profileDisable2FABtn || !profileNa2FABtn || !profileChangePasswordBtn || !profileOnlineStatus) {
   throw new Error('Missing profile modal elements');
 }
 // Open Profile modal
 profileBtn.addEventListener('click', async (e) => {
   e.preventDefault();
+  // Will hold fetched user data
+  let user: any = null;
   // open profile modal and push history entry
   history.pushState({ view: 'profile' }, '', '#profile');
   const email = localStorage.getItem('userEmail');
   if (email) {
     try {
-      const res = await fetch(`/api/user/search/${encodeURIComponent(email)}`, { credentials: 'include' });
-      const data = await res.json() as { success: boolean; msg: string; profile: { id: number; name: string; tag: number; email: string; avatar: string | null } | null };
-        if (res.ok && data.success && data.profile) {
-        const user = data.profile;
+      const res = await fetch(`/api/user/lookup/${encodeURIComponent(email)}`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      });
+      if (res.ok) {
+        user = await res.json() as {
+          id: number;
+          name: string;
+          tag: number;
+          email: string;
+          avatar: string | null;
+          type: string;
+          online: boolean;
+          twofa_secret: string | null;
+        };
         // Show username with inline tag (#1234) in smaller, grey font
         profileUsername.textContent = '';
         profileUsername.appendChild(document.createTextNode(user.name));
@@ -951,51 +973,36 @@ profileBtn.addEventListener('click', async (e) => {
         profileEmail.textContent = user.email;
         profileId.textContent = user.id.toString();
       } else {
-        console.warn('Profile lookup failed:', data.msg);
+        console.warn('Profile lookup failed:', await res.text());
       }
     } catch (err) {
       console.error('Profile lookup error:', err);
     }
   }
-  const authMethod = localStorage.getItem('authMethod');
-  if (authMethod === 'google') {
+  if (!user) {
+    // No user data, abort
+    return;
+  }
+  // Show online & 2FA status based on private lookup
+  profileOnlineStatus.textContent = user.online ? 'true' : 'false';
+
+  if (user.type === 'oauth') {
     profile2FAStatus.textContent = 'N/A';
     profileSetup2FABtn.classList.add('hidden');
     profileDisable2FABtn.classList.add('hidden');
     profileNa2FABtn.classList.remove('hidden');
-    profileModal.classList.remove('hidden');
-    return;
-  }
-  // For non-Google users, fetch current 2FA enabled status
-    try {
-      // Fetch current authentication and 2FA enabled status
-      const resp = await fetch('/api/auth/status', { credentials: 'include' });
-      if (resp.ok) {
-        const { twofaEnabled } = await resp.json();
-        profile2FAStatus.textContent = twofaEnabled ? 'Enabled' : 'Disabled';
-        if (twofaEnabled) {
-          profileDisable2FABtn.classList.remove('hidden');
-          profileSetup2FABtn.classList.add('hidden');
-          profileNa2FABtn.classList.add('hidden');
-        } else {
-          profileSetup2FABtn.classList.remove('hidden');
-          profileDisable2FABtn.classList.add('hidden');
-          profileNa2FABtn.classList.add('hidden');
-        }
-      } else {
-        // Fallback: unable to fetch status
-        profile2FAStatus.textContent = 'Unknown';
-        profileSetup2FABtn.classList.remove('hidden');
-        profileDisable2FABtn.classList.add('hidden');
-        profileNa2FABtn.classList.add('hidden');
-      }
-    } catch (err) {
-      console.error('Error fetching auth status:', err);
-      profile2FAStatus.textContent = 'Error';
+  } else {
+    profileNa2FABtn.classList.add('hidden');
+    if (user.twofa_secret) {
+      profile2FAStatus.textContent = 'true';
+      profileSetup2FABtn.classList.add('hidden');
+      profileDisable2FABtn.classList.remove('hidden');
+    } else {
+      profile2FAStatus.textContent = 'false';
       profileSetup2FABtn.classList.remove('hidden');
       profileDisable2FABtn.classList.add('hidden');
-      profileNa2FABtn.classList.add('hidden');
     }
+  }
   profileModal.classList.remove('hidden');
 });
 // Close Profile modal via close button
@@ -1023,6 +1030,7 @@ profileSetup2FABtn.addEventListener('click', (e) => {
 // Disable 2FA handler
 profileDisable2FABtn.addEventListener('click', async (e) => {
   e.preventDefault();
+  // Only close profile modal on successful disable via history navigation
   try {
     const res = await fetch('/api/auth/2fa/delete', {
       method: 'DELETE',
@@ -1031,9 +1039,8 @@ profileDisable2FABtn.addEventListener('click', async (e) => {
     const data = await res.json();
     if (res.ok) {
       alert(data.message || '2FA successfully disabled');
-      profile2FAStatus.textContent = 'Disabled';
-      profileDisable2FABtn.classList.add('hidden');
-      profileSetup2FABtn.classList.remove('hidden');
+      // Return to main menu
+      history.back();
     } else {
       alert(data.error || 'Failed to disable 2FA');
     }
@@ -1173,6 +1180,8 @@ setup2faForm!.addEventListener('submit', async (e) => {
       if (setup2faTestCodeDiv) {
         setup2faTestCodeDiv.classList.add('hidden');
       }
+      // Return to main menu after enabling 2FA
+      history.back();
     } else {
       alert(data.error || '2FA setup verification failed');
     }
@@ -1213,9 +1222,10 @@ twofaLoginForm.addEventListener('submit', async (e) => {
     const data = await res.json();
     console.log('2FA login response:', res.status, data);
     if (res.ok) {
-      console.log('2FA login success, reloading');
+      console.log('2FA login success, navigating to main menu');
       localStorage.setItem('loggedIn', 'true');
-      window.location.reload();
+      // Navigate to main menu after successful 2FA login
+      window.location.replace(`${location.pathname}${location.search}`);
     } else {
       console.warn('2FA login failed:', data.error);
       alert(data.error || '2FA verification failed');
@@ -1342,7 +1352,7 @@ playTournBtn!.addEventListener('click', async (e) => {
       const res = await fetch('/api/tournaments/tournaments', { credentials: 'include' });
       if (res.ok) {
         // Load tournaments
-        const data = await res.json() as Array<{ id:number; name:string; state:string; min_players:number; nbr_players:number; winner:string|null }>;
+        const data = await res.json() as Array<{ id: number; name: string; state: string; max_players: number; nbr_players: number; winner: string | null }>;
         data.forEach(t => {
           const tr = document.createElement('tr');
           tr.className = 'border-t border-gray-600';
@@ -1350,11 +1360,53 @@ playTournBtn!.addEventListener('click', async (e) => {
             <td class="px-2 py-1">${t.id}</td>
             <td class="px-2 py-1">${t.name}</td>
             <td class="px-2 py-1">${t.state}</td>
-            <td class="px-2 py-1">${t.min_players}</td>
-            <td class="px-2 py-1">${t.nbr_players}</td>
+            <td class="px-2 py-1">${t.nbr_players}/${t.max_players}</td>
             <td class="px-2 py-1">${t.winner || ''}</td>
+            <td class="px-2 py-1 space-x-1">
+              <button class="join-btn bg-blue-500 hover:bg-blue-600 text-white text-xs px-2 py-1 rounded" data-id="${t.id}">Join</button>
+              <button class="spectate-btn bg-gray-500 hover:bg-gray-600 text-white text-xs px-2 py-1 rounded" data-id="${t.id}">Spectate</button>
+            </td>
           `;
           tournamentTableBody.appendChild(tr);
+          // Wire up Join button
+          const joinBtn = tr.querySelector<HTMLButtonElement>('.join-btn');
+          joinBtn?.addEventListener('click', async () => {
+            try {
+              const res = await fetch(`/api/tournament/${t.id}/join`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: parseInt(playerId, 10) })
+              });
+              if (res.ok) {
+                alert('Successfully joined tournament');
+              } else {
+                const err = await res.json().catch(() => ({}));
+                alert('Failed to join tournament: ' + (err.error || err.msg || res.statusText));
+              }
+            } catch (error) {
+              console.error('Error joining tournament:', error);
+              alert('Error joining tournament');
+            }
+          });
+          // Wire up Spectate button
+          const spectateBtn = tr.querySelector<HTMLButtonElement>('.spectate-btn');
+          spectateBtn?.addEventListener('click', async () => {
+            try {
+              const res = await fetch(`/api/tournaments/tournaments/${t.id}`, { credentials: 'include' });
+              if (res.ok) {
+                const detail = await res.json();
+                console.log('Tournament details:', detail);
+                alert('Tournament details fetched (see console)');
+              } else {
+                console.error('Failed to fetch tournament details', await res.text());
+                alert('Failed to fetch tournament details');
+              }
+            } catch (error) {
+              console.error('Error fetching tournament details:', error);
+              alert('Error fetching tournament details');
+            }
+          });
         });
       } else {
         console.error('Failed to load tournaments', await res.text());
@@ -1452,4 +1504,70 @@ function router(state: any) {
 // Handle back/forward navigation
 window.addEventListener('popstate', (e) => {
   router(e.state);
+});
+// Profile avatar upload with preview
+document.addEventListener('DOMContentLoaded', () => {
+  const uploadAvatarBtn = document.getElementById('profile-upload-avatar-btn');
+  if (!uploadAvatarBtn) return;
+
+  // Create hidden file input
+  const fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.accept = 'image/*';
+  fileInput.style.display = 'none';
+  document.body.appendChild(fileInput);
+
+  // Create preview image element, hidden by default
+  const previewImg = document.createElement('img');
+  previewImg.style.maxWidth = '150px';
+  previewImg.style.marginTop = '10px';
+  previewImg.style.borderRadius = '8px';
+  previewImg.style.display = 'none';
+  uploadAvatarBtn.parentElement?.appendChild(previewImg);
+
+  // Open file picker on button click
+  uploadAvatarBtn.addEventListener('click', () => {
+    fileInput.click();
+  });
+
+  // Handle file selection: preview and upload
+  fileInput.addEventListener('change', async (event) => {
+    const target = event.target as HTMLInputElement;
+    if (target.files && target.files.length > 0) {
+      const file = target.files[0];
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        if (e.target?.result) {
+          previewImg.src = e.target.result as string;
+          previewImg.style.display = 'block';
+        }
+      };
+      reader.readAsDataURL(file);
+      // Upload to server
+      try {
+        const formData = new FormData();
+        formData.append('avatar', file);
+        const res = await fetch('/api/user/upload_avatar', {
+          method: 'POST',
+          credentials: 'include',
+          body: formData,
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.avatar) {
+            previewImg.src = data.avatar;
+            alert('Avatar uploaded successfully');
+          } else {
+            alert('Upload failed');
+          }
+        } else {
+          const err = await res.json();
+          alert(err.error || 'Upload failed');
+        }
+      } catch (err) {
+        console.error('Upload error:', err);
+        alert('Error uploading avatar');
+      }
+    }
+  });
 });
