@@ -8,7 +8,7 @@ import { drawGame } from './components/game/GameCanvas';
 import './components/game/GameControls';
 import { setupTournamentDashboard } from './components/tournament/TournamentDashboard';
 import { setupBracketsView } from './components/tournament/BracketsView';
-import { setupFriendsModal } from './components/friends/FriendsModal';
+import { setupFriendsModal, updateFriendsBadge } from './components/friends/FriendsModal';
 import { setupUserSearch } from './components/search/UserSearch';
 import { setupSignupModal } from './components/auth/SignupModal';
 import './components/twofa/TwoFASetup';
@@ -632,7 +632,7 @@ if (searchInput && suggestionsList) {
                   // open public profile modal via history
                   history.pushState({ view: 'publicProfile', id: user.id }, '', `#user/${user.id}`);
                   // hide friends modal when opening public profile
-                  if (friendsModal) friendsModal.classList.add('hidden');
+                  document.getElementById('friends-modal')?.classList.add('hidden');
                   publicProfileModal.classList.remove('hidden');
                 }
               } catch (err) {
@@ -756,171 +756,6 @@ if (publicProfileModal && publicProfileClose) {
   }
 }
 
-// ─── Friends Modal Logic ───────────────────────────────────────────
-const friendsBtn = document.getElementById('friends-btn') as HTMLButtonElement | null;
-const friendsModal = document.getElementById('friends-modal') as HTMLElement | null;
-const friendsModalClose = document.getElementById('friends-modal-close') as HTMLButtonElement | null;
-const friendsList = document.getElementById('friends-list') as HTMLUListElement | null;
-const friendRequestsList = document.getElementById('friend-requests-list') as HTMLUListElement | null;
-// Notification badge for friend invites
-const friendsBadge = document.getElementById('friends-badge') as HTMLElement | null;
-// Function to fetch and update friend invites count badge
-async function updateFriendsBadge() {
-  if (!friendsBadge) return;
-  try {
-    const res = await fetch('/api/user/receivedFriendRequests', { credentials: 'include' });
-    if (res.ok) {
-      const data = await res.json() as { id: number; name: string }[];
-      const count = data.length;
-      if (count > 0) {
-        friendsBadge.textContent = count.toString();
-        friendsBadge.classList.remove('hidden');
-      } else {
-        friendsBadge.classList.add('hidden');
-      }
-    } else {
-      friendsBadge.classList.add('hidden');
-    }
-  } catch (err) {
-    console.error('Failed to update friends badge', err);
-  }
-}
-if (friendsBtn && friendsModal && friendsModalClose && friendsList && friendRequestsList) {
-  friendsBtn.addEventListener('click', async (e) => {
-    e.preventDefault();
-    friendsList.innerHTML = '';
-    friendRequestsList.innerHTML = '';
-    try {
-      const resFriends = await fetch('/api/user/friends', { credentials: 'include' });
-      if (resFriends.ok) {
-        const data = await resFriends.json() as { id: number; name: string }[];
-        data.forEach(f => {
-          const li = document.createElement('li');
-          li.textContent = f.name;
-          li.className = 'px-2 py-1 bg-gray-700 rounded cursor-pointer';
-          li.addEventListener('click', async () => {
-            try {
-              const res2 = await fetch(`/api/user/search/${f.id}`, { credentials: 'include' });
-              const data2 = await res2.json() as { success: boolean; msg: string; profile: { id: number; name: string; tag: number; email: string; avatar: string | null } | null };
-              if (!res2.ok || !data2.success || !data2.profile) {
-                alert(data2.msg || 'Failed to load profile');
-                return;
-              }
-              const user = data2.profile;
-              if (publicProfileModal && publicProfileName && publicProfileEmail && publicProfileAvatar && publicProfileAddBtn) {
-                currentProfileId = user.id;
-                publicProfileName.textContent = '';
-                const nameNode = document.createTextNode(user.name);
-                publicProfileName.appendChild(nameNode);
-                const tagSpan = document.createElement('span');
-                tagSpan.className = 'text-gray-400 text-sm ml-1';
-                tagSpan.textContent = `#${user.tag}`;
-                publicProfileName.appendChild(tagSpan);
-                publicProfileEmail.textContent = user.email;
-                if (user.avatar) {
-                  publicProfileAvatar.src = user.avatar;
-                  publicProfileAvatar.classList.remove('hidden');
-                } else {
-                  publicProfileAvatar.classList.add('hidden');
-                }
-                publicProfileAddBtn.disabled = true;
-                publicProfileAddBtn.textContent = 'Friends';
-                  // open public profile modal via history
-                  history.pushState({ view: 'publicProfile', id: user.id }, '', `#user/${user.id}`);
-                  publicProfileModal.classList.remove('hidden');
-              }
-            } catch (err) {
-              console.error('Open friend profile error:', err);
-              alert('Error loading profile');
-            }
-          });
-          friendsList.appendChild(li);
-        });
-      }
-    } catch (err) {
-      console.error('Fetch friends failed:', err);
-    }
-    try {
-      const resReq = await fetch('/api/user/receivedFriendRequests', { credentials: 'include' });
-      if (resReq.ok) {
-        const data = await resReq.json() as { id: number; name: string }[];
-        data.forEach(r => {
-          const li = document.createElement('li');
-          li.className = 'flex items-center justify-between px-2 py-1 bg-gray-700 rounded';
-          const nameSpan = document.createElement('span');
-          nameSpan.textContent = r.name;
-          // Accept button
-          const acceptBtn = document.createElement('button');
-          acceptBtn.textContent = 'Accept';
-          acceptBtn.className = 'px-2 py-1 bg-green-500 rounded text-white text-sm';
-          acceptBtn.addEventListener('click', async () => {
-            try {
-              const res = await fetch(`/api/user/friends/requests/${r.id}`, {
-                method: 'PUT',
-                credentials: 'include'
-              });
-              const resp = await res.json();
-              if (res.ok && resp.success) {
-                li.remove();
-                updateFriendsBadge();
-              } else {
-                alert(resp.error || resp.msg || 'Failed to accept friend request');
-              }
-            } catch (err) {
-              console.error('Accept friend request error:', err);
-              alert('Error accepting friend request');
-            }
-          });
-          // Reject button
-          const rejectBtn = document.createElement('button');
-          rejectBtn.textContent = 'Reject';
-          rejectBtn.className = 'px-2 py-1 bg-red-500 rounded text-white text-sm';
-          rejectBtn.addEventListener('click', async () => {
-            try {
-              const res = await fetch(`/api/user/friends/requests/${r.id}`, {
-                method: 'DELETE',
-                credentials: 'include'
-              });
-              const resp = await res.json();
-              if (res.ok && resp.success) {
-                li.remove();
-                updateFriendsBadge();
-              } else {
-                alert(resp.error || resp.msg || 'Failed to reject friend request');
-              }
-            } catch (err) {
-              console.error('Reject friend request error:', err);
-              alert('Error rejecting friend request');
-            }
-          });
-          const actionsDiv = document.createElement('div');
-          actionsDiv.className = 'flex gap-2';
-          actionsDiv.append(acceptBtn, rejectBtn);
-          li.append(nameSpan, actionsDiv);
-          friendRequestsList.appendChild(li);
-        });
-      }
-    } catch (err) {
-      console.error('Fetch friend requests failed:', err);
-    }
-    // open friends modal via history
-    history.pushState({ view: 'friends' }, '', '#friends');
-    friendsModal.classList.remove('hidden');
-  });
-  friendsModalClose.addEventListener('click', (e) => {
-    e.preventDefault(); history.back();
-  });
-  friendsModal.addEventListener('click', (e) => {
-    if (e.target === friendsModal) history.back();
-  });
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && friendsModal && !friendsModal.classList.contains('hidden')) {
-      history.back();
-    }
-  });
-} else {
-  console.warn('Friends modal elements not found');
-}
 
 // Open Sign Up modal
 signupBtn.addEventListener('click', (e) => {
@@ -1622,7 +1457,8 @@ function router(state: any) {
   signupModal!.classList.add('hidden');
   profileModal!.classList.add('hidden');
   publicProfileModal!.classList.add('hidden');
-  friendsModal!.classList.add('hidden');
+  // hide friends modal
+  document.getElementById('friends-modal')?.classList.add('hidden');
   // hide tournament modal
   tournamentModal!.classList.add('hidden');
   // route
@@ -1635,7 +1471,7 @@ function router(state: any) {
   } else if (state.view === 'profile') {
     profileModal!.classList.remove('hidden');
   } else if (state.view === 'friends') {
-    friendsModal!.classList.remove('hidden');
+    document.getElementById('friends-modal')?.classList.remove('hidden');
   } else if (state.view === 'publicProfile') {
     publicProfileModal!.classList.remove('hidden');
   } else if (state.view === 'tournaments') {
@@ -1647,6 +1483,7 @@ function router(state: any) {
 window.addEventListener('popstate', (e) => {
   router(e.state);
 });
+
 // Profile avatar upload with preview
 document.addEventListener('DOMContentLoaded', () => {
   const uploadAvatarBtn = document.getElementById('profile-upload-avatar-btn');
