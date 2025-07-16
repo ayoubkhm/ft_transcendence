@@ -51,11 +51,6 @@
       <button id="play-tourn-btn" class="px-4 py-2 bg-yellow-500 rounded text-white">
         Tournament
       </button>
-      <!-- Toggle for custom power-up mode -->
-      <label class="flex items-center gap-1 text-sm">
-        <input type="checkbox" id="custom-toggle" class="h-4 w-4 accent-green-500" checked />
-        <span>Enable custom mode</span>
-      </label>
       <button id="play-pvp-btn" class="px-4 py-2 bg-green-500 rounded">
         Play&nbsp;vs&nbsp;Player
       </button>
@@ -63,12 +58,6 @@
         <button id="play-ai-btn" class="px-4 py-2 bg-green-500 rounded">
           Play vs IA
         </button>
-        <select id="ai-difficulty"
-                class="absolute left-0 right-0 top-full mt-1 w-full bg-gray-700 rounded z-10">
-          <option value="easy" selected>Easy</option>
-          <option value="medium">Medium</option>
-          <option value="hard">Difficult</option>
-        </select>
       </div>
       <!-- Forfeit button, shown during an active game -->
       <button id="forfeit-btn" class="px-4 py-2 bg-red-500 rounded hidden">
@@ -119,6 +108,50 @@
     <!-- Résultat -->
     <pre id="game-result"
          class="mt-4 mx-auto mb-6 max-w-xl text-sm text-black bg-white p-3 rounded hidden"></pre>
+  </div>
+  <!-- AI Modal -->
+  <div id="ai-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-gray-800 rounded p-6 relative w-full max-w-sm mx-2">
+      <button id="ai-modal-close" class="absolute top-2 right-2 text-white text-xl">&times;</button>
+      <h2 class="text-xl font-bold mb-4">Play vs AI</h2>
+      <div class="flex flex-col gap-4">
+        <select id="ai-modal-difficulty" class="px-2 py-1 bg-gray-700 text-white rounded w-full">
+          <option value="easy" selected>Easy</option>
+          <option value="medium">Medium</option>
+          <option value="hard">Difficult</option>
+        </select>
+        <label class="flex items-center gap-1 text-sm">
+          <input type="checkbox" id="ai-modal-custom-toggle" class="h-4 w-4 accent-green-500" checked />
+          <span>Enable custom mode</span>
+        </label>
+        <button id="ai-modal-start-btn" class="px-4 py-2 bg-green-500 rounded text-white">
+          Start Game
+        </button>
+      </div>
+    </div>
+  </div>
+  <!-- PvP Modal -->
+  <div id="pvp-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-gray-800 rounded p-6 relative w-full max-w-sm mx-2">
+      <button id="pvp-modal-close" class="absolute top-2 right-2 text-white text-xl">&times;</button>
+      <h2 class="text-xl font-bold mb-4">Play vs Player</h2>
+      <div class="flex flex-col gap-4">
+        <button id="pvp-modal-create-btn" class="px-4 py-2 bg-blue-500 rounded text-white">
+          Create Game
+        </button>
+        <div class="flex items-center gap-2">
+          <input id="pvp-modal-join-input" type="text" placeholder="Game ID"
+                 class="px-2 py-1 bg-gray-700 text-white rounded w-full" />
+          <button id="pvp-modal-join-confirm-btn" class="px-4 py-2 bg-blue-500 rounded text-white">
+            Join
+          </button>
+        </div>
+        <label class="flex items-center gap-1 text-sm">
+          <input type="checkbox" id="pvp-modal-custom-toggle" class="h-4 w-4 accent-green-500" checked />
+          <span>Enable custom mode</span>
+        </label>
+      </div>
+    </div>
   </div>
   <!-- Login Modal -->
   <div id="login-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
@@ -209,6 +242,10 @@
     <div class="mb-2"><strong>Username:</strong> <span id="profile-username"></span></div>
     <div class="mb-2"><strong>ID:</strong> <span id="profile-id"></span></div>
     <div class="mb-4"><strong>Email:</strong> <span id="profile-email"></span></div>
+    <div class="mb-2">
+      <strong>Avatar:</strong><br>
+      <img id="profile-avatar" src="" alt="Avatar" class="w-24 h-24 rounded hidden" />
+    </div>
     <div class="mb-4"><strong>Online:</strong> <span id="profile-online-status"></span></div>
     <div class="mb-4"><strong>2FA Status:</strong> <span id="profile-2fa-status"></span></div>
     <button id="profile-setup-2fa-btn" class="px-4 py-2 bg-yellow-500 rounded text-white">Enable 2FA</button>

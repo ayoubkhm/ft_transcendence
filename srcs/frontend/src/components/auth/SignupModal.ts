@@ -1,5 +1,7 @@
 import { show, hide } from '../../lib/dom';
 import { fetchJSON } from '../../lib/api';
+import { initializeAuth } from './Auth';
+import { navigate, onRoute } from '../../lib/router';
 
 export function setupSignupModal() {
   const signupBtn = document.getElementById('signup-btn') as HTMLButtonElement | null;
@@ -19,19 +21,46 @@ export function setupSignupModal() {
     return;
   }
 
+  const closeModal = () => {
+    if (signupModal) {
+      hide(signupModal);
+    }
+    navigate('home');
+  };
+
   signupBtn.addEventListener('click', (e) => {
     e.preventDefault();
     show(signupModal);
+    history.pushState({ view: 'signup' }, '', '#signup');
   });
 
   signupModalClose.addEventListener('click', (e) => {
     e.preventDefault();
-    hide(signupModal);
+    closeModal();
   });
 
   signupCancelBtn.addEventListener('click', (e) => {
     e.preventDefault();
-    hide(signupModal);
+    closeModal();
+  });
+
+  signupModal.addEventListener('click', (e) => {
+    if (e.target === signupModal) {
+      closeModal();
+    }
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && signupModal && !signupModal.classList.contains('hidden')) {
+      closeModal();
+    }
+  });
+
+  // Hide modal if we navigate away
+  onRoute('home', () => {
+    if (signupModal && !signupModal.classList.contains('hidden')) {
+      hide(signupModal);
+    }
   });
 
   passwordInput.addEventListener('input', () => {
@@ -50,7 +79,7 @@ export function setupSignupModal() {
   signupForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = emailInput.value;
-    const username = nameInput.value;
+    const name = nameInput.value;
     const password = passwordInput.value;
     const confirm = confirmInput.value;
     if (password !== confirm) {
@@ -61,11 +90,14 @@ export function setupSignupModal() {
       const data = await fetchJSON<{ success: boolean; msg: string }>('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, username, password }),
+        body: JSON.stringify({ email, name, password }),
       });
       if (data.success) {
         hide(signupModal);
-        alert('Signup successful; please login');
+        localStorage.setItem('loggedIn', 'true');
+        localStorage.setItem('userEmail', email);
+        initializeAuth();
+        navigate('home');
       } else {
         alert(data.msg || 'Signup failed');
       }
