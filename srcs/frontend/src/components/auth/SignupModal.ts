@@ -87,12 +87,13 @@ export function setupSignupModal() {
       return;
     }
     try {
-      const data = await fetchJSON<{ success: boolean; msg: string }>('/api/auth/signup', {
+      const data = await fetchJSON<{ response: string; msg?: string }>('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, name, password }),
       });
-      if (data.success) {
+      console.log('Signup response:', data); // Log the response
+      if (data && data.response === 'successfully logged in') {
         hide(signupModal);
         localStorage.setItem('loggedIn', 'true');
         localStorage.setItem('userEmail', email);
@@ -102,8 +103,12 @@ export function setupSignupModal() {
         alert(data.msg || 'Signup failed');
       }
     } catch (err) {
-      console.error(err);
-      alert('Error during signup');
+      if (err instanceof Error && err.message.includes('409')) {
+        alert('This email address is already in use.');
+      } else {
+        console.error('Signup error:', err);
+        alert('An error occurred during signup. Please try again.');
+      }
     }
   });
 
