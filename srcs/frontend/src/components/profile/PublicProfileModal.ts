@@ -52,9 +52,25 @@ export async function showPublicProfile(userId: number) {
             publicProfileAvatar.classList.add('hidden');
         }
 
-        // Reset and show the add friend button
-        publicProfileAddBtn.disabled = false;
-        publicProfileAddBtn.textContent = 'Add Friend';
+        // Check friendship status
+        const res = await fetchJSON<{ status: string }>(`/api/user/friends/status/${user.id}`, { credentials: 'include' });
+        if (res.status === 'friends') {
+            publicProfileAddBtn.textContent = 'Friends';
+            publicProfileAddBtn.disabled = true;
+        } else if (res.status === 'pending_sent') {
+            publicProfileAddBtn.textContent = 'Cancel Request';
+            publicProfileAddBtn.disabled = false;
+        } else {
+            publicProfileAddBtn.textContent = 'Add Friend';
+            publicProfileAddBtn.disabled = false;
+        }
+
+        // Hide add friend button for guests
+        if (!localStorage.getItem('userEmail')) {
+            publicProfileAddBtn.classList.add('hidden');
+        } else {
+            publicProfileAddBtn.classList.remove('hidden');
+        }
 
         // Open modal and update history
         document.getElementById('friends-modal')?.classList.add('hidden');
@@ -113,21 +129,41 @@ export function setupPublicProfileModal() {
     // Add Friend button handler
     publicProfileAddBtn.addEventListener('click', async () => {
         if (!currentProfileId) return;
-        try {
-            const data = await fetchJSON<{success: boolean, error?: string, msg?: string}>(`/api/user/friends/requests/${currentProfileId}`, {
-                method: 'POST',
-                credentials: 'include'
-            });
 
-            if (data.success) {
-                publicProfileAddBtn.disabled = true;
-                publicProfileAddBtn.textContent = 'Request Sent';
-            } else {
-                alert(data.error || data.msg || 'Failed to send friend request');
+        const action = publicProfileAddBtn.textContent;
+
+        if (action === 'Add Friend') {
+            try {
+                const data = await fetchJSON<{success: boolean, error?: string, msg?: string}>(`/api/user/friends/requests/${currentProfileId}`, {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+
+                if (data.success) {
+                    publicProfileAddBtn.textContent = 'Cancel Request';
+                } else {
+                    alert(data.error || data.msg || 'Failed to send friend request');
+                }
+            } catch (err) {
+                console.error('Send friend request error:', err);
+                alert('Error sending friend request');
             }
-        } catch (err) {
-            console.error('Send friend request error:', err);
-            alert('Error sending friend request');
+        } else if (action === 'Cancel Request') {
+            try {
+                const data = await fetchJSON<{success: boolean, error?: string, msg?: string}>(`/api/user/friends/requests/${currentProfileId}`, {
+                    method: 'DELETE',
+                    credentials: 'include'
+                });
+
+                if (data.success) {
+                    publicProfileAddBtn.textContent = 'Add Friend';
+                } else {
+                    alert(data.error || data.msg || 'Failed to cancel friend request');
+                }
+            } catch (err) {
+                console.error('Cancel friend request error:', err);
+                alert('Error canceling friend request');
+            }
         }
     });
 }

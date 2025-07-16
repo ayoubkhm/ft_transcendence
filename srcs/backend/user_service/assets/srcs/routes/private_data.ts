@@ -163,7 +163,7 @@ export default async function private_userRoutes(server: FastifyInstance, option
       type?: string
     }
 
-  server.post<{ Body: DataUserParams }>('/create', { preHandler: [validateUserData] }, async (request, reply) => {
+  server.post<{ Body: DataUserParams }>('/create', async (request, reply) => {
         const email = request.body.email;
         const name = request.body.name;
         const password = request.body.password;
@@ -174,9 +174,10 @@ export default async function private_userRoutes(server: FastifyInstance, option
         // Simulate creating user data
   try {
     // Attempt to create the user; new_user returns (success, msg, new_user_id)
+    const twofa_validated = type === 'guest' ? false : true;
     const result = await server.pg.query(
       'SELECT * FROM new_user($1, $2, $3, $4, $5, $6)',
-      [name, type, email, password, null, true]
+      [name, type, email, password, null, twofa_validated]
     );
     const row = result.rows[0];
     console.log('[CREATE] new_user result:', row);
@@ -187,8 +188,8 @@ export default async function private_userRoutes(server: FastifyInstance, option
     }
     // On success, fetch the full user record
     const data = await server.pg.query(
-      'SELECT * FROM users WHERE email = $1',
-      [email]
+      'SELECT * FROM users WHERE id = $1',
+      [row.new_user_id]
     );
     const user = data.rows[0];
     console.log('[DATA] new user record:', user);
