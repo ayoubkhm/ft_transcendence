@@ -8,7 +8,8 @@ BEGIN
 		RETURN QUERY SELECT FALSE, '2fa secret can''t be null', NULL::INTEGER;
 	END IF;
 	UPDATE users
-	SET twofa_secret = new_2fa_secret
+	SET twofa_secret = new_2fa_secret,
+		twofa_validated = FALSE
 	WHERE id = _id;
 
 	RETURN QUERY SELECT TRUE, 'Successfully added 2fa secret to user';
@@ -25,10 +26,27 @@ CREATE OR REPLACE FUNCTION validate_2fa(
 	new_2fa_secret TEXT
 )
 RETURNS TABLE(success BOOLEAN, msg TEXT) AS $$
+DECLARE
+	_validated BOOLEAN;
 BEGIN
 	IF new_2fa_secret IS NULL THEN
-		RETURN QUERY SELECT FALSE, '2fa secret can''t be null', NULL::INTEGER;
+		RETURN QUERY SELECT FALSE, '2fa secret can''t be null';
 	END IF;
+
+	SELECT twofa_validated INTO _validated
+	FROM users
+	WHERE id = _id;
+	
+	IF NOT FOUND THEN
+		RETURN QUERY SELECT FALSE, 'User not found';
+		RETURN ;
+	END IF;
+
+	IF _validated IS NULL THEN
+		RETURN QUERY SELECT FALSE, 'User isnt 2fa';
+		RETURN ;
+	END IF;
+
 	UPDATE users
 	SET twofa_secret = new_2fa_secret,
 		twofa_validated = TRUE,
@@ -49,7 +67,24 @@ CREATE OR REPLACE FUNCTION expire_2fa(
 	_id INTEGER
 )
 RETURNS TABLE(success BOOLEAN, msg TEXT) AS $$
+DECLARE
+	_validated BOOLEAN;
 BEGIN
+
+	SELECT twofa_validated INTO _validated
+	FROM users
+	WHERE id = _id;
+	
+	IF NOT FOUND THEN
+		RETURN QUERY SELECT FALSE, 'User not found';
+		RETURN ;
+	END IF;
+
+	IF _validated IS NULL THEN
+		RETURN QUERY SELECT FALSE, 'User isnt 2fa';
+		RETURN ;
+	END IF;
+
 	UPDATE users
 	SET twofa_secret = NULL,
 		twofa_validated = FALSE
