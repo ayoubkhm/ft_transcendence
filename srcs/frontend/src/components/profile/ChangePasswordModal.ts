@@ -18,7 +18,7 @@ export function setupChangePasswordModal(): void {
     e.preventDefault();
     profileModal.classList.add('hidden');
     changePasswordModal.classList.remove('hidden');
-    history.pushState({ view: 'change-password' }, '', '#change-password');
+    navigate('change-password');
   });
 
   // Close handlers

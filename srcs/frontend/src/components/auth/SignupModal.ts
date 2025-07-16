@@ -31,7 +31,7 @@ export function setupSignupModal() {
   signupBtn.addEventListener('click', (e) => {
     e.preventDefault();
     show(signupModal);
-    history.pushState({ view: 'signup' }, '', '#signup');
+    navigate('signup');
   });
 
   signupModalClose.addEventListener('click', (e) => {

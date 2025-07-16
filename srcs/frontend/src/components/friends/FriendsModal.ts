@@ -78,7 +78,7 @@ export function setupFriendsModal() {
   }
   friendsBtn.addEventListener('click', (e) => {
     e.preventDefault();
-    history.pushState({ view: 'friends' }, '', '#friends');
+    navigate('friends');
     openFriends();
   });
   // Handle back/forward navigation for friends
