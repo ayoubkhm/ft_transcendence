@@ -31,7 +31,7 @@ BEGIN
 		RAISE EXCEPTION 'Games that depends on another are to be part of a tournament';
 	END IF;
 
-	IF (((NEW.p1_bot IS NOT NULL) OR (NEW.p2_bot IS NOT NULL)) AND NEW.type = 'TOURNAMENT') THEN
+	IF (((NEW.p1_bot = TRUE) OR (NEW.p2_bot = TRUE)) AND (NEW.type = 'TOURNAMENT')) THEN
 		RAISE EXCEPTION 'Tournaments can''t have bots';
 	END IF;
 	
@@ -57,6 +57,12 @@ BEGIN
 
 	IF (NEW.tournament_round IS NOT NULL) AND (NEW.tournament_round < 0) THEN
 		RAISE EXCEPTION 'Tournament round can''t be negative';
+	END IF;
+
+	IF (NEW.winner IS NOT NULL) AND (NEW.state != 'OVER') THEN
+		RAISE EXCEPTION 'Game has a winner but isn''t over';
+	ELSIF (NEW.winner IS NULL) AND (NEW.state = 'OVER') THEN
+		RAISE EXCEPTION 'Game is over but has no winner';
 	END IF;
 
   RETURN NEW;
