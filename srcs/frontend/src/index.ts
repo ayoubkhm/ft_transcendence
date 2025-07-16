@@ -696,12 +696,42 @@ if (tournamentModal && tournamentModalClose) {
     tournamentCreateBtn.addEventListener('click', async () => {
       const name = prompt('Enter tournament name:');
       if (!name) return;
+      // Identify current user by email lookup to get owner_id
+      const email = localStorage.getItem('userEmail');
+      if (!email) {
+        alert('Please log in to create a tournament');
+        return;
+      }
+      let ownerId: number;
+      try {
+        const lookupRes = await fetch(
+          `/api/user/lookup/${encodeURIComponent(email)}`,
+          {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({}),
+          }
+        );
+        if (!lookupRes.ok) {
+          const err = await lookupRes.json().catch(() => ({}));
+          alert('Failed to identify user: ' + (err.error || err.msg || lookupRes.statusText));
+          return;
+        }
+        const userData = await lookupRes.json();
+        ownerId = userData.id;
+      } catch (err) {
+        console.error('Error looking up user:', err);
+        alert('Error identifying user');
+        return;
+      }
+      // Create the tournament with name and owner_id
       try {
         const res = await fetch('/api/tournament', {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name }),
+          body: JSON.stringify({ name, owner_id: ownerId }),
         });
         if (!res.ok) {
           const err = await res.json().catch(() => ({}));
