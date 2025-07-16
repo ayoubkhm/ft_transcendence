@@ -263,14 +263,48 @@ export function setupGame(): void {
     } catch (err) { console.error('Error joining PvP game:', err); alert('Error joining game'); }
   });
   // Reconnect if hash is #game/<id>
+  window.addEventListener('hashchange', () => {
+    const m = location.hash.match(/^#game\/(.+)$/);
+    if (m) {
+      const storedGameId = localStorage.getItem('gameId');
+      if (storedGameId === m[1]) {
+        // revive session
+        gameId = storedGameId;
+        playerId = localStorage.getItem('playerId')!;
+        authToken = localStorage.getItem('authToken')!;
+        resumeGame();
+      }
+    }
+  });
+
+  // Initial check
   const m = location.hash.match(/^#game\/(.+)$/);
   if (m) {
     const storedGameId = localStorage.getItem('gameId');
     if (storedGameId === m[1]) {
       // revive session
-      gameId = storedGameId; playerId = localStorage.getItem('playerId')!; authToken = localStorage.getItem('authToken')!;
-      setupGame();
-      fetchAndDraw(); pollTimer = window.setInterval(fetchAndDraw, POLL_MS);
+      gameId = storedGameId;
+      playerId = localStorage.getItem('playerId')!;
+      authToken = localStorage.getItem('authToken')!;
+      resumeGame();
     }
   }
+}
+
+function resumeGame() {
+  togglePlayButtons(true);
+  hero.classList.add('hidden');
+  resultPre.classList.add('hidden');
+  canvas.classList.remove('hidden');
+  canvas.focus();
+  lastInput = null;
+  const mode = localStorage.getItem('mode');
+  shareDiv.classList.toggle('hidden', mode !== 'pvp');
+  if (mode === 'pvp') gameIdInput.value = gameId;
+  fetchAndDraw();
+  pollTimer = window.setInterval(fetchAndDraw, POLL_MS);
+  window.addEventListener('keydown', onKeyDown);
+  window.addEventListener('keyup', onKeyUp);
+  forfeitBtn.classList.remove('hidden');
+  forfeitBtn.disabled = false;
 }

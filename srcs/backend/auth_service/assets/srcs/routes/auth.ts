@@ -117,7 +117,7 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
     } 
 
   app.post('/guest', async (req, res) => {
-    const name = generateRandomName();
+    const name = "guest" + generateRandomName();
     console.log("Nameg guest =", name);
     if (!name)
       return (res.status(230).send({ error: "1006" }));
@@ -151,6 +151,23 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
       if (!user)
         throw (new Error("cannot upsert user in prisma"));
       console.log("User guest created:", user);
+      const token = jwt.sign({
+        data: {
+          id: user.id,
+          name: user.name,
+          admin: false,
+          twoFactorSecret: null,
+          dfa: true
+        }
+      }, process.env.JWT_SECRET as string, { expiresIn: '24h' });
+      if (!token)
+        throw(new Error("cannot generate user token"));
+      return (res.cookie('jwt_transcendence', token, {
+        path: "/",
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'prod'
+      }).send({ response: "successfully logged in", need2fa: false }));
     } catch (err) {
       return (res.status(500).send({ error: "Internal server error" }));
     }

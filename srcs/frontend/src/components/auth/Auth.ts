@@ -34,7 +34,15 @@ export async function initializeAuth() {
             localStorage.setItem('loggedIn', 'true');
             if (data.name) localStorage.setItem('username', data.name);
             // Store email for profile lookup
-            if (data.email) localStorage.setItem('userEmail', data.email);
+            if (data.email) {
+              localStorage.setItem('userEmail', data.email);
+            } else {
+              // This is a guest user, hide profile and friends buttons
+              const profileBtn = document.getElementById('profile-btn') as HTMLButtonElement | null;
+              const friendsBtn = document.getElementById('friends-btn') as HTMLButtonElement | null;
+              if (profileBtn) profileBtn.classList.add('hidden');
+              if (friendsBtn) friendsBtn.classList.add('hidden');
+            }
             // twofaEnabled: server indicates 2FA status
             localStorage.setItem('twofaEnabled', data.twofaEnabled === true ? 'true' : 'false');
         } else {
