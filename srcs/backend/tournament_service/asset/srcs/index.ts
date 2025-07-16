@@ -7,6 +7,15 @@ const server = Fastify();
 
 // Trust proxy headers (e.g., X-Forwarded-Proto) when behind SSL termination
 
+server.listen({ port: 3000, host: '0.0.0.0' })
+  .then((address) => {
+    console.log(`🚀 Tournament service listening at ${address}`);
+  })
+  .catch((err) => {
+    console.error('❌ Failed to start server:', err);
+    process.exit(1);
+  });
+
 // ─── Plugin PostgreSQL ──────────────────────────────────────
 server.register(FastifyPostgres, {
   connectionString: process.env.DATABASE_URL,
@@ -48,39 +57,28 @@ server.get<{
     client.release();
   }
 });
-// ─── Lancement du serveur ───────────────────────────────────
-server.listen({ port: 3000, host: '0.0.0.0' })
-  .then((address) => {
-    console.log(`🚀 Tournament service listening at ${address}`);
-  })
-  .catch((err) => {
-    console.error('❌ Failed to start server:', err);
-    process.exit(1);
-  });
 
 
-
-  server.post('/api/tournament', async (request, reply) => {
-  const body = request.body as { name?: string;};
-
-  if (!body.name) {
-    return reply.status(400).send({ error: 'Missing name' });
-  }
+server.post<{Body: {name?: string; owner_id?: number;};}>('/api/tournament', async (request, reply) => {
+  
+  const { name, owner_id } = request.body;
+  if (!name || typeof owner_id !== 'number')
+    return reply.status(400).send({ success: false, msg: 'Missing or invalid name/owner_id' });
 
   const client = await server.pg.connect();
   try {
-      const result = await client.query(
-        'SELECT * FROM new_tournament($1::TEXT)',
-        [body.name]
-      );
-    if (result.rows.length === 0) {
-      return reply.status(500).send({ error: 'Tournament creation failed' });
-    }
+    const result = await client.query(
+      'SELECT * FROM new_tournament($1::TEXT, $2::INTEGER)',
+      [name, owner_id]
+    );
 
-    return reply.send(result.rows[0]);
+    if (result.rows.length === 0)
+      return reply.status(500).send({ success: false, msg: 'Tournament creation failed (empty result)' });
+
+    return reply.send(result.rows[0]); // { success: boolean, msg: string }
   } catch (err) {
     console.error('Error in /api/tournament:', err);
-    return reply.status(500).send({ error: 'Internal server error' });
+    return reply.status(500).send({ success: false, msg: 'Internal server error' });
   } finally {
     client.release();
   }
@@ -295,35 +293,29 @@ server.delete<{
 // curl -X DELETE http://localhost:3003/api/tournament/PongCup
 
 
-server.post<{
-  Body: { name?: string };
-}>('/api/tournament/init', async (request, reply) => {
-  const { name } = request.body;
-
-  if (!name) {
-    return reply.status(400).send({ error: 'Missing tournament name' });
-  }
+server.post<{Body: {name?: string; state_run?: boolean;};}>('/api/tournament/init', async (request, reply) => {
+  
+  const { name, state_run = false } = request.body;
+  if (!name)
+    return reply.status(400).send({ success: false, msg: 'Missing tournament name' });
 
   const client = await server.pg.connect();
   try {
-    const result = await client.query(
-      'SELECT * FROM init_tournament($1::TEXT)',
-      [name]
-    );
+    const result = await client.query('SELECT * FROM init_tournament($1::TEXT, $2::BOOLEAN)', [name, state_run]);
 
-    if (result.rows.length === 0) {
-      return reply.status(500).send({ error: 'Tournament init failed: empty result' });
-    }
+    if (result.rows.length === 0)
+      return reply.status(500).send({ success: false, msg: 'Empty result from init_tournament' });
 
-    const { success, msg, games_id } = result.rows[0];
-    return reply.send({ success, msg, games_id });
+    const { success, msg, brackets } = result.rows[0];
+    return reply.send({ success, msg, brackets });
   } catch (err) {
     console.error('Error in /api/tournament/init:', err);
-    return reply.status(500).send({ error: 'Internal server error' });
+    return reply.status(500).send({ success: false, msg: 'Internal server error' });
   } finally {
     client.release();
   }
 });
+
 
 
 // curl -X POST http://localhost:3003/api/tournament/init \
@@ -423,15 +415,6 @@ server.put<{
     client.release();
   }
 });
-// ─── Lancement du serveur ───────────────────────────────────
-server.listen({ port: 3000, host: '0.0.0.0' })
-  .then((address) => {
-    console.log(`🚀 Tournament service listening at ${address}`);
-  })
-  .catch((err) => {
-    console.error('❌ Failed to start server:', err);
-    process.exit(1);
-  });
 
 
 // curl -X PUT http://localhost:3003/api/tournament/1/max_players \
