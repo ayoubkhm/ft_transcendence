@@ -80,10 +80,22 @@ export function setupLoginModal() {
     window.location.href = '/api/auth/login/google';
   });
 
-  guestLoginBtn.addEventListener('click', (e) => {
+  guestLoginBtn.addEventListener('click', async (e) => {
     e.preventDefault();
-    localStorage.setItem('loggedIn', 'true');
-    localStorage.setItem('username', 'Guest');
-    hide(loginModal);
+    try {
+      const res = await fetch('/api/auth/guest', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (res.ok) {
+        hide(loginModal);
+        window.location.reload();
+      } else {
+        alert('Guest login failed');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Guest login error');
+    }
   });
 }
