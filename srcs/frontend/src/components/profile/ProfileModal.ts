@@ -67,7 +67,7 @@ export function setupProfileModal(): void {
         }
       }
       profileModal.classList.remove('hidden');
-      history.pushState({ view: 'profile' }, '', '#profile');
+      navigate('profile');
     } catch (err) {
       console.error('Profile lookup error:', err);
     }

@@ -164,7 +164,7 @@ export async function startGame(mode: 'ai' | 'pvp', difficulty?: string): Promis
     localStorage.setItem('authToken', authToken);
     localStorage.setItem('mode', mode);
     if (difficulty) localStorage.setItem('difficulty', difficulty);
-    window.history.pushState({ view: 'game', gameId }, '', `#game/${gameId}`);
+    navigate('game', { id: gameId });
     shareDiv.classList.toggle('hidden', mode !== 'pvp');
     if (mode === 'pvp') gameIdInput.value = gameId;
     await fetchAndDraw();
@@ -253,7 +253,7 @@ export function setupGame(): void {
       if (!res.ok) { alert(data.error || 'Failed to join game'); return; }
       gameId = data.gameId; playerId = data.playerId; authToken = data.token;
       localStorage.setItem('gameId', gameId); localStorage.setItem('playerId', playerId); localStorage.setItem('authToken', authToken); localStorage.setItem('mode', 'pvp');
-      window.history.pushState({ view: 'game', gameId }, '', `#game/${gameId}`);
+      navigate('game', { id: gameId });
       pvpModal.classList.add('hidden');
       togglePlayButtons(true); hero.classList.add('hidden'); resultPre.classList.add('hidden'); shareDiv.classList.add('hidden'); canvas.classList.remove('hidden');
       canvas.focus(); lastInput = null;
