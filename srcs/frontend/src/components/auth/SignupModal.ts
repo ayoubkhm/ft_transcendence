@@ -1,5 +1,7 @@
 import { show, hide } from '../../lib/dom';
 import { fetchJSON } from '../../lib/api';
+import { initializeAuth } from './Auth';
+import { navigate, onRoute } from '../../lib/router';
 
 export function setupSignupModal() {
   const signupBtn = document.getElementById('signup-btn') as HTMLButtonElement | null;
@@ -19,19 +21,46 @@ export function setupSignupModal() {
     return;
   }
 
+  const closeModal = () => {
+    if (signupModal) {
+      hide(signupModal);
+    }
+    navigate('home');
+  };
+
   signupBtn.addEventListener('click', (e) => {
     e.preventDefault();
     show(signupModal);
+    history.pushState({ view: 'signup' }, '', '#signup');
   });
 
   signupModalClose.addEventListener('click', (e) => {
     e.preventDefault();
-    hide(signupModal);
+    closeModal();
   });
 
   signupCancelBtn.addEventListener('click', (e) => {
     e.preventDefault();
-    hide(signupModal);
+    closeModal();
+  });
+
+  signupModal.addEventListener('click', (e) => {
+    if (e.target === signupModal) {
+      closeModal();
+    }
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && signupModal && !signupModal.classList.contains('hidden')) {
+      closeModal();
+    }
+  });
+
+  // Hide modal if we navigate away
+  onRoute('home', () => {
+    if (signupModal && !signupModal.classList.contains('hidden')) {
+      hide(signupModal);
+    }
   });
 
   passwordInput.addEventListener('input', () => {
@@ -50,7 +79,7 @@ export function setupSignupModal() {
   signupForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = emailInput.value;
-    const username = nameInput.value;
+    const name = nameInput.value;
     const password = passwordInput.value;
     const confirm = confirmInput.value;
     if (password !== confirm) {
@@ -58,20 +87,28 @@ export function setupSignupModal() {
       return;
     }
     try {
-      const data = await fetchJSON<{ success: boolean; msg: string }>('/api/auth/signup', {
+      const data = await fetchJSON<{ response: string; msg?: string }>('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, username, password }),
+        body: JSON.stringify({ email, name, password }),
       });
-      if (data.success) {
+      console.log('Signup response:', data); // Log the response
+      if (data && data.response === 'successfully logged in') {
         hide(signupModal);
-        alert('Signup successful; please login');
+        localStorage.setItem('loggedIn', 'true');
+        localStorage.setItem('userEmail', email);
+        initializeAuth();
+        navigate('home');
       } else {
         alert(data.msg || 'Signup failed');
       }
     } catch (err) {
-      console.error(err);
-      alert('Error during signup');
+      if (err instanceof Error && err.message.includes('409')) {
+        alert('This email address is already in use.');
+      } else {
+        console.error('Signup error:', err);
+        alert('An error occurred during signup. Please try again.');
+      }
     }
   });
 

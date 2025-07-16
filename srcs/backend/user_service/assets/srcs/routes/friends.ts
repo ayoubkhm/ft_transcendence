@@ -115,13 +115,13 @@ export default async function friendsRoutes(server: FastifyInstance, options: an
                 return reply.status(230).send({ error: "0404" });
             const inviteRes = await server.pg.query(
                 'SELECT 1 FROM invites WHERE from_id = $1 AND to_id = $2 AND type = \'friend\'',
-                [requestID, id]
+                [id, requestID]
             );
             if ((inviteRes.rowCount ?? 0) === 0)
                 return reply.status(230).send({ error: "0404" });
             await server.pg.query(
                 'DELETE FROM invites WHERE from_id = $1 AND to_id = $2 AND type = \'friend\'',
-                [requestID, id]
+                [id, requestID]
             );
             return reply.send({ success: true, msg: 'Friend request rejected' });
         } catch (error) {
@@ -220,6 +220,44 @@ export default async function friendsRoutes(server: FastifyInstance, options: an
             `;
             const { rows } = await server.pg.query(sql, [userId]);
             return reply.send(rows);
+        } catch (err) {
+            request.log.error(err);
+            return reply.status(500).send({ error: 'Internal server error' });
+        }
+    });
+
+    server.get('/friends/status/:id', async (request: any, reply: any) => {
+        try {
+            const token = request.cookies['jwt_transcendence'];
+            if (!token) {
+                return reply.code(401).send({ error: 'Not authenticated' });
+            }
+            const userId = getTokenData(token).id;
+            const targetId = Number(request.params.id);
+
+            if (!userId || !targetId) {
+                return reply.code(400).send({ error: 'Invalid user ID' });
+            }
+
+            // Check if they are friends
+            const friendRes = await server.pg.query(
+                `SELECT 1 FROM friends WHERE (user1_id = $1 AND user2_id = $2) OR (user1_id = $2 AND user2_id = $1)`,
+                [userId, targetId]
+            );
+            if ((friendRes.rowCount ?? 0) > 0) {
+                return reply.send({ status: 'friends' });
+            }
+
+            // Check for a pending friend request
+            const inviteRes = await server.pg.query(
+                `SELECT 1 FROM invites WHERE from_id = $1 AND to_id = $2 AND type = 'friend'`,
+                [userId, targetId]
+            );
+            if ((inviteRes.rowCount ?? 0) > 0) {
+                return reply.send({ status: 'pending_sent' });
+            }
+
+            return reply.send({ status: 'none' });
         } catch (err) {
             request.log.error(err);
             return reply.status(500).send({ error: 'Internal server error' });
