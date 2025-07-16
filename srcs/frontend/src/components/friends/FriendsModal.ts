@@ -14,41 +14,154 @@ export function setupFriendsModal() {
     return;
   }
 
-  friendsBtn.addEventListener('click', async (e) => {
-    e.preventDefault();
+  // Open and load the Friends modal
+  async function openFriends() {
     friendsList.innerHTML = '';
     friendRequestsList.innerHTML = '';
     try {
+      // Load friends list
       const friends = await fetchJSON<{ id: number; name: string }[]>('/api/user/friends', { credentials: 'include' });
       friends.forEach((f) => {
         const li = document.createElement('li');
-        li.textContent = f.name;
         li.className = 'px-2 py-1 bg-gray-700 rounded cursor-pointer';
+        li.textContent = f.name;
+        // Click to view friend profile
+        li.addEventListener('click', async () => {
+          try {
+            const res2 = await fetch(`/api/user/search/${f.id}`, { credentials: 'include' });
+            const data2 = await res2.json() as { success: boolean; msg: string; profile: any };
+            if (!res2.ok || !data2.success || !data2.profile) {
+              alert(data2.msg || 'Failed to load profile');
+              return;
+            }
+            const user = data2.profile;
+            const publicProfileModal = document.getElementById('public-profile-modal') as HTMLElement | null;
+            const publicProfileName = document.getElementById('public-profile-name') as HTMLElement | null;
+            const publicProfileEmail = document.getElementById('public-profile-email') as HTMLElement | null;
+            const publicProfileAvatar = document.getElementById('public-profile-avatar') as HTMLImageElement | null;
+            const publicProfileAddBtn = document.getElementById('public-profile-add-btn') as HTMLButtonElement | null;
+            if (publicProfileModal && publicProfileName && publicProfileEmail && publicProfileAvatar && publicProfileAddBtn) {
+              publicProfileName.textContent = '';
+              publicProfileName.appendChild(document.createTextNode(user.name));
+              const tagSpan = document.createElement('span');
+              tagSpan.className = 'text-gray-400 text-sm ml-1';
+              tagSpan.textContent = `#${user.tag}`;
+              publicProfileName.appendChild(tagSpan);
+              publicProfileEmail.textContent = user.email;
+              if (user.avatar) {
+                publicProfileAvatar.src = user.avatar;
+                publicProfileAvatar.classList.remove('hidden');
+              } else {
+                publicProfileAvatar.classList.add('hidden');
+              }
+              history.pushState({ view: 'publicProfile', id: user.id }, '', `#user/${user.id}`);
+              document.getElementById('friends-modal')?.classList.add('hidden');
+              publicProfileModal.classList.remove('hidden');
+            }
+          } catch (err) {
+            console.error('Error loading user profile:', err);
+            alert('Error loading profile');
+          }
+        });
         friendsList.appendChild(li);
       });
+      // Load friend requests
       const requests = await fetchJSON<{ id: number; name: string }[]>('/api/user/receivedFriendRequests', { credentials: 'include' });
       requests.forEach((r) => {
         const li = document.createElement('li');
-        li.textContent = r.name;
-        li.className = 'px-2 py-1 bg-gray-700 rounded cursor-pointer';
+        li.className = 'flex items-center justify-between px-2 py-1 bg-gray-700 rounded';
+        const nameSpan = document.createElement('span');
+        nameSpan.textContent = r.name;
+        const acceptBtn = document.createElement('button');
+        acceptBtn.textContent = 'Accept';
+        acceptBtn.className = 'px-2 py-1 bg-green-500 rounded text-white text-sm';
+        acceptBtn.addEventListener('click', async () => {
+          try {
+            const res = await fetch(`/api/user/friends/requests/${r.id}`, {
+              method: 'PUT', credentials: 'include'
+            });
+            const resp = await res.json();
+            if (res.ok && resp.success) { li.remove(); updateFriendsBadge(); }
+            else alert(resp.error || resp.msg || 'Failed to accept friend request');
+          } catch (err) { console.error(err); alert('Error accepting request'); }
+        });
+        const rejectBtn = document.createElement('button');
+        rejectBtn.textContent = 'Reject';
+        rejectBtn.className = 'px-2 py-1 bg-red-500 rounded text-white text-sm';
+        rejectBtn.addEventListener('click', async () => {
+          try {
+            const res = await fetch(`/api/user/friends/requests/${r.id}`, {
+              method: 'DELETE', credentials: 'include'
+            });
+            const resp = await res.json();
+            if (res.ok && resp.success) { li.remove(); updateFriendsBadge(); }
+            else alert(resp.error || resp.msg || 'Failed to reject friend request');
+          } catch (err) { console.error(err); alert('Error rejecting request'); }
+        });
+        const actionsDiv = document.createElement('div'); actionsDiv.className = 'flex gap-2'; actionsDiv.append(acceptBtn, rejectBtn);
+        li.append(nameSpan, actionsDiv);
         friendRequestsList.appendChild(li);
       });
       show(friendsModal);
-      // Update badge count
-      const count = requests.length;
-      if (count > 0) {
-        friendsBadge.textContent = count.toString();
-        show(friendsBadge);
-      } else {
-        hide(friendsBadge);
-      }
+      // Update badge
+      updateFriendsBadge();
     } catch (err) {
       console.error('Error loading friends data', err);
     }
+  }
+  friendsBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    history.pushState({ view: 'friends' }, '', '#friends');
+    openFriends();
   });
+  // Handle back/forward navigation for friends
+  window.addEventListener('popstate', (e) => {
+    const state = e.state as { view?: string } | null;
+    if (state && state.view === 'friends') {
+      openFriends();
+    } else {
+      hide(friendsModal);
+    }
+  });
+  // If loaded directly at #friends, open modal
+  if (location.hash === '#friends') {
+    openFriends();
+  }
 
   friendsModalClose.addEventListener('click', (e) => {
     e.preventDefault();
-    hide(friendsModal);
+    history.back();
   });
+  // Close on backdrop click
+  friendsModal.addEventListener('click', (e) => {
+    if (e.target === friendsModal) {
+      history.back();
+    }
+  });
+  // Close on Escape key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !friendsModal.classList.contains('hidden')) {
+      history.back();
+    }
+  });
+}
+// Update the notification badge for incoming friend requests
+export async function updateFriendsBadge() {
+  const friendsBadge = document.getElementById('friends-badge') as HTMLElement | null;
+  if (!friendsBadge) return;
+  try {
+    const data = await fetchJSON<{ id: number; name: string }[]>(
+      '/api/user/receivedFriendRequests',
+      { credentials: 'include' }
+    );
+    const count = data.length;
+    if (count > 0) {
+      friendsBadge.textContent = count.toString();
+      friendsBadge.classList.remove('hidden');
+    } else {
+      friendsBadge.classList.add('hidden');
+    }
+  } catch (err) {
+    console.error('Failed to update friends badge', err);
+  }
 }
