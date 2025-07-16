@@ -1,6 +1,7 @@
 // FriendsModal: handles displaying friends list and friend requests
 import { show, hide } from '../../lib/dom';
 import { fetchJSON } from '../../lib/api';
+import { showPublicProfile } from '../profile/PublicProfileModal';
 
 export function setupFriendsModal() {
   const friendsBtn = document.getElementById('friends-btn') as HTMLButtonElement | null;
@@ -26,42 +27,8 @@ export function setupFriendsModal() {
         li.className = 'px-2 py-1 bg-gray-700 rounded cursor-pointer';
         li.textContent = f.name;
         // Click to view friend profile
-        li.addEventListener('click', async () => {
-          try {
-            const res2 = await fetch(`/api/user/search/${f.id}`, { credentials: 'include' });
-            const data2 = await res2.json() as { success: boolean; msg: string; profile: any };
-            if (!res2.ok || !data2.success || !data2.profile) {
-              alert(data2.msg || 'Failed to load profile');
-              return;
-            }
-            const user = data2.profile;
-            const publicProfileModal = document.getElementById('public-profile-modal') as HTMLElement | null;
-            const publicProfileName = document.getElementById('public-profile-name') as HTMLElement | null;
-            const publicProfileEmail = document.getElementById('public-profile-email') as HTMLElement | null;
-            const publicProfileAvatar = document.getElementById('public-profile-avatar') as HTMLImageElement | null;
-            const publicProfileAddBtn = document.getElementById('public-profile-add-btn') as HTMLButtonElement | null;
-            if (publicProfileModal && publicProfileName && publicProfileEmail && publicProfileAvatar && publicProfileAddBtn) {
-              publicProfileName.textContent = '';
-              publicProfileName.appendChild(document.createTextNode(user.name));
-              const tagSpan = document.createElement('span');
-              tagSpan.className = 'text-gray-400 text-sm ml-1';
-              tagSpan.textContent = `#${user.tag}`;
-              publicProfileName.appendChild(tagSpan);
-              publicProfileEmail.textContent = user.email;
-              if (user.avatar) {
-                publicProfileAvatar.src = user.avatar;
-                publicProfileAvatar.classList.remove('hidden');
-              } else {
-                publicProfileAvatar.classList.add('hidden');
-              }
-              history.pushState({ view: 'publicProfile', id: user.id }, '', `#user/${user.id}`);
-              document.getElementById('friends-modal')?.classList.add('hidden');
-              publicProfileModal.classList.remove('hidden');
-            }
-          } catch (err) {
-            console.error('Error loading user profile:', err);
-            alert('Error loading profile');
-          }
+        li.addEventListener('click', () => {
+            showPublicProfile(f.id);
         });
         friendsList.appendChild(li);
       });
@@ -145,6 +112,7 @@ export function setupFriendsModal() {
     }
   });
 }
+
 // Update the notification badge for incoming friend requests
 export async function updateFriendsBadge() {
   const friendsBadge = document.getElementById('friends-badge') as HTMLElement | null;

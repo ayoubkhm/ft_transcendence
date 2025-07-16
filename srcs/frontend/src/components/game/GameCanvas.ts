@@ -47,7 +47,7 @@ export function drawGame(ctx: CanvasRenderingContext2D, state: any, images: Reco
     if (player.power[i] === 'i') ctx.fillStyle = 'purple';
     else if (player.power[i] === 'v') ctx.fillStyle = 'blue';
     else if (player.power[i] === 'b') ctx.fillStyle = 'red';
-    ctx.fillRect(x, player.paddle.y, PADDLE_W, PADDLE_H);
+    ctx.fillRect(x, player.paddle.y, player.paddle.w, player.paddle.h);
   });
   // Draw phantom balls
   state.phantomBalls?.forEach((ball: any) => {

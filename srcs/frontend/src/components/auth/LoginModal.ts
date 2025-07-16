@@ -1,4 +1,5 @@
 import { show, hide } from '../../lib/dom';
+import { navigate, onRoute } from '../../lib/router';
 
 export function setupLoginModal() {
   const loginBtn = document.getElementById('login-btn') as HTMLButtonElement | null;
@@ -14,14 +15,41 @@ export function setupLoginModal() {
     return;
   }
 
+  const closeModal = () => {
+    if (loginModal) {
+      hide(loginModal);
+    }
+    navigate('home');
+  };
+
   loginBtn.addEventListener('click', (e) => {
     e.preventDefault();
     show(loginModal);
+    history.pushState({ view: 'login' }, '', '#login');
   });
 
   loginModalClose.addEventListener('click', (e) => {
     e.preventDefault();
-    hide(loginModal);
+    closeModal();
+  });
+
+  loginModal.addEventListener('click', (e) => {
+    if (e.target === loginModal) {
+      closeModal();
+    }
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && loginModal && !loginModal.classList.contains('hidden')) {
+      closeModal();
+    }
+  });
+
+  // Hide modal if we navigate away
+  onRoute('home', () => {
+    if (loginModal && !loginModal.classList.contains('hidden')) {
+      hide(loginModal);
+    }
   });
 
   loginModalForm.addEventListener('submit', async (e) => {
