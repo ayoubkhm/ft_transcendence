@@ -1,3 +1,4 @@
+
 CREATE OR REPLACE FUNCTION new_invite(
 	_from_user_id INTEGER,
     _to_user_id INTEGER,
@@ -416,7 +417,6 @@ BEGIN
         RETURN ;
     END IF;
 
-
 	DELETE FROM invites
     WHERE from_id = _from_user_id
         AND to_id = _to_user_id
@@ -433,3 +433,30 @@ EXCEPTION
     	RETURN QUERY SELECT FALSE, SQLERRM;
 END;
 $$ LANGUAGE plpgsql;
+
+
+
+
+-- CREATE OR REPLACE FUNCTION get_friends_invites(
+--     _user_email TEXT)
+-- RETURNS TABLE(success BOOLEAN, msg TEXT, ) AS $$
+-- DECLARE
+-- 	_user_id INTEGER;
+-- BEGIN
+--     SELECT id INTO _user_id
+--     FROM users
+--     WHERE email = _user_email;
+
+--     IF NOT FOUND THEN
+--         RETURN QUERY SELECT FALSE, FORMAT('User not found with email %s (get invite fail)', _user_email);
+--         RETURN ;
+--     END IF;
+
+--     RETURN QUERY SELECT TRUE, 
+-- EXCEPTION
+-- 	WHEN OTHERS THEN
+--     	RETURN QUERY SELECT FALSE, SQLERRM;
+-- END;
+-- $$ LANGUAGE plpgsql;
+
+

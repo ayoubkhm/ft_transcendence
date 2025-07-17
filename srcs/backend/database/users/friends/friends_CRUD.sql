@@ -22,7 +22,16 @@ BEGIN
         RETURN ;
     END IF;
 
-	INSERT INTO friends (user1_id, user2_id)
+	IF EXISTS(
+        SELECT 1 FROM friends
+        WHERE ((user1_id = _id1) AND (user2_id = _id2))
+            OR ((user1_id = _id2) AND (user2_id = _id1))
+    ) THEN
+        RETURN QUERY SELECT FALSE, 'Already friends';
+        RETURN ;
+    END IF;
+    
+    INSERT INTO friends (user1_id, user2_id)
 	VALUES (_id1, _id2);
 	
 	RETURN QUERY SELECT TRUE, 'Friends successfully created';
@@ -60,7 +69,16 @@ BEGIN
         RETURN ;
     END IF;
 
-	INSERT INTO friends (user1_id, user2_id)
+	IF EXISTS(
+        SELECT 1 FROM friends
+        WHERE ((user1_id = _id1) AND (user2_id = _id2))
+            OR ((user1_id = _id2) AND (user2_id = _id1))
+    ) THEN
+        RETURN QUERY SELECT FALSE, 'Already friends';
+        RETURN ;
+    END IF;
+    
+    INSERT INTO friends (user1_id, user2_id)
 	VALUES (_id1, _id2);
 	
 	RETURN QUERY SELECT TRUE, 'Friends successfully created';
@@ -98,7 +116,16 @@ BEGIN
         RETURN ;
     END IF;
 
-	INSERT INTO friends (user1_id, user2_id)
+	IF EXISTS(
+        SELECT 1 FROM friends
+        WHERE ((user1_id = _id1) AND (user2_id = _id2))
+            OR ((user1_id = _id2) AND (user2_id = _id1))
+    ) THEN
+        RETURN QUERY SELECT FALSE, 'Already friends';
+        RETURN ;
+    END IF;
+    
+    INSERT INTO friends (user1_id, user2_id)
 	VALUES (_id1, _id2);
 	
 	RETURN QUERY SELECT TRUE, 'Friends successfully created';
@@ -136,7 +163,16 @@ BEGIN
         RETURN ;
     END IF;
 
-	INSERT INTO friends (user1_id, user2_id)
+	IF EXISTS(
+        SELECT 1 FROM friends
+        WHERE ((user1_id = _id1) AND (user2_id = _id2))
+            OR ((user1_id = _id2) AND (user2_id = _id1))
+    ) THEN
+        RETURN QUERY SELECT FALSE, 'Already friends';
+        RETURN ;
+    END IF;
+    
+    INSERT INTO friends (user1_id, user2_id)
 	VALUES (_id1, _id2);
 	
 	RETURN QUERY SELECT TRUE, 'Friends successfully created';
