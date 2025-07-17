@@ -95,8 +95,9 @@ export class Game
 
 	async addScore(pgClient: Client, scorerIsLeft: boolean): Promise<void>
 	{
+		console.log("\n\n\nHEYYYYYYYYYY NEW SCORE\n\n\n\n");
 		try {
-			await pgClient.query('SELECT * FROM score($1, $2)', [
+			await pgClient.query('SELECT * FROM score($1::INTEGER, $2::BOOLEAN)', [
 			this.getGameId(), // id SQL du game
 			scorerIsLeft,
 			]);
@@ -108,7 +109,7 @@ export class Game
 
 	// ────────────────────────────────────────────────────────────────────────
 	// GESTION DES INPUTS JOUEUR HUMAIN
-	// ───────────────────────────────���────────────────────────────────────────
+	// ────────────────────────────────────────────────────────────────────────
    handleInput(id: string, msg: ClientInput)
    {
        const p = this.state.players.find(pl => pl.id === id);
@@ -215,6 +216,7 @@ export class Game
 	// ────────────────────────────────────────────────────────────────────────
 	async step(dt: number, pgClient: Client): Promise<void>
 	{
+
         // Countdown before simulation starts
         if (this.countdownTicks > 0) {
             this.countdownTicks--;
@@ -406,17 +408,16 @@ export class Game
 		// 5) Fin de partie ?
 		if (left.score >= 7 || right.score >= 7)
 		{
-			this.state.isGameOver = true;
 			this.state.winner = left.score > right.score ? 'left' : 'right';
-
-			
+			console.log("\n\n\nHEYYYYYYYYYY ITS MEEEEEEEEE\n\n\n\n");
 			try
 			{
-				await pgClient.query('SELECT * FROM win_game($1, $2)', [this.getGameId(), this.state.winner === 'left']);
+				await pgClient.query('SELECT * FROM win_game($1::INTEGER, $2::BOOLEAN)', [this.getGameId(), this.state.winner === 'left']);
 				console.log(`✅ Game ${this.getGameId()} marked as finished in DB`);
 			}
 			catch (err)
 				{console.error(`❌ Error finalizing game ${this.getGameId()}:`, err);}
+			this.state.isGameOver = true;
 		}
 	}
     /**
