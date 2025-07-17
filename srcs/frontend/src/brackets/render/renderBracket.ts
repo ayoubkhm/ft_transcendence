@@ -16,7 +16,7 @@ export default function renderBrackets(tname: string, tstate: string, twinner: {
 		var tournamentStateColor: string;
 		if (tstate === 'RUNNING')
 			tournamentStateColor = "bg-yellow-400";
-		else if (tstate === 'PREP')
+		else if (tstate === 'LOBBY')
 			tournamentStateColor = "bg-green-500";
 		else
 			tournamentStateColor = "bg-red-500";
