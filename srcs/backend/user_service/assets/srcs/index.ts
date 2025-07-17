@@ -32,8 +32,9 @@ server.register(fastifyStatic, {
 
 server.register(multipart);
 server.register(fastifyPostgres, {
-  connectionString: 'postgresql://transcendence:imthebest@database_service:5432/db',
+  connectionString: process.env.DATABASE_URL,
 });
+
 server.register(cookiesPlugin, {});
 server.register(private_userRoutes, { prefix: '/api/user',});
 server.register(public_userRoutes, { prefix: '/api/user',});
