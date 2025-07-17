@@ -65,8 +65,9 @@ export async function showPublicProfile(userId: number) {
             publicProfileAddBtn.disabled = false;
         }
 
-        // Hide add friend button for guests
-        if (!localStorage.getItem('userEmail')) {
+        // Hide add friend button for guests or if viewing own profile
+        const currentUserId = localStorage.getItem('userId');
+        if (!localStorage.getItem('userEmail') || (currentUserId && parseInt(currentUserId, 10) === user.id)) {
             publicProfileAddBtn.classList.add('hidden');
         } else {
             publicProfileAddBtn.classList.remove('hidden');
