@@ -77,6 +77,7 @@ export function setupTournamentDashboard() {
             const joinBtn = document.createElement('button');
             joinBtn.className = 'bg-blue-500 text-white px-2 py-1 rounded mr-2';
             joinBtn.textContent = 'Join';
+            joinBtn.dataset.tournamentId = t.id;
             actionsCell.appendChild(joinBtn);
 
             const spectateBtn = document.createElement('button');
@@ -93,6 +94,60 @@ export function setupTournamentDashboard() {
 
             row.appendChild(actionsCell);
             tournamentTableBody.appendChild(row);
+          });
+
+          // Add event listeners for join buttons
+          const joinButtons = tournamentTableBody.querySelectorAll('[data-tournament-id]');
+          joinButtons.forEach(button => {
+            button.addEventListener('click', async (e) => {
+              const tournamentId = (e.target as HTMLElement).dataset.tournamentId;
+              const email = localStorage.getItem('userEmail');
+              if (!email) {
+                alert('Please log in to join a tournament');
+                return;
+              }
+              let userId: number;
+              try {
+                const lookupRes = await fetch(`/api/user/lookup/${encodeURIComponent(email)}`, {
+                  method: 'POST',
+                  credentials: 'include',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({}),
+                });
+                if (!lookupRes.ok) {
+                  const err = await lookupRes.json().catch(() => ({}));
+                  alert('Failed to identify user: ' + (err.error || err.msg || lookupRes.statusText));
+                  return;
+                }
+                const userData = await lookupRes.json();
+                userId = userData.id;
+              } catch (err) {
+                console.error('Error looking up user:', err);
+                alert('Error identifying user');
+                return;
+              }
+
+              try {
+                const res = await fetch(`/api/tournament/${tournamentId}/join`, {
+                  method: 'POST',
+                  credentials: 'include',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ user_id: userId }),
+                });
+                if (!res.ok) {
+                  const err = await res.json().catch(() => ({}));
+                  alert('Failed to join tournament: ' + (err.error || err.msg || res.statusText));
+                  return;
+                }
+                alert('Successfully joined tournament');
+                // Refresh the tournament list
+                const playTournBtn = document.getElementById('play-tourn-btn') as HTMLButtonElement | null;
+                playTournBtn!.click();
+              } catch (err) {
+                console.error('Error joining tournament:', err);
+                alert('Failed to join tournament.');
+              }
+            });
           });
 
           // Add event listeners for spectate buttons
