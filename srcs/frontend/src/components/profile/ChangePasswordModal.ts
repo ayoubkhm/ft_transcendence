@@ -1,3 +1,5 @@
+import { navigate, onRoute } from '../../lib/router';
+
 // ChangePasswordModal: handles change-password modal and form submission
 export function setupChangePasswordModal(): void {
   const profileModal = document.getElementById('profile-modal') as HTMLElement | null;
@@ -14,17 +16,21 @@ export function setupChangePasswordModal(): void {
   }
 
   // Open change-password modal
-  profileChangePasswordBtn.addEventListener('click', e => {
-    e.preventDefault();
+  onRoute('change-password', () => {
     profileModal.classList.add('hidden');
     changePasswordModal.classList.remove('hidden');
-    navigate('change-password');
   });
 
   // Close handlers
-  changePasswordClose.addEventListener('click', e => { e.preventDefault(); changePasswordModal.classList.add('hidden'); history.back(); });
-  changePasswordModal.addEventListener('click', e => { if (e.target === changePasswordModal) history.back(); });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !changePasswordModal.classList.contains('hidden')) history.back(); });
+  changePasswordClose.addEventListener('click', e => { e.preventDefault(); navigate('home'); });
+  changePasswordModal.addEventListener('click', e => { if (e.target === changePasswordModal) navigate('home'); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !changePasswordModal.classList.contains('hidden')) navigate('home'); });
+
+  onRoute('home', () => {
+    if (changePasswordModal && !changePasswordModal.classList.contains('hidden')) {
+      changePasswordModal.classList.add('hidden');
+    }
+  });
 
   // Handle form submission
   changePasswordForm.addEventListener('submit', async e => {
@@ -51,7 +57,7 @@ export function setupChangePasswordModal(): void {
       if (res.ok) {
         alert(data.message || 'Password changed successfully');
         changePasswordModal.classList.add('hidden');
-        history.back();
+        navigate('home');
       } else {
         alert(data.error || 'Failed to change password');
       }

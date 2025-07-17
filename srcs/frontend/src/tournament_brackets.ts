@@ -10,7 +10,7 @@ window.addEventListener('load', () => {
 const bracketsContainer = document.getElementById('brackets-container') as HTMLElement;
 
 
-async function loadBrackets(tournamentId: string)
+export async function loadBrackets(tournamentId: string)
 {
     try
     {  

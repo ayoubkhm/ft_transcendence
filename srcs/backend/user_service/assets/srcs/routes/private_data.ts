@@ -129,15 +129,16 @@ export default async function private_userRoutes(server: FastifyInstance, option
   }
   const value = request.params.email;
 
-  const isEmail = value.match(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/);
-  const isID = value.match(/^[0-9]$/);
+  // Robust identifier checking
+  const isID = /^\d+$/.test(value);
+  const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
   try {
     let result;
-    if (isEmail) {
-      result = await server.pg.query(`SELECT * FROM users WHERE email = $1`, [value]);
-    } else if (isID) {
+    if (isID) {
       result = await server.pg.query(`SELECT * FROM users WHERE id = $1`, [Number(value)]);
+    } else if (isEmail) {
+      result = await server.pg.query(`SELECT * FROM users WHERE email = $1`, [value]);
     } else {
       result = await server.pg.query(`SELECT * FROM users WHERE name = $1`, [value]);
     }

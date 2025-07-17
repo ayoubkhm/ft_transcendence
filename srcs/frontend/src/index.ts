@@ -1,25 +1,25 @@
-import { loadBrackets } from './tournament_brackets';
+// import { loadBrackets } from './tournament_brackets';
 
-// TEMPORARY: TODO rm
-window.addEventListener('load', () => {
-  const hash = location.hash;
-  if (hash.startsWith('#brackets/')) {
-    const id = hash.split('/')[1];
-    loadBrackets(id);
-  }
-});
-(window as any).loadBrackets = loadBrackets;
 
-const bracketsContainer = document.getElementById("brackets-container") as HTMLButtonElement | null;
-if (bracketsContainer)
-{
-	bracketsContainer.addEventListener("click", (e) => {
-		if (e.target === bracketsContainer) {
-			bracketsContainer.classList.add("hidden");
-		}
-	});
-}
+// // TEMPORARY: TODO rm
+// window.addEventListener('load', () => {
+//   const hash = location.hash;
+//   if (hash.startsWith('#brackets/')) {
+//     const id = hash.split('/')[1];
+//     loadBrackets(id);
+//   }
+// });
+// (window as any).loadBrackets = loadBrackets;
 
+// const bracketsContainer = document.getElementById("brackets-container") as HTMLButtonElement | null;
+// if (bracketsContainer)
+// {
+//     bracketsContainer.addEventListener("click", (e) => {
+//         if (e.target === bracketsContainer) {
+//             bracketsContainer.classList.add("hidden");
+//         }
+//     });
+// }
 
 // Initialize feature modules
 import './lib/api';
@@ -52,12 +52,8 @@ document.addEventListener('DOMContentLoaded', () => {
     setupPublicProfileModal();
 });
 
-
-
-
-
 // Initialize 2FA setup and login handlers
-const { open2faSetupModal } = setupTwoFASetup();
+setupTwoFASetup();
 const { show2faLogin } = setupTwoFALogin();
 
 
