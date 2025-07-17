@@ -188,8 +188,8 @@ export default async function private_userRoutes(server: FastifyInstance, option
         const name = request.body.name;
         const password = request.body.password;
         
-        // Security: Do not allow setting admin or type from request
-        const type = 'user'; // Default to 'user'
+        // Security: Do not allow setting admin from request
+        const type = request.body.type ?? 'user'; // Default to 'user'
         const admin = false; // Default to false
 
         console.log("data::", email, name, password);
