@@ -81,24 +81,36 @@ export default function public_userRoutes (server: FastifyInstance, options: any
         console.log('🎯 Route /delete/:email called');
         const token = request.cookies.jwt_transcendence;
         if (!token)
-        return (reply.status(403).send({ error: "No token provided"}));
+        return (reply.status(403).send({ success: false, error: "No token provided"}));
         const tokenPayload = getTokenData(token);
         if (!tokenPayload || !tokenPayload.id || !tokenPayload.email)
-            return (reply.status(403).send({ error: "Invalid token payload"}));
+            return (reply.status(403).send({ success: false, error: "Invalid token payload"}));
         const dfa = tokenPayload?.dfa;
         if (!dfa)
-            return (reply.status(403).send({ error: "2FA not validated" }));
+            return (reply.status(403).send({ success: false, error: "2FA not validated" }));
 
         // Security check: allow deletion if user is admin OR is deleting their own account
         if (!tokenPayload.admin && tokenPayload.email !== request.params.email) {
-            return reply.status(403).send({ error: "Forbidden: You can only delete your own account." });
+            return reply.status(403).send({ success: false, error: "Forbidden: You can only delete your own account." });
         }
 
-        //sql delete avec email
-        const user = await server.pg.query('SELECT * FROM delete_user($1)', [request.params.email]);
-        if (!user)
-        return reply.status(404).send({ error: "User not found" });
-        reply.send({ response: "user deleted" });
+        try {
+            const result = await server.pg.query('SELECT success, msg FROM delete_user($1)', [request.params.email]);
+            
+            if (result.rows.length > 0 && result.rows[0].success) {
+                reply.clearCookie('jwt_transcendence', { path: '/' });
+                return reply.send({ success: true, message: result.rows[0].msg });
+            } else {
+                const message = result.rows.length > 0 ? result.rows[0].msg : 'User not found or could not be deleted.';
+                if (message.includes('violates foreign key constraint "tournaments_owner_id_fkey"')) {
+                    return reply.status(409).send({ success: false, error: 'You cannot delete your account because you are the owner of a tournament. Please delete the tournament first.' });
+                }
+                return reply.status(404).send({ success: false, error: message });
+            }
+        } catch (err: any) {
+            console.error('Error during user deletion:', err);
+            return reply.status(500).send({ success: false, error: 'Internal server error' });
+        }
     });
 
     

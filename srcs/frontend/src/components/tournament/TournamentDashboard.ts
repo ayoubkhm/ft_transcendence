@@ -116,6 +116,31 @@ export function setupTournamentDashboard() {
                     }
                 });
                 actionsCell.appendChild(startBtn);
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'bg-red-500 text-white px-2 py-1 rounded mr-2';
+                deleteBtn.textContent = 'Delete';
+                deleteBtn.addEventListener('click', async () => {
+                    if (confirm(`Are you sure you want to delete the tournament "${t.name}"?`)) {
+                        try {
+                            const res = await fetch(`/api/tournament/${t.name}`, {
+                                method: 'DELETE',
+                                credentials: 'include',
+                            });
+                            if (res.ok) {
+                                alert('Tournament deleted successfully');
+                                playTournBtn!.click();
+                            } else {
+                                const err = await res.json().catch(() => ({}));
+                                alert('Failed to delete tournament: ' + (err.error || err.msg || res.statusText));
+                            }
+                        } catch (err) {
+                            console.error('Error deleting tournament:', err);
+                            alert('Failed to delete tournament.');
+                        }
+                    }
+                });
+                actionsCell.appendChild(deleteBtn);
             }
             
             const joinBtn = document.createElement('button');

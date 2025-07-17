@@ -16,6 +16,14 @@ export function setupProfileModal(): void {
   const profileDisable2FABtn = document.getElementById('profile-disable-2fa-btn') as HTMLButtonElement | null;
   const profileNa2FABtn = document.getElementById('profile-na-2fa-btn') as HTMLButtonElement | null;
   const profileChangePasswordBtn = document.getElementById('profile-change-password-btn') as HTMLButtonElement | null;
+  const profileDeleteBtn = document.createElement('button');
+  profileDeleteBtn.id = 'profile-delete-btn';
+  profileDeleteBtn.className = 'px-4 py-2 bg-red-700 rounded text-white mt-4';
+  profileDeleteBtn.textContent = 'Delete Profile';
+  if(profileChangePasswordBtn) {
+    profileChangePasswordBtn.parentElement?.appendChild(profileDeleteBtn);
+  }
+
   if (!profileBtn || !profileModal || !profileModalCloseBtn || !profileUsername || !profileEmail || !profileAvatar || !profileId || !profileOnlineStatus || !profile2FAStatus || !profileSetup2FABtn || !profileDisable2FABtn || !profileNa2FABtn || !profileChangePasswordBtn) {
     console.error('Missing profile modal elements');
     return;
@@ -152,4 +160,31 @@ export function setupProfileModal(): void {
       }
     });
   }
+
+  profileDeleteBtn.addEventListener('click', async () => {
+    const email = localStorage.getItem('userEmail');
+    if (!email) {
+      alert('Cannot delete profile without user email.');
+      return;
+    }
+    if (confirm('Are you sure you want to delete your profile? This action is irreversible.')) {
+      try {
+        const res = await fetch(`/api/user/delete/${encodeURIComponent(email)}`, {
+          method: 'DELETE',
+          credentials: 'include',
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          alert(data.message || 'Profile deleted successfully. You will be logged out.');
+          localStorage.clear();
+          window.location.reload();
+        } else {
+          alert(data.error || 'Failed to delete profile.');
+        }
+      } catch (err) {
+        console.error('Delete profile error:', err);
+        alert('An error occurred while deleting your profile.');
+      }
+    }
+  });
 }
