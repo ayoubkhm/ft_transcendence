@@ -36,7 +36,7 @@ export class Game
         customOn: boolean = true,
 		gameId: number
     ) {
-		this.gameId = this.gameId; 
+		this.gameId = gameId; 
         this.aiDifficulty = aiDifficulty;
         this.customOn = customOn;
         // initialize cumulative stats
@@ -97,10 +97,10 @@ export class Game
 	{
 		console.log("\n\n\nHEYYYYYYYYYY NEW SCORE\n\n\n\n");
 		try {
-			await pgClient.query('SELECT * FROM score($1::INTEGER, $2::BOOLEAN)', [
-			this.getGameId(), // id SQL du game
-			scorerIsLeft,
-			]);
+			const res = await pgClient.query('SELECT * FROM score($1::INTEGER, $2::BOOLEAN)',
+			[this.getGameId(), scorerIsLeft]);
+			if (res.rows.length > 0 && res.rows[0].msg)
+				console.log(res.rows[0].msg);
 		} catch (err) {
 			console.error('Error calling score() for game', this.getGameId(), err);
 		}
@@ -412,8 +412,10 @@ export class Game
 			console.log("\n\n\nHEYYYYYYYYYY ITS MEEEEEEEEE\n\n\n\n");
 			try
 			{
-				await pgClient.query('SELECT * FROM win_game($1::INTEGER, $2::BOOLEAN)', [this.getGameId(), this.state.winner === 'left']);
+				const res = await pgClient.query('SELECT * FROM win_game($1::INTEGER, $2::BOOLEAN)', [this.getGameId(), this.state.winner === 'left']);
 				console.log(`✅ Game ${this.getGameId()} marked as finished in DB`);
+				if (res.rows.length > 0 && res.rows[0].msg)
+					console.log(res.rows[0].msg);
 			}
 			catch (err)
 				{console.error(`❌ Error finalizing game ${this.getGameId()}:`, err);}
