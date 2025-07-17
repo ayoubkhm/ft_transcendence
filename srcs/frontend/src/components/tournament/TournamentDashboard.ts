@@ -1,4 +1,6 @@
 // TournamentDashboard: handles listing, creating, and managing tournaments
+import show_brackets from '../../brackets/show_brackets.js';
+
 import { navigate, onRoute } from '../../lib/router';
 export function setupTournamentDashboard() {
   const tournamentModal = document.getElementById('tournament-modal') as HTMLElement | null;
@@ -51,6 +53,7 @@ export function setupTournamentDashboard() {
               <td class="px-4 py-2">
                 <button class="bg-blue-500 text-white px-2 py-1 rounded mr-2">Join</button>
                 <button class="bg-gray-500 text-white px-2 py-1 rounded" data-id="${t.id}">Spectate</button>
+                <button class="bg-gray-500 text-white px-2 py-1 rounded" data-brackets-id="${t.id}">Brackets</button>
               </td>
             `;
             tournamentTableBody.appendChild(row);
@@ -73,6 +76,22 @@ export function setupTournamentDashboard() {
               }
             });
           });
+
+          const bracketsButtons = tournamentTableBody.querySelectorAll('[data-brackets-id]');
+          bracketsButtons.forEach(button => {
+            button.addEventListener('click', async (e) =>
+            {
+              const tournamentId = Number((e.target as HTMLElement).dataset.bracketsId);;
+              if (!tournamentId)
+              {
+                alert('Failed to load tournament id.');
+                return ;
+              }
+              show_brackets(tournamentId!);
+              
+            });
+          });
+
         }
       } catch (err) {
         console.error('Error fetching tournaments:', err);

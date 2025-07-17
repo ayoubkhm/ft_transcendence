@@ -1,26 +1,3 @@
-// import { loadBrackets } from './tournament_brackets';
-
-
-// // TEMPORARY: TODO rm
-// window.addEventListener('load', () => {
-//   const hash = location.hash;
-//   if (hash.startsWith('#brackets/')) {
-//     const id = hash.split('/')[1];
-//     loadBrackets(id);
-//   }
-// });
-// (window as any).loadBrackets = loadBrackets;
-
-// const bracketsContainer = document.getElementById("brackets-container") as HTMLButtonElement | null;
-// if (bracketsContainer)
-// {
-//     bracketsContainer.addEventListener("click", (e) => {
-//         if (e.target === bracketsContainer) {
-//             bracketsContainer.classList.add("hidden");
-//         }
-//     });
-// }
-
 // Initialize feature modules
 import './lib/api';
 import './lib/dom';
@@ -37,6 +14,7 @@ import { initializeAuth } from './components/auth/Auth';
 import { setupGame } from './components/game/GameController';
 import { setupProfileModal } from './components/profile/ProfileModal';
 import { setupPublicProfileModal } from './components/profile/PublicProfileModal';
+import setupTournamentBrackets from './brackets/setup.js'
 
 document.addEventListener('DOMContentLoaded', () => {
     setupLoginModal();
@@ -50,6 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupGame();
     setupProfileModal();
     setupPublicProfileModal();
+    setupTournamentBrackets();
 });
 
 // Initialize 2FA setup and login handlers
