@@ -186,6 +186,11 @@ BEGIN
 		UPDATE tournaments
 		SET round = _round + 1
 		WHERE id = _id;
+
+		UPDATE games
+		SET state = 'RUNNING'
+		WHERE tournament_id = _id
+			AND tournament_round = _round + 1;
 	END IF;		
 
 EXCEPTION

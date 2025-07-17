@@ -204,7 +204,7 @@ BEGIN
 	WHERE id = _id;
 
 	IF NOT FOUND THEN
-		RETURN QUERY SELECT FALSE, 'Game with id % not found', _id;
+		RETURN QUERY SELECT FALSE, 'Game with id % not found';
 		RETURN ;
 	END IF;
 
