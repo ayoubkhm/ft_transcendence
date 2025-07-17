@@ -27,6 +27,9 @@ importers:
       '@types/node':
         specifier: ^24.0.4
         version: 24.0.4
+      '@types/pg':
+        specifier: ^8.15.4
+        version: 8.15.4
       typescript:
         specifier: ^5.8.3
         version: 5.8.3
@@ -76,6 +79,9 @@ packages:
 
   '@types/node@24.0.4':
     resolution: {integrity: sha512-ulyqAkrhnuNq9pB76DRBTkcS6YsmDALy6Ua63V8OhrOBgbcYt6IOdzpw5P1+dyRIyMerzLkeYWBeOXPpA9GMAA==}
+
+  '@types/pg@8.15.4':
+    resolution: {integrity: sha512-I6UNVBAoYbvuWkkU3oosC8yxqH21f4/Jc4DK71JLG3dT2mdlGe1z+ep/LQGXaKaOgcvUrsQoPRqfgtMcvZiJhg==}
 
   abstract-logging@2.0.1:
     resolution: {integrity: sha512-2BjRTZxTPvheOvGbBslFSYOUkr+SjPtOnrLP33f+VIWLzezQpZcqVg7ja3L4dBXmzzgwT+a029jRx5PCi3JuiA==}
@@ -388,6 +394,12 @@ snapshots:
   '@types/node@24.0.4':
     dependencies:
       undici-types: 7.8.0
+
+  '@types/pg@8.15.4':
+    dependencies:
+      '@types/node': 24.0.4
+      pg-protocol: 1.10.3
+      pg-types: 2.2.0
 
   abstract-logging@2.0.1: {}
 
