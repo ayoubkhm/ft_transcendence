@@ -1,4 +1,4 @@
-CREATE TYPE tournament_state AS ENUM ('PREP', 'RUNNING', 'OVER');
+CREATE TYPE tournament_state AS ENUM ('PREP', 'LOBBY', 'RUNNING', 'OVER');
 
 CREATE TABLE IF NOT EXISTS tournaments (
 	id SERIAL PRIMARY KEY,
@@ -31,6 +31,8 @@ BEGIN
 	END IF;
 	IF (NEW.nbr_players < 0) THEN
 		RAISE EXCEPTION 'Tournaments have a number of players negative';
+	ELSIF (NEW.nbr_players > NEW.max_players) THEN
+		RAISE EXCEPTION 'Tournaments has reached maximum players, cant add new player';
 	END IF;
 	
 	IF (NEW.max_players < NEW.min_players) THEN

@@ -1,9 +1,7 @@
-CREATE OR REPLACE FUNCTION pair_tournament (
-	_id INTEGER,
-	players_id INTEGER[],
-	_nbr_players INTEGER
+CREATE OR REPLACE FUNCTION update_brackets (
+	_id INTEGER
 )
-RETURNS jsonb AS $$
+RETURNS void AS $$
 DECLARE
 	rplayers_id INTEGER[];
 	i INTEGER;
@@ -18,13 +16,22 @@ DECLARE
 	_round_index INTEGER;
 	nbr_players_roundi INTEGER;
 	nbr_matchs_round0 INTEGER;
+	_nbr_players INTEGER;
 BEGIN
-	DELETE FROM games
-	WHERE tournament_id = _id;
 
 	SELECT ARRAY_AGG(player_id ORDER BY random())
 	INTO rplayers_id
-	FROM unnest(players_id) AS player_id;
+	FROM tournaments_players
+	WHERE tournament_id = _id;
+
+	IF rplayers_id IS NULL THEN
+		RAISE EXCEPTION 'Tournament not found with id: %, or no players in tournament', _id;
+	END IF;
+
+	DELETE FROM games
+	WHERE tournament_id = _id;
+
+	_nbr_players := array_length(rplayers_id, 1);
 
 	nbr_players_roundi := 2 ^ (FLOOR(LOG(2, _nbr_players)));
 	nbr_matchs_round0 := _nbr_players - nbr_players_roundi;
@@ -94,8 +101,6 @@ BEGIN
 		nbr_players_roundi := nbr_players_roundi / 2;
 		_round_index := _round_index + 1;
 	END LOOP;
-
-	RETURN brackets_json;
 END;
 $$ LANGUAGE plpgsql;
 
