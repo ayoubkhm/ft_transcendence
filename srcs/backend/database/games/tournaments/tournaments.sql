@@ -9,8 +9,8 @@ CREATE TABLE IF NOT EXISTS tournaments (
 	total_rounds INTEGER NOT NULL DEFAULT 1,
 	round INTEGER NOT NULL DEFAULT 0,
 	state tournament_state NOT NULL DEFAULT 'PREP',
-	current_round_over BOOLEAN NOT NULL DEFAULT FALSE,
-	owner_id INTEGER NOT NULL REFERENCES users(id)
+	owner_id INTEGER NOT NULL REFERENCES users(id),
+	winner_id INTEGER DEFAULT NULL REFERENCES users(id)
 );
 
 

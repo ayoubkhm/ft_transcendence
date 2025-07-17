@@ -40,9 +40,10 @@ END;
 $$ LANGUAGE plpgsql;
 
 
+
 CREATE OR REPLACE FUNCTION init_tournament(
 	_name TEXT,
-	state_run BOOLEAN DEFAULT FALSE)
+	_state_run BOOLEAN DEFAULT FALSE)
 RETURNS TABLE(success BOOLEAN, msg TEXT, brackets jsonb) AS $$
 DECLARE
 	_id INTEGER;
@@ -51,8 +52,8 @@ DECLARE
 	_min_players INTEGER;
 	_max_players INTEGER;
 	players_id INTEGER[];
-	_state TEXT;
-	new_state tournament_state;
+	_state tournament_state;
+	_new_state tournament_state;
 	_total_rounds INTEGER;
 BEGIN
 	IF _name IS NULL THEN
@@ -60,7 +61,7 @@ BEGIN
 		RETURN ;
 	END IF;
 
-	SELECT id, round, min_players, max_players, state INTO _id, _round, _min_players, _max_players, _state
+	SELECT id, round, state, min_players, max_players INTO _id, _round, _state, _min_players, _max_players
 	FROM tournaments WHERE name = _name;
 	IF NOT FOUND THEN
 		RETURN QUERY SELECT FALSE, 'No tournament found to this name', '{}'::jsonb;
@@ -83,17 +84,17 @@ BEGIN
 		RETURN ;
 	END IF;
 
-	_total_rounds := CEIL(LOG(2, _nbr_players));
-	IF state_run THEN
-		new_state := 'RUNNING';
+	_total_rounds := FLOOR(LOG(2, _nbr_players));
+	IF _state_run THEN
+		_new_state := 'RUNNING';
 	ELSE
-		new_state := 'PREP';
+		_new_state := 'PREP';
 	END IF;
 
 	UPDATE tournaments
 	SET total_rounds = _total_rounds,
 		nbr_players = _nbr_players,
-		state = new_state
+		"state" = _new_state
 	WHERE id = _id;
 
 	RETURN QUERY SELECT TRUE, 'Tournament initialized !', pair_tournament(_id, players_id, _nbr_players);
@@ -193,6 +194,68 @@ BEGIN
 	END IF;
 
 	RETURN QUERY SELECT TRUE, 'Maximum players updated';
+EXCEPTION
+	WHEN OTHERS THEN
+    	RETURN QUERY SELECT FALSE, SQLERRM;
+END;
+$$ LANGUAGE plpgsql;
+
+
+
+CREATE OR REPLACE FUNCTION next_round(_id INTEGER)
+RETURNS TABLE(success BOOLEAN, msg TEXT) AS $$
+DECLARE
+	_round INTEGER;
+	_total_rounds INTEGER;
+	_winner_id INTEGER;
+	round_games jsonb;
+BEGIN
+	SELECT round, total_rounds INTO _round, _total_rounds
+	FROM tournaments
+	WHERE id = _id;
+
+	IF NOT FOUND THEN
+		RETURN QUERY SELECT FALSE, FORMAT('Tournament with id %s not found', _id);
+		RETURN ; 
+	END IF;
+
+		IF EXISTS(
+		SELECT id
+		FROM games
+		WHERE tournament_id = _id
+			AND state != 'OVER'
+			AND tournament_round = _round
+	) THEN
+		RETURN QUERY SELECT FALSE, 'All this round games havent finished, can''t go to next round';
+		RETURN ;
+	END IF;
+
+	SELECT jsonb_agg(jsonb_build_object(
+		'p1_id', p1_id,
+		'p2_id', p2_id,
+		'winner', winner
+	)) INTO round_games
+	FROM games
+	WHERE tournament_round = _round
+		AND tournament_id = _id;
+
+	IF (jsonb_array_length(round_games) = 1) THEN
+		IF ((round_games -> 0) ->> 'winner')::BOOLEAN THEN
+			_winner_id := ((round_games -> 0) ->> 'p1_id')::INTEGER;
+		ELSE
+			_winner_id := ((round_games -> 0) ->> 'p2_id')::INTEGER;
+		END IF;
+
+		UPDATE tournaments
+		SET state = 'OVER',
+			winner_id = _winner_id
+		WHERE id = _id;
+	ELSE
+		UPDATE tournaments
+		SET round = _round + 1
+		WHERE id = _id;
+	END IF;		
+
 EXCEPTION
 	WHEN OTHERS THEN
     	RETURN QUERY SELECT FALSE, SQLERRM;
