@@ -1,0 +1,5 @@
+CREATE TABLE IF NOT EXISTS dms (
+	id SERIAL PRIMARY KEY,
+	user1_id INTEGER REFERENCES users(id),
+	user2_id INTEGER REFERENCES users(id)
+);

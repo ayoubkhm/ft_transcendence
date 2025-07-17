@@ -6,7 +6,7 @@ import {
   POWER_UPV, POWER_UPB
 } from './types.js';
 import { aiPaddleMove } from './ai/index.js';
-
+import { Client } from 'pg';
 
 
 
@@ -27,13 +27,16 @@ export class Game
     private streaks: Record<string, number>;
     /** Countdown ticks (1 tick = 1/60s) before simulation starts */
     private countdownTicks: number;
+	gameId: number;
 
     constructor(
         leftId: string,
         rightId: string /* "AI" for solo */,
         aiDifficulty: AIDifficulty = 'medium',
-        customOn: boolean = true
+        customOn: boolean = true,
+		gameId: number
     ) {
+		this.gameId = this.gameId; 
         this.aiDifficulty = aiDifficulty;
         this.customOn = customOn;
         // initialize cumulative stats
@@ -87,10 +90,25 @@ export class Game
 			timer : 0
 		};
 	}
+	getGameId(): number {return this.gameId;}
+
+
+	async addScore(pgClient: Client, scorerIsLeft: boolean): Promise<void>
+	{
+		try {
+			await pgClient.query('SELECT * FROM score($1, $2)', [
+			this.getGameId(), // id SQL du game
+			scorerIsLeft,
+			]);
+		} catch (err) {
+			console.error('Error calling score() for game', this.getGameId(), err);
+		}
+	}
+
 
 	// ────────────────────────────────────────────────────────────────────────
 	// GESTION DES INPUTS JOUEUR HUMAIN
-	// ────────────────────────────────────────────────────────────────────────
+	// ───────────────────────────────���────────────────────────────────────────
    handleInput(id: string, msg: ClientInput)
    {
        const p = this.state.players.find(pl => pl.id === id);
@@ -195,8 +213,8 @@ export class Game
 	// ────────────────────────────────────────────────────────────────────────
 	// BOUCLE DE SIMULATION
 	// ────────────────────────────────────────────────────────────────────────
-    step(dt: number)
-    {
+	async step(dt: number, pgClient: Client): Promise<void>
+	{
         // Countdown before simulation starts
         if (this.countdownTicks > 0) {
             this.countdownTicks--;
@@ -238,7 +256,7 @@ export class Game
 				y: mainBall.y,
 				v: { x: mainBall.v.x * Randombetween(0.2, 0.8), y: -mainBall.v.y * 2 * Math.random()},
 				active: true,
-				type: 'shield',
+				type: 'speedUp',
 			};
 			if (!this.state.bonusBalls)
 				this.state.bonusBalls = [];
@@ -355,6 +373,7 @@ export class Game
 		// 4) Score et fin de manche
         if (ball.x < 0) {
             // Right player scores
+			await this.addScore(pgClient, false);
             right.score++;
             // Update scoring streaks
             const scorer = right.id;
@@ -372,6 +391,7 @@ export class Game
             // Left player scores
             left.score++;
             // Update scoring streaks
+			await this.addScore(pgClient, true);
             const scorer = left.id;
             const other = right.id;
             if (this.lastScorerId === scorer) {
@@ -388,6 +408,15 @@ export class Game
 		{
 			this.state.isGameOver = true;
 			this.state.winner = left.score > right.score ? 'left' : 'right';
+
+			
+			try
+			{
+				await pgClient.query('SELECT * FROM win_game($1, $2)', [this.getGameId(), this.state.winner === 'left']);
+				console.log(`✅ Game ${this.getGameId()} marked as finished in DB`);
+			}
+			catch (err)
+				{console.error(`❌ Error finalizing game ${this.getGameId()}:`, err);}
 		}
 	}
     /**
