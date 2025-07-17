@@ -7,7 +7,7 @@ RETURNS TABLE(success BOOLEAN, msg TEXT) AS $$
 DECLARE
 	_state game_state;
 BEGIN
-	IF _name IS NULL THEN
+	IF _id IS NULL THEN
 		RETURN QUERY SELECT FALSE, 'Pls specify a id game not null';
 		RETURN ;
 	END IF;
@@ -55,7 +55,7 @@ RETURNS TABLE(success BOOLEAN, msg TEXT) AS $$
 DECLARE
 	_state game_state;
 BEGIN
-	IF _name IS NULL THEN
+	IF _id IS NULL THEN
 		RETURN QUERY SELECT FALSE, 'Pls specify a id game not null';
 		RETURN ;
 	END IF;
@@ -95,7 +95,7 @@ RETURNS TABLE(success BOOLEAN, msg TEXT) AS $$
 DECLARE
 	_state game_state;
 BEGIN
-	IF _name IS NULL THEN
+	IF _id IS NULL THEN
 		RETURN QUERY SELECT FALSE, 'Pls specify a id game not null';
 		RETURN ;
 	END IF;
@@ -139,7 +139,7 @@ DECLARE
 	_p2_id INTEGER;
 	_p2_winnerof INTEGER;
 BEGIN
-	IF _name IS NULL THEN
+	IF _id IS NULL THEN
 		RETURN QUERY SELECT FALSE, 'Pls specify a id game not null';
 		RETURN ;
 	END IF;
@@ -193,7 +193,7 @@ DECLARE
 	_tournament_round INTEGER;
 	_tournament_id INTEGER;
 BEGIN
-	IF _name IS NULL THEN
+	IF _id IS NULL THEN
 		RETURN QUERY SELECT FALSE, 'Pls specify a id game not null';
 		RETURN ;
 	END IF;
