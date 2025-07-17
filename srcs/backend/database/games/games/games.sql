@@ -80,7 +80,7 @@ BEGIN
 		RAISE EXCEPTION 'For game to have tournament round, it should also have tournament type';
 	END IF;
 
-	IF NEW.tournament_round IS NOT NULL AND NEW.tournament_round < 1 THEN
+	IF NEW.tournament_round IS NOT NULL AND NEW.tournament_round < 0 THEN
 		RAISE EXCEPTION 'Tournament round can''t be negative or zero';
 	END IF;
 

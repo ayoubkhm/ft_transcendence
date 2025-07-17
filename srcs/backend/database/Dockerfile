@@ -13,6 +13,7 @@ COPY games/games/stats.sql										/app/db-init/game_stats.template.sql
 COPY games/tournaments/tournaments.sql							/app/db-init/tournaments.template.sql
 COPY games/tournaments/tournament_CRUD.sql						/app/db-init/tournament_CRUD.template.sql
 COPY games/tournaments/pairing.sql								/app/db-init/pairing.template.sql
+COPY games/tournaments/state.sql								/app/db-init/tstate.template.sql
 COPY users/channels_users/channels_users.sql					/app/db-init/channels_users.template.sql
 COPY users/friends/friends.sql									/app/db-init/friends.template.sql
 COPY users/friends/friends_CRUD.sql								/app/db-init/friends_CRUD.template.sql
@@ -41,7 +42,7 @@ RUN apt-get update && apt-get install -y gettext && rm -rf /var/lib/apt/lists/* 
 		/app/db-init/users.template.sql /app/db-init/user_CRUD.template.sql /app/db-init/2fa.template.sql /app/db-init/suggest_users.template.sql /app/db-init/online.template.sql \
 		/app/db-init/invites.template.sql /app/db-init/invites_CRUD.template.sql /app/db-init/accept_invite.template.sql \
 		/app/db-init/friends.template.sql /app/db-init/friends_CRUD.template.sql \
-		/app/db-init/tournaments.template.sql /app/db-init/tournament_CRUD.template.sql /app/db-init/pairing.template.sql \
+		/app/db-init/tournaments.template.sql /app/db-init/tournament_CRUD.template.sql /app/db-init/pairing.template.sql /app/db-init/tstate.template.sql \
 		/app/db-init/tournaments_players.template.sql /app/db-init/tournaments_players_CRUD.template.sql \
 		/app/db-init/games.template.sql /app/db-init/game_CRUD.template.sql \
 		/app/db-init/game_history.template.sql /app/db-init/game_state.template.sql /app/db-init/game_stats.template.sql \

@@ -37,7 +37,7 @@ BEGIN
     UPDATE games
     SET state = 'RUNNING'
     WHERE tournament_id = _id
-        AND round = _round;
+        AND tournament_round = _round;
 
 	RETURN QUERY SELECT TRUE, 'Tournament started !';
 
