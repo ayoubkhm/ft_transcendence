@@ -42,7 +42,7 @@ export function setupTournamentDashboard() {
         const tournaments = await res.json();
         if (tournamentTableBody) {
           tournamentTableBody.innerHTML = ''; // Clear existing rows
-          tournaments.forEach((t: any) => {
+          for (const t of tournaments) {
             const row = document.createElement('tr');
 
             // Sanitize and create cells
@@ -55,6 +55,24 @@ export function setupTournamentDashboard() {
             nameCell.className = 'px-4 py-2';
             nameCell.textContent = t.name;
             row.appendChild(nameCell);
+
+            const ownerCell = document.createElement('td');
+            ownerCell.className = 'px-4 py-2';
+            ownerCell.textContent = 'Loading...';
+            row.appendChild(ownerCell);
+
+            // Fetch owner name
+            try {
+              const userRes = await fetch(`/api/user/search/${t.owner_id}`, { credentials: 'include' });
+              if (userRes.ok) {
+                const userData = await userRes.json();
+                ownerCell.textContent = userData.profile.name;
+              } else {
+                ownerCell.textContent = 'Unknown';
+              }
+            } catch (err) {
+              ownerCell.textContent = 'Unknown';
+            }
 
             const stateCell = document.createElement('td');
             stateCell.className = 'px-4 py-2';
@@ -73,6 +91,32 @@ export function setupTournamentDashboard() {
 
             const actionsCell = document.createElement('td');
             actionsCell.className = 'px-4 py-2';
+
+            const currentUserId = localStorage.getItem('userId');
+            if (currentUserId && parseInt(currentUserId, 10) === t.owner_id) {
+                const startBtn = document.createElement('button');
+                startBtn.className = 'bg-green-500 text-white px-2 py-1 rounded mr-2';
+                startBtn.textContent = 'Start';
+                startBtn.addEventListener('click', async () => {
+                    try {
+                        const res = await fetch(`/api/tournament/${t.name}/start`, {
+                            method: 'POST',
+                            credentials: 'include',
+                        });
+                        if (res.ok) {
+                            alert('Tournament started successfully');
+                            playTournBtn!.click();
+                        } else {
+                            const err = await res.json().catch(() => ({}));
+                            alert('Failed to start tournament: ' + (err.error || err.msg || res.statusText));
+                        }
+                    } catch (err) {
+                        console.error('Error starting tournament:', err);
+                        alert('Failed to start tournament.');
+                    }
+                });
+                actionsCell.appendChild(startBtn);
+            }
             
             const joinBtn = document.createElement('button');
             joinBtn.className = 'bg-blue-500 text-white px-2 py-1 rounded mr-2';
@@ -94,7 +138,7 @@ export function setupTournamentDashboard() {
 
             row.appendChild(actionsCell);
             tournamentTableBody.appendChild(row);
-          });
+          }
 
           // Add event listeners for join buttons
           const joinButtons = tournamentTableBody.querySelectorAll('[data-tournament-id]');
