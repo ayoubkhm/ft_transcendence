@@ -101,14 +101,16 @@ $$ LANGUAGE plpgsql;
 
 
 CREATE OR REPLACE FUNCTION get_brackets(_id INTEGER)
-RETURNS TABLE(success BOOLEAN, msg TEXT, tname TEXT, tstate tournament_state, twinner_id INTEGER, brackets jsonb) AS $$
+RETURNS TABLE(success BOOLEAN, msg TEXT, tname TEXT, tstate tournament_state, twinner_id INTEGER, twinner_name TEXT, twinner_tag INTEGER, brackets jsonb) AS $$
 DECLARE
 	_name TEXT;
 	_state tournament_state;
 	_winner_id INTEGER;
+	_winner_name TEXT := NULL;
+	_winner_tag INTEGER := NULL;
 BEGIN
 	IF _id IS NULL THEN
-		RETURN QUERY SELECT FALSE, 'No tournament id provided (null): no brackets', NULL::TEXT as tname, NULL::tournament_state as tstate, NULL::INTEGER as twinner_id, '[]'::jsonb;
+		RETURN QUERY SELECT FALSE, 'No tournament id provided (null): no brackets', NULL::TEXT as tname, NULL::tournament_state as tstate, NULL::INTEGER as twinner_id, NULL::TEXT as twinner_name, NULL::INTEGER as twinner_tag, '[]'::jsonb;
 		RETURN ;
 	END IF;
 
@@ -117,11 +119,17 @@ BEGIN
 	WHERE _id = id;
 
 	IF NOT FOUND THEN
-		RETURN QUERY SELECT FALSE, 'Tournament not found', NULL::TEXT as tname, NULL::tournament_state as tstate, NULL::INTEGER as twinner_id, '[]'::jsonb;
+		RETURN QUERY SELECT FALSE, 'Tournament not found', NULL::TEXT as tname, NULL::tournament_state as tstate, NULL::INTEGER as twinner_id, NULL::TEXT as twinner_name, NULL::INTEGER as twinner_tag, '[]'::jsonb;
 		RETURN ;
 	END IF;
 
-	RETURN QUERY SELECT TRUE, 'Brackets successfully retrieved', _name as tname, _state as tstate, _winner_id as twinner_id, (
+	IF _winner_id IS NOT NULL THEN
+		SELECT name, tag INTO _winner_name, _winner_tag
+		FROM users
+		WHERE id = _winner_id;
+	END IF;
+
+	RETURN QUERY SELECT TRUE, 'Brackets successfully retrieved', _name as tname, _state as tstate, _winner_id as twinner_id, _winner_name as twinner_name, _winner_tag as twinner_tag, (
 		SELECT jsonb_agg(
 			jsonb_build_object(
 			'round', sub.tournament_round,
@@ -157,6 +165,6 @@ BEGIN
 
 EXCEPTION
 	WHEN OTHERS THEN
-		RETURN QUERY SELECT FALSE, SQLERRM, NULL::TEXT as tname, NULL::tournament_state as tstate, NULL::INTEGER as twinner_id, '[]'::jsonb;
+		RETURN QUERY SELECT FALSE, SQLERRM, NULL::TEXT as tname, NULL::tournament_state as tstate, NULL::INTEGER as twinner_id, NULL::TEXT as twinner_name, NULL::INTEGER as twinner_tag, '[]'::jsonb;
 END;
 $$ LANGUAGE plpgsql;
