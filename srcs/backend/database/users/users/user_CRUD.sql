@@ -284,7 +284,6 @@ $$ LANGUAGE plpgsql;
 
 
 
-
 CREATE OR REPLACE FUNCTION delete_user(_email TEXT)
 RETURNS TABLE(success BOOLEAN, msg TEXT) AS $$
 DECLARE
@@ -327,8 +326,9 @@ DECLARE
 	_tag INTEGER;
 	_email TEXT;
 	_avatar TEXT;
+	_online BOOLEAN;
 BEGIN
-	SELECT name, tag, email, avatar INTO _name, _tag, _email, _avatar
+	SELECT name, tag, email, avatar, online INTO _name, _tag, _email, _avatar, _online
 	FROM users
 	WHERE id = _id;
 	IF NOT FOUND THEN
@@ -336,7 +336,7 @@ BEGIN
 		RETURN ;
 	END IF;
 	
-	RETURN QUERY SELECT TRUE, 'User public info successfully retrieved', ROW(_id, _name, _tag, _email, _avatar)::public_user;
+	RETURN QUERY SELECT TRUE, 'User public info successfully retrieved', ROW(_id, _name, _tag, _email, _avatar, _online)::public_user;
 EXCEPTION
 	WHEN OTHERS THEN
     	RETURN QUERY SELECT FALSE, SQLERRM, NULL::public_user;
@@ -350,8 +350,9 @@ DECLARE
 	_name TEXT;
 	_tag INTEGER;
 	_avatar TEXT;
+	_online BOOLEAN;
 BEGIN
-	SELECT id, name, tag, avatar INTO _id, _name, _tag, _avatar
+	SELECT id, name, tag, avatar, online INTO _id, _name, _tag, _avatar, _online
 	FROM users
 	WHERE email = _email;
 	IF NOT FOUND THEN
@@ -359,7 +360,7 @@ BEGIN
 		RETURN ;
 	END IF;
 	
-	RETURN QUERY SELECT TRUE, 'User public info successfully retrieved', ROW(_id, _name, _tag, _email, _avatar)::public_user;
+	RETURN QUERY SELECT TRUE, 'User public info successfully retrieved', ROW(_id, _name, _tag, _email, _avatar, _online)::public_user;
 EXCEPTION
 	WHEN OTHERS THEN
     	RETURN QUERY SELECT FALSE, SQLERRM, NULL::public_user;
