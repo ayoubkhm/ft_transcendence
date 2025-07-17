@@ -57,3 +57,30 @@ EXCEPTION
 		RETURN QUERY SELECT FALSE, SQLERRM;
 END;
 $$ LANGUAGE plpgsql;
+
+
+
+CREATE OR REPLACE FUNCTION get_game_state(
+	_id INTEGER
+)
+RETURNS TABLE(success BOOLEAN, msg TEXT, gstate game_state) AS $$
+DECLARE
+	_state game_state;
+BEGIN
+	SELECT state
+	FROM games
+	WHERE id = _id;
+
+	IF NOT FOUND THEN
+		RETURN QUERY SELECT FALSE, FORMAT('Game with id %not found (get_game_state fail)', _id), NULL::game_state;
+		RETURN ;
+	END IF;
+
+	RETURN QUERY SELECT TRUE, 'Game state retrieved', _state;
+	
+EXCEPTION
+	WHEN OTHERS THEN
+		RETURN QUERY SELECT FALSE, SQLERRM, NULL::game_state;
+END;
+$$ LANGUAGE plpgsql;
+
