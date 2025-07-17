@@ -134,14 +134,18 @@ CREATE OR REPLACE FUNCTION start_game (
 RETURNS TABLE(success BOOLEAN, msg TEXT) AS $$
 DECLARE
 	_state game_state;
+	_p1_id INTEGER;
+	_p1_winnerof INTEGER;
+	_p2_id INTEGER;
+	_p2_winnerof INTEGER;
 BEGIN
 	IF _name IS NULL THEN
 		RETURN QUERY SELECT FALSE, 'Pls specify a id game not null';
 		RETURN ;
 	END IF;
 	
-	SELECT state
-	INTO _state
+	SELECT state, p1_id, p2_id, p1_winnerof, p2_winnerof
+	INTO _state, _p1_id, _p2_id, _p1_winnerof, _p2_winnerof
 	FROM games
 	WHERE id = _id;
 	
@@ -151,9 +155,19 @@ BEGIN
 	END IF;
 
 	IF _state != 'WAITING' THEN
-        RETURN QUERY SELECT 'Can''t start game that isnt preping';
+        RETURN QUERY SELECT FALSE, 'Can''t start game that isnt preping';
         RETURN ;
     END IF;
+
+	IF (_p1_id IS NULL AND (_p1_winnerof IS NOT NULL)) THEN
+		RETURN QUERY SELECT FALSE, FORMAT('Can''t start game: waiting for result of game %s to know who p1 is', _p1_winnerof);
+		RETURN ;
+	END IF;
+
+	IF (_p2_id IS NULL AND (_p2_winnerof IS NOT NULL)) THEN
+		RETURN QUERY SELECT FALSE, FORMAT('Can''t start game: waiting for result of game %s to know who p2 is', _p2_winnerof);
+		RETURN ;
+	END IF;
 
     UPDATE games
     SET state = 'RUNNING'
@@ -174,14 +188,18 @@ CREATE OR REPLACE FUNCTION win_game (
 RETURNS TABLE(success BOOLEAN, msg TEXT) AS $$
 DECLARE
 	_state game_state;
+	_p1_id INTEGER;
+	_p2_id INTEGER;
+	_tournament_round INTEGER;
+	_tournament_id INTEGER;
 BEGIN
 	IF _name IS NULL THEN
 		RETURN QUERY SELECT FALSE, 'Pls specify a id game not null';
 		RETURN ;
 	END IF;
 	
-	SELECT state
-	INTO _state
+	SELECT state, p1_id, p2_id, tournament_round, tournament_id
+	INTO _state, _p1_id, _p2_id, _tournament_round, _tournament_id
 	FROM games
 	WHERE id = _id;
 
@@ -195,16 +213,46 @@ BEGIN
         RETURN ;
     END IF;
 
+
+	
 	IF winner_is_p1 THEN
-	    UPDATE games
+		UPDATE games
     	SET state = 'OVER',
 			winner = TRUE
 		WHERE id = _id;
+
+		UPDATE games
+		SET p1_id = _p1_id
+		WHERE p1_winnerof = _id;
+		
+		UPDATE games
+		SET p2_id = _p1_id
+		WHERE p2_winnerof = _id;
 	ELSE
 		UPDATE games
-    	SET state = 'OVER'
+    	SET state = 'OVER',
 			winner = FALSE
 		WHERE id = _id;
+
+		UPDATE games
+		SET p1_id = _p2_id
+		WHERE p1_winnerof = _id;
+		
+		UPDATE games
+		SET p2_id = _p2_id
+		WHERE p2_winnerof = _id;
+	END IF;
+
+	IF _tournament_round IS NOT NULL THEN
+		IF NOT EXISTS(
+			SELECT id
+			FROM games
+			WHERE tournament_id = _tournament_id
+				AND state != 'OVER'
+				AND tournament_round = _tournament_round
+		) THEN
+			PERFORM next_round(_tournament_id);
+		END IF;
 	END IF;
 
 	RETURN QUERY SELECT TRUE, 'Game successfully won';

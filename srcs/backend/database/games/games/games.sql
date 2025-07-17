@@ -51,7 +51,7 @@ BEGIN
 		RAISE EXCEPTION 'Game is of tournament type but tournament_id or tournament_round is null';
 	ELSIF (NEW.tournament_id IS NOT NULL) AND (NEW.type != 'TOURNAMENT') THEN
 		RAISE EXCEPTION 'For game to have tournament id, it should also have tournament type';
-	ELSIF (NEW.tournament_round IS NULL) AND (NEW.type != 'TOURNAMENT') THEN
+	ELSIF (NEW.tournament_round IS NOT NULL) AND (NEW.type != 'TOURNAMENT') THEN
 		RAISE EXCEPTION 'For game to have tournament round, it should also have tournament type';
 	END IF;
 
