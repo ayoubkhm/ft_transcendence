@@ -13,7 +13,6 @@ BEGIN
     PERFORM join_tournament(3, 'ouais');
     PERFORM join_tournament(4, 'ouais');
 
-    -- PERFORM lock_lobby('ouais');
     -- PERFORM start_tournament('ouais');
 
     PERFORM new_friends('mehdimail', 'goulvmail');

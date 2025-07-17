@@ -67,12 +67,17 @@ RETURNS TABLE(success BOOLEAN, msg TEXT, gstate game_state) AS $$
 DECLARE
 	_state game_state;
 BEGIN
-	SELECT state
+	IF _id IS NULL THEN
+		RETURN QUERY SELECT FALSE, 'Game id cant be null', NULL::game_state;
+		RETURN ;
+	END IF;
+
+	SELECT state INTO _state
 	FROM games
 	WHERE id = _id;
 
 	IF NOT FOUND THEN
-		RETURN QUERY SELECT FALSE, FORMAT('Game with id %not found (get_game_state fail)', _id), NULL::game_state;
+		RETURN QUERY SELECT FALSE, FORMAT('Game with id %s not found (get_game_state fail)', _id), NULL::game_state;
 		RETURN ;
 	END IF;
 

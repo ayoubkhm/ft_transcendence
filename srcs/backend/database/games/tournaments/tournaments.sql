@@ -1,4 +1,4 @@
-CREATE TYPE tournament_state AS ENUM ('PREP', 'LOBBY', 'RUNNING', 'OVER');
+CREATE TYPE tournament_state AS ENUM ('LOBBY', 'RUNNING', 'OVER');
 
 CREATE TABLE IF NOT EXISTS tournaments (
 	id SERIAL PRIMARY KEY,
@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS tournaments (
 	nbr_players INTEGER NOT NULL DEFAULT 0,
 	total_rounds INTEGER NOT NULL DEFAULT 1,
 	round INTEGER NOT NULL DEFAULT 0,
-	state tournament_state NOT NULL DEFAULT 'PREP',
+	state tournament_state NOT NULL DEFAULT 'LOBBY',
 	owner_id INTEGER NOT NULL REFERENCES users(id),
 	winner_id INTEGER DEFAULT NULL REFERENCES users(id)
 );
@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS tournaments (
 
 CREATE OR REPLACE FUNCTION enforce_tournament_constraints() RETURNS trigger AS $$
 BEGIN
-	IF (NEW.round > 0) AND (NEW.state = 'PREP') THEN
+	IF (NEW.round > 1) AND (NEW.state = 'LOBBY') THEN
 		RAISE EXCEPTION 'Tournament can''t advance its round when it is prepping';
 	END IF;
 

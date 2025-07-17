@@ -1,0 +1,43 @@
+CREATE OR REPLACE FUNCTION start_tournament(
+	_name TEXT)
+RETURNS TABLE(success BOOLEAN, msg TEXT) AS $$
+DECLARE
+	_id INTEGER;
+	_round INTEGER;
+	_state tournament_state;
+BEGIN
+	IF _name IS NULL THEN
+		RETURN QUERY SELECT FALSE, 'Tournament name cant be null';
+		RETURN ;
+	END IF;
+
+	SELECT id, round, state INTO _id, _round, _state
+	FROM tournaments WHERE name = _name;
+	IF NOT FOUND THEN
+		RETURN QUERY SELECT FALSE, 'No tournament found to this name';
+		RETURN ;
+	END IF;
+	
+	IF _state != 'LOBBY' THEN
+		RETURN QUERY SELECT FALSE, 'Can''t start tournaments: tournament isn''t in prep phase';
+		RETURN ;
+	END IF;
+
+	UPDATE tournaments
+	SET state = 'RUNNING'
+	WHERE id = _id;
+
+    UPDATE games
+    SET state = 'RUNNING'
+    WHERE tournament_id = _id
+        AND round = _round;
+
+	RETURN QUERY SELECT TRUE, 'Tournament started !';
+
+EXCEPTION
+	WHEN OTHERS THEN
+    	RETURN QUERY SELECT FALSE, SQLERRM;
+END;
+$$ LANGUAGE plpgsql;
+
+

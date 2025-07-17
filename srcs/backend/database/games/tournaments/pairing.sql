@@ -17,6 +17,7 @@ DECLARE
 	nbr_players_roundi INTEGER;
 	nbr_matchs_round0 INTEGER;
 	_nbr_players INTEGER;
+	_begin_round INTEGER;
 BEGIN
 
 	SELECT ARRAY_AGG(player_id ORDER BY random())
@@ -37,8 +38,13 @@ BEGIN
 	nbr_matchs_round0 := _nbr_players - nbr_players_roundi;
 	i := 1;
 	roundi_games := '[]'::jsonb;
-	WHILE (i <= nbr_matchs_round0) LOOP
+	IF nbr_matchs_round0 = 0 THEN
+		_begin_round := 1;
+	ELSE
+		_begin_round := 0;
+	END IF;
 
+	WHILE (i <= nbr_matchs_round0) LOOP
     	_p1_id := rplayers_id[_nbr_players - (2 * i) + 1];
     	_p2_id := rplayers_id[_nbr_players - (2 * i) + 2];
 		
@@ -101,6 +107,11 @@ BEGIN
 		nbr_players_roundi := nbr_players_roundi / 2;
 		_round_index := _round_index + 1;
 	END LOOP;
+
+	UPDATE Tournaments
+	SET total_rounds = FLOOR(LOG(2, _nbr_players)),
+		round = _begin_round
+	WHERE id = _id;
 END;
 $$ LANGUAGE plpgsql;
 

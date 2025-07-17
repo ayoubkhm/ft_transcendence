@@ -20,7 +20,7 @@ BEGIN
 		RETURN ;
 	END IF;
 
-	IF _tournament_state != 'PREP' THEN
+	IF _tournament_state != 'LOBBY' THEN
 		RETURN QUERY SELECT FALSE, 'Tournament isnt prepping, cant join';
 		RETURN ;
 	END IF;
@@ -77,7 +77,7 @@ BEGIN
 		RETURN ;
 	END IF;
 
-	IF _state != 'PREP' THEN
+	IF _state != 'LOBBY' THEN
 		RETURN QUERY SELECT FALSE, 'Can''t leave tournament: isnt prepping anymore';
 		RETURN ;
 	END IF;

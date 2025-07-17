@@ -40,74 +40,6 @@ END;
 $$ LANGUAGE plpgsql;
 
 
-
--- CREATE OR REPLACE FUNCTION start_tournament(
--- 	_name TEXT,
--- 	_state_run BOOLEAN DEFAULT FALSE)
--- RETURNS TABLE(success BOOLEAN, msg TEXT, brackets jsonb) AS $$
--- DECLARE
--- 	_id INTEGER;
--- 	_round INTEGER;
--- 	_nbr_players INTEGER;
--- 	_min_players INTEGER;
--- 	_max_players INTEGER;
--- 	players_id INTEGER[];
--- 	_state tournament_state;
--- 	_new_state tournament_state;
--- 	_total_rounds INTEGER;
--- BEGIN
--- 	IF _name IS NULL THEN
--- 		RETURN QUERY SELECT FALSE, 'Tournament name cant be null', '{}'::jsonb;
--- 		RETURN ;
--- 	END IF;
-
--- 	SELECT id, round, state, min_players, max_players INTO _id, _round, _state, _min_players, _max_players
--- 	FROM tournaments WHERE name = _name;
--- 	IF NOT FOUND THEN
--- 		RETURN QUERY SELECT FALSE, 'No tournament found to this name', '{}'::jsonb;
--- 		RETURN ;
--- 	END IF;
-	
--- 	IF _state != 'LOBBY' THEN
--- 		RETURN QUERY SELECT FALSE, 'Can''t start tournaments: tournament isn''t in lobby phase', '{}'::jsonb;
--- 		RETURN ;
--- 	END IF;
-
--- 	SELECT ARRAY_AGG(player_id)
--- 	INTO players_id
--- 	FROM tournaments_players
--- 	WHERE tournament_id = _id;
-
--- 	_nbr_players := array_length(players_id, 1);
--- 	IF _nbr_players IS NULL OR (_nbr_players < _min_players) OR (_nbr_players > _max_players) THEN
---     	RETURN QUERY SELECT FALSE, FORMAT('Players don''t match nbr of players required (%s players, min %s, max %s)', _nbr_players, _min_players, _max_players), '{}'::jsonb;
--- 		RETURN ;
--- 	END IF;
-
--- 	_total_rounds := FLOOR(LOG(2, _nbr_players));
--- 	IF _state_run THEN
--- 		_new_state := 'RUNNING';
--- 	ELSE
--- 		_new_state := 'PREP';
--- 	END IF;
-
--- 	UPDATE tournaments
--- 	SET total_rounds = _total_rounds,
--- 		nbr_players = _nbr_players,
--- 		"state" = _new_state
--- 	WHERE id = _id;
-
--- 	RETURN QUERY SELECT TRUE, 'Tournament initialized !', pair_tournament(_id, players_id, _nbr_players);
-
--- EXCEPTION
--- 	WHEN OTHERS THEN
---     	RETURN QUERY SELECT FALSE, SQLERRM, '{}'::jsonb;
--- END;
--- $$ LANGUAGE plpgsql;
-
-
-
-
 CREATE OR REPLACE FUNCTION delete_tournament(_name TEXT)
 RETURNS TABLE(success BOOLEAN, msg TEXT) AS $$
 DECLARE
@@ -219,7 +151,7 @@ BEGIN
 		RETURN ; 
 	END IF;
 
-		IF EXISTS(
+	IF EXISTS(
 		SELECT id
 		FROM games
 		WHERE tournament_id = _id

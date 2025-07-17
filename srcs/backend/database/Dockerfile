@@ -55,4 +55,4 @@ RUN apt-get update && apt-get install -y gettext && rm -rf /var/lib/apt/lists/* 
     fi && \
 	chmod +x /docker-entrypoint-initdb.d/init-db.sh /app/db-init/init-db-all.template.sql
 
-CMD ["postgres", "-c", "listen_addresses=*", "-c", "port=5432"]
+CMD ["postgres", "-c", "listen_addresses=*"]
