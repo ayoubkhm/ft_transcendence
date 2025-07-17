@@ -303,7 +303,7 @@ BEGIN
     END IF;
 
     SELECT ARRAY(
-        SELECT ROW(users.id, users.name, users.tag, users.email, users.avatar)::public_user
+        SELECT ROW(users.id, users.name, users.tag, users.email, users.avatar, users.online)::public_user
         FROM friends
         JOIN users
         ON ((users.id = friends.user1_id AND friends.user2_id = _id)
@@ -334,7 +334,7 @@ BEGIN
     END IF;
 
     SELECT ARRAY(
-        SELECT ROW(users.id, users.name, users.tag, users.email, users.avatar)::public_user
+        SELECT ROW(users.id, users.name, users.tag, users.email, users.avatar, users.online)::public_user
         FROM friends
         JOIN users
         ON ((users.id = friends.user1_id AND friends.user2_id = _id)
