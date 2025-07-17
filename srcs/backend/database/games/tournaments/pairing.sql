@@ -101,32 +101,62 @@ $$ LANGUAGE plpgsql;
 
 
 CREATE OR REPLACE FUNCTION get_brackets(_id INTEGER)
-RETURNS TABLE(success BOOLEAN, msg TEXT, brackets jsonb) AS $$
+RETURNS TABLE(success BOOLEAN, msg TEXT, tname TEXT, tstate tournament_state, twinner_id INTEGER, brackets jsonb) AS $$
+DECLARE
+	_name TEXT;
+	_state tournament_state;
+	_winner_id INTEGER;
 BEGIN
 	IF _id IS NULL THEN
-		RETURN QUERY SELECT FALSE, 'No tournament id provided (null): no brackets', '[]'::jsonb;
+		RETURN QUERY SELECT FALSE, 'No tournament id provided (null): no brackets', NULL::TEXT as tname, NULL::tournament_state as tstate, NULL::INTEGER as twinner_id, '[]'::jsonb;
+		RETURN ;
 	END IF;
 
-	RETURN QUERY SELECT TRUE, 'Brackets successfully retrieved', (
+	SELECT name, state, winner_id INTO _name, _state, _winner_id
+	FROM tournaments
+	WHERE _id = id;
+
+	IF NOT FOUND THEN
+		RETURN QUERY SELECT FALSE, 'Tournament not found', NULL::TEXT as tname, NULL::tournament_state as tstate, NULL::INTEGER as twinner_id, '[]'::jsonb;
+		RETURN ;
+	END IF;
+
+	RETURN QUERY SELECT TRUE, 'Brackets successfully retrieved', _name as tname, _state as tstate, _winner_id as twinner_id, (
 		SELECT jsonb_agg(
 			jsonb_build_object(
-				'round', sub.tournament_round,
-				'matchs', sub.matchs
+			'round', sub.tournament_round,
+			'matchs', sub.matchs
 			)
 		)
 		FROM (
-			SELECT
-				games_table.tournament_round,
-				jsonb_agg(to_jsonb(games_table)
-				ORDER BY games_table.id) AS matchs
+		SELECT
+			games_table.tournament_round,
+			jsonb_agg(
+			jsonb_build_object(
+				'id', games_table.id,
+				'p1_id', games_table.p1_id,
+				'p1_name', u1.name,
+				'p1_tag', u1.tag,
+				'p1_winnerof', games_table.p1_winnerof,
+				'p2_id', games_table.p2_id,
+				'p2_name', u2.name,
+				'p2_tag', u2.tag,
+				'p2_winnerof', games_table.p2_winnerof,
+				'state', games_table.state,
+				'winner', games_table.winner
+				) ORDER BY games_table.id
+			) AS matchs
 			FROM games games_table
+			LEFT JOIN users u1 ON games_table.p1_id IS NOT NULL AND u1.id = games_table.p1_id
+			LEFT JOIN users u2 ON games_table.p2_id IS NOT NULL AND u2.id = games_table.p2_id
 			WHERE games_table.tournament_id = _id
 			GROUP BY games_table.tournament_round
 			ORDER BY games_table.tournament_round
 		) AS sub
 	);
+
 EXCEPTION
 	WHEN OTHERS THEN
-		RETURN QUERY SELECT FALSE, SQLERRM, '[]'::jsonb;
+		RETURN QUERY SELECT FALSE, SQLERRM, NULL::TEXT as tname, NULL::tournament_state as tstate, NULL::INTEGER as twinner_id, '[]'::jsonb;
 END;
 $$ LANGUAGE plpgsql;
