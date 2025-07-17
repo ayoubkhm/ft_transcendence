@@ -1,4 +1,5 @@
 import { drawGame } from './GameCanvas';
+import { navigate, onRoute } from '../../lib/router';
 
 const imagePaths = {
   fake: './fake.png',
@@ -105,6 +106,23 @@ const POLL_MS = 1000 / 60;
 
 /** Fetch latest game state and draw */
 async function fetchAndDraw(): Promise<void> {
+  // If we are no longer in the game view, stop the client-side game loop
+  // but do not forfeit the game.
+  if (!location.hash.startsWith('#game/')) {
+    if (pollTimer) {
+      clearInterval(pollTimer);
+      pollTimer = undefined;
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+      hero.classList.remove('hidden');
+      canvas.classList.add('hidden');
+      togglePlayButtons(false);
+      forfeitBtn.classList.add('hidden');
+      shareDiv.classList.add('hidden');
+    }
+    return;
+  }
+
   try {
     const res = await fetch(`/api/game/${gameId}/state`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -164,7 +182,7 @@ export async function startGame(mode: 'ai' | 'pvp', difficulty?: string): Promis
     localStorage.setItem('authToken', authToken);
     localStorage.setItem('mode', mode);
     if (difficulty) localStorage.setItem('difficulty', difficulty);
-    window.history.pushState({ view: 'game', gameId }, '', `#game/${gameId}`);
+    navigate('game', { id: gameId });
     shareDiv.classList.toggle('hidden', mode !== 'pvp');
     if (mode === 'pvp') gameIdInput.value = gameId;
     await fetchAndDraw();
@@ -195,19 +213,27 @@ export function setupGame(): void {
   // AI play
   playAIBtn.addEventListener('click', e => {
     e.preventDefault();
-    aiModal.classList.remove('hidden');
+    navigate('play-ai');
   });
   aiModalClose.addEventListener('click', e => {
     e.preventDefault();
-    aiModal.classList.add('hidden');
+    navigate('home');
   });
   aiModal.addEventListener('click', e => {
     if (e.target === aiModal) {
-      aiModal.classList.add('hidden');
+      navigate('home');
     }
   });
   window.addEventListener('keydown', e => {
     if (e.key === 'Escape' && !aiModal.classList.contains('hidden')) {
+      navigate('home');
+    }
+  });
+  onRoute('play-ai', () => {
+    aiModal.classList.remove('hidden');
+  });
+  onRoute('home', () => {
+    if (aiModal && !aiModal.classList.contains('hidden')) {
       aiModal.classList.add('hidden');
     }
   });
@@ -220,19 +246,27 @@ export function setupGame(): void {
   // PvP menu
   playPVPBtn.addEventListener('click', e => {
     e.preventDefault();
-    pvpModal.classList.remove('hidden');
+    navigate('play-pvp');
   });
   pvpModalClose.addEventListener('click', e => {
     e.preventDefault();
-    pvpModal.classList.add('hidden');
+    navigate('home');
   });
   pvpModal.addEventListener('click', e => {
     if (e.target === pvpModal) {
-      pvpModal.classList.add('hidden');
+      navigate('home');
     }
   });
   window.addEventListener('keydown', e => {
     if (e.key === 'Escape' && !pvpModal.classList.contains('hidden')) {
+      navigate('home');
+    }
+  });
+  onRoute('play-pvp', () => {
+    pvpModal.classList.remove('hidden');
+  });
+  onRoute('home', () => {
+    if (pvpModal && !pvpModal.classList.contains('hidden')) {
       pvpModal.classList.add('hidden');
     }
   });
@@ -253,13 +287,14 @@ export function setupGame(): void {
       if (!res.ok) { alert(data.error || 'Failed to join game'); return; }
       gameId = data.gameId; playerId = data.playerId; authToken = data.token;
       localStorage.setItem('gameId', gameId); localStorage.setItem('playerId', playerId); localStorage.setItem('authToken', authToken); localStorage.setItem('mode', 'pvp');
-      window.history.pushState({ view: 'game', gameId }, '', `#game/${gameId}`);
+      navigate('game', { id: gameId });
       pvpModal.classList.add('hidden');
       togglePlayButtons(true); hero.classList.add('hidden'); resultPre.classList.add('hidden'); shareDiv.classList.add('hidden'); canvas.classList.remove('hidden');
       canvas.focus(); lastInput = null;
       await fetchAndDraw(); pollTimer = window.setInterval(fetchAndDraw, POLL_MS);
       window.addEventListener('keydown', onKeyDown); window.addEventListener('keyup', onKeyUp);
-      forfeitBtn.classList.remove('hidden'); forfeitBtn.disabled = false;
+      forfeitBtn.classList.remove('hidden');
+      forfeitBtn.disabled = false;
     } catch (err) { console.error('Error joining PvP game:', err); alert('Error joining game'); }
   });
   // Reconnect if hash is #game/<id>
@@ -289,6 +324,21 @@ export function setupGame(): void {
       resumeGame();
     }
   }
+
+  onRoute('home', () => {
+    if (pollTimer) {
+      sendForfeit();
+      clearInterval(pollTimer);
+      pollTimer = undefined;
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+      hero.classList.remove('hidden');
+      canvas.classList.add('hidden');
+      togglePlayButtons(false);
+      forfeitBtn.classList.add('hidden');
+      shareDiv.classList.add('hidden');
+    }
+  });
 }
 
 function resumeGame() {

@@ -75,7 +75,7 @@ export async function showPublicProfile(userId: number) {
         // Open modal and update history
         document.getElementById('friends-modal')?.classList.add('hidden');
         publicProfileModal.classList.remove('hidden');
-        history.pushState({ view: 'publicProfile', id: user.id }, '', `#user/${user.id}`);
+        navigate('publicProfile', { id: user.id });
 
     } catch (err) {
         console.error('Fetch public profile failed:', err);

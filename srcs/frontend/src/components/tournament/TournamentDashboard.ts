@@ -82,7 +82,7 @@ export function setupTournamentDashboard() {
       }
       // Show the modal
       tournamentModal.classList.remove('hidden');
-      history.pushState({ view: 'tournament' }, '', '#tournament');
+      navigate('tournament');
     });
   }
 

@@ -25,7 +25,7 @@ export function setupLoginModal() {
   loginBtn.addEventListener('click', (e) => {
     e.preventDefault();
     show(loginModal);
-    history.pushState({ view: 'login' }, '', '#login');
+    navigate('login');
   });
 
   loginModalClose.addEventListener('click', (e) => {
