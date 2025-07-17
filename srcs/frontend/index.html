@@ -314,10 +314,24 @@
 </div>
 
 
-<div id="brackets-container"  class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 hidden">
-  <div class="bg-gray-100 p-6 rounded-lg shadow-xl max-w-full overflow-auto">
+<!-- Tournaments brackets -->
+  <div id="brackets-popup" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-zinc-800 pt-4 pr-6 pb-6 pl-6 shadow-xl z-[9999] flex flex-col gap-4 rounded-lg hidden">
+
+    <div class="w-full flex items-center justify-between">
+      <div id="brackets-info-wrapper"  class="flex w-full items-center gap-10 pl-6">  
+        <h2 id="brackets-tournament-name" class="text-white text-xl font-semibold">
+          Tournoi
+        </h2>
+      </div>
+
+      <button id="close-brackets" class="text-white hover:text-red-400 text-base px-2 py-0.5 rounded-md bg-zinc-700 hover:bg-red-500 transition">✕
+      </button>
+
+    </div>
+
+    <div id="brackets-container" class="p-6 bg-zinc-900 rounded-lg shadow-xl overflow-auto max-w-[90vw] max-h-[90vh] w-full">
+    </div>
   </div>
-</div>
 
 
   <!-- Public Profile Modal -->
