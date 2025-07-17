@@ -76,11 +76,13 @@ export default async function gamesRoutes (app: FastifyInstance)
             } else {
               console.log('✅ Game finished');
               clearInterval(interval);
+              await pgClient.end();
               sessions.delete(sessionId);
             }
           } catch (err) {
             console.error('Error in game step:', err);
             clearInterval(interval);
+            await pgClient.end();
             sessions.delete(sessionId);
           }
         }, 1000 / 60);
@@ -123,10 +125,6 @@ export default async function gamesRoutes (app: FastifyInstance)
     } catch (err) {
       console.error('❌ Fatal error in /game route:', err);
       reply.code(500).send({ error: 'Server crashed in /game route' });
-    } finally {
-      if (pgClient) {
-        pgClient.end().catch(err => console.error('Error closing DB connection:', err));
-      }
     }
   });
 
