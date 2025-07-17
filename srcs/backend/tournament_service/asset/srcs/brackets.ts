@@ -11,12 +11,17 @@ export default async function bracketsRoute(server: FastifyInstance)
 		try
 		{
 			const res = await server.pg.query(`SELECT * FROM get_brackets(${id});`);
-			if (!(res[0].success))
-				request.log.warn('Brackets error: %s', res[0].msg);
+			const row = res.rows[0];
+			if (!(row.success))
+				request.log.warn('Brackets error: %s', row.msg);
 			return reply.send({
-				success: res[0].success,
-				msg: res[0].msg,
-				brackets: res[0].brackets
+				success: row.success,
+				msg: row.msg,
+				tname: row.tname,
+				tstate: row.tstate,
+				twinner_name: row.twinner_name,
+				twinner_tag: row.twinner_tag,
+				brackets: row.brackets
 			});
 		}
 		catch (err)
@@ -24,8 +29,13 @@ export default async function bracketsRoute(server: FastifyInstance)
             request.log.error(err);
             return reply.status(500).send({
                 success: false,
-                msg: 'Internal server error (query failed)',
+				// @ts-ignore
+                msg: 'Internal server error (query failed): ' + (err?.message || err),
                 brackets: [],
+				tname: null,
+				tstate: null,
+				twinner_name: null,
+				twinner_tag: null,
             });
 		}
 	});
