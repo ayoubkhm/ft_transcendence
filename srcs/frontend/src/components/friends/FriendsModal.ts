@@ -53,6 +53,11 @@ export function setupFriendsModal() {
         li.className = 'flex items-center justify-between px-2 py-1 bg-gray-700 rounded';
         const nameSpan = document.createElement('span');
         nameSpan.textContent = r.name;
+        nameSpan.className = 'cursor-pointer';
+        nameSpan.addEventListener('click', (e) => {
+            e.stopPropagation();
+            showPublicProfile(r.id);
+        });
         const acceptBtn = document.createElement('button');
         acceptBtn.textContent = 'Accept';
         acceptBtn.className = 'px-2 py-1 bg-green-500 rounded text-white text-sm';

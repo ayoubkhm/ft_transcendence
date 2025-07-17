@@ -68,9 +68,10 @@ export async function initializeAuth() {
             try {
                 const res = await fetch(`/api/user/search/${encodeURIComponent(email)}`, { credentials: 'include' });
                 if (res.ok) {
-                    const data = await res.json() as { success: boolean; msg: string; profile: { name: string; tag: number; } | null };
+                    const data = await res.json() as { success: boolean; msg: string; profile: { id: number; name: string; tag: number; } | null };
                     if (data.success && data.profile) {
                         if(userGreeting) userGreeting.textContent = `${data.profile.name}`;
+                        localStorage.setItem('userId', data.profile.id.toString());
                     }
                 }
             } catch (err) {
@@ -98,6 +99,7 @@ if(logoutBtn) {
         localStorage.removeItem('username');
         // Clear stored email for profile lookup
         localStorage.removeItem('userEmail');
+        localStorage.removeItem('userId');
         // Clear stored authentication method
         localStorage.removeItem('authMethod');
         updateAuthView();
