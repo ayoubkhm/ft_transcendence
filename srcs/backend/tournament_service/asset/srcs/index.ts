@@ -420,3 +420,35 @@ server.put<{
 // curl -X PUT http://localhost:3003/api/tournament/1/max_players \
 //   -H "Content-Type: application/json" \
 //   -d '{"max_players": 16}'
+
+
+server.get<{ Querystring: { id: number } }>('/api/game/state',async (request, reply) => {
+    
+  const { id } = request.query;
+    if (!id || isNaN(id))
+      return reply
+        .status(400)
+        .send({ success: false, msg: 'Missing or invalid id', gstate: null });
+
+    const client = await server.pg.connect();
+    try {
+      const res = await client.query('SELECT * FROM get_game_state($1::INTEGER);',[id]);
+
+      if (res.rows.length === 0)
+        return reply
+          .status(404)
+          .send({ success: false, msg: 'No result', gstate: null });
+
+      return reply.send(res.rows[0]); // { success, msg, gstate }
+    } catch (err) {
+      console.error('Error in /api/game/state:', err);
+      return reply
+        .status(500)
+        .send({ success: false, msg: 'Internal error', gstate: null });
+    } finally {
+      client.release();
+    }
+  }
+);
+
+// curl "http://localhost:3003/api/game/state?id=2"
