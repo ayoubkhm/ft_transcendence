@@ -1,0 +1,191 @@
+services:
+  # ──────────────────────────────────────────────────────────
+  auth_service:
+    container_name: auth_service
+    restart: "no"
+    env_file:
+      - ./.env
+    environment:
+      - PGHOST=database
+      - PGUSER=${DB_USER}
+      - PGPASSWORD=${DB_PASS}
+      - PGDATABASE=${DB_NAME}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - CALLBACK_URL=${CALLBACK_URL}
+      - COOKIE_SECRET=${COOKIE_SECRET}
+      - API_CREDENTIAL=${API_CREDENTIAL}
+      - JWT_SECRET=${JWT_SECRET}
+      - PGPORT=5432
+      - NODE_ENV=dev
+      - PORT=3000
+      # Vault config pour récupération sécurisée des secrets
+      - VAULT_ADDR=http://vault:8200
+      - VAULT_TOKEN=root
+      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASS}@database:${DB_PORT}/${DB_NAME}
+
+    build:
+      context: ./srcs/backend/auth_service
+      dockerfile: Dockerfile
+      args:
+        - NODE_ENV=dev
+    expose:
+      - "3000"              # ▶ visible uniquement dans le réseau Docker
+    depends_on:
+      - user_service
+      - vault_service        # Vault doit démarrer avant auth_service
+    networks:
+      - router
+
+  # ──────────────────────────────────────────────────────────
+  vault_service:
+    container_name: vault
+    build:
+      context: ./srcs/backend/vault_service
+    # ports:
+    #   - "8200:8200"          # port exposé pour accéder à Vault
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: "root"       # token root dev (jamais en prod)
+      VAULT_DEV_LISTEN_ADDRESS: "0.0.0.0:8200"
+      VAULT_ADDR: "http://vault:8200"
+      VAULT_TOKEN: "root"
+    networks:
+      - router
+
+  # ──────────────────────────────────────────────────────────
+  game_service:
+    container_name: game_service
+    restart: "no"
+    environment:
+      - PGHOST=database
+      - PGUSER=${DB_USER}
+      - PGPASSWORD=${DB_PASS}
+      - PGDATABASE=${DB_NAME}
+      - PGPORT=5432
+      - NODE_ENV=dev
+      # Ensure Fastify listens on 3001 to match Dockerfile
+      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASS}@database:${DB_PORT}/${DB_NAME}
+      - PORT=3001
+    build:
+      context: ./srcs/backend/game_service
+      dockerfile: Dockerfile
+      args:
+        - NODE_ENV=dev
+    networks:
+      - router
+
+  # ──────────────────────────────────────────────────────────
+  user_service:
+    container_name: user_service
+    restart: "no"
+    env_file:
+      - ./.env
+    environment:
+      - PGHOST=database
+      - PGUSER=${DB_USER}
+      - PGPASSWORD=${DB_PASS}
+      - PGDATABASE=${DB_NAME}
+      - PGPORT=5432
+      - NODE_ENV=dev
+      - API_CREDENTIAL=${API_CREDENTIAL}
+      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASS}@database:${DB_PORT}/${DB_NAME}
+      - PORT=3001
+    build:
+      context: ./srcs/backend/user_service
+      dockerfile: Dockerfile
+      args:
+        - NODE_ENV=dev
+    networks:
+      - router
+  # ──────────────────────────────────────────────────────────
+  tournament_service:
+    container_name: tournament_service
+    restart: "no"
+    environment:
+      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASS}@database:${DB_PORT}/${DB_NAME}
+    build:
+      context: ./srcs/backend/tournament_service
+      dockerfile: Dockerfile
+      args:
+        - NODE_ENV=dev
+    expose:
+      - "3000"
+    networks:
+      - router
+
+  # ──────────────────────────────────────────────────────────
+  
+  # - PGDATABASE=${DB_NAME} -> clients, valeur par defaut de connexion
+  # # nom user créé par défaut par image postgres
+  # - PGUSER=transcendence
+  # # password user créé par défaut par image postgres, user par defaut pour connexion client
+  # - PGPASSWORD=imthebest
+  database:
+    container_name: database
+    build: ./srcs/backend/database/
+    volumes:
+      - database:/db
+    env_file:
+      - ./.env
+    environment:
+      - PGPORT=${DB_PORT:-5432}
+
+      - DB_USER=${DB_USER}
+      - DB_PASS=${DB_PASS}
+
+      # nom superuser créé par défaut par image postgres, password par défaut pour connexion client
+      - POSTGRES_USER=${DB_SUPERUSER}
+      # password superuser créé par défaut par image postgres
+      - POSTGRES_PASSWORD=${DB_SUPERPASS}
+      # nom de la base créée par défaut par l'image postgres
+      - POSTGRES_DB=${DB_NAME}
+      # répertoire dans lequel image postgres initialise ses fichiers
+      - PGDATA=/db
+      - TEST=${TEST_DB:-}
+      - POSTGRES_INITDB_ARGS=--auth-local=scram-sha-256 --auth-host=scram-sha-256
+    expose:
+      - ${DB_PORT:-5432}
+      # dans docker ps -> 5432, purement cosmétique, image de postgres qui expose
+    command: postgres -c listen_addresses='*' -c port=${DB_PORT}
+
+    networks:
+      - router
+
+  # ──────────────────────────────────────────────────────────
+  frontend:
+    container_name: frontend
+    restart: "no"
+    build:
+      context: ./srcs/frontend
+      dockerfile: Dockerfile
+    environment:        # ← ajoute si PORT n’est pas déjà fixé côté Vite
+      - PORT=4000
+    expose:
+      - "4000"          # ← reste 4000
+    networks:
+      - router
+
+  # ──────────────────────────────────────────────────────────
+  nginx:
+    container_name: nginx
+    restart: "no"
+    build:
+      context: ./srcs/nginx
+      dockerfile: Dockerfile
+    depends_on:
+      - auth_service
+      - game_service
+      - user_service
+      - frontend
+    ports:
+      - "443:443"
+    networks:
+      - router
+
+# ──────────────────────────────────────────────────────────────
+volumes:
+  database:
+
+networks:
+  router:
+    driver: bridge
