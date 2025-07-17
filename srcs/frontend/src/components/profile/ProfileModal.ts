@@ -1,8 +1,5 @@
 // ProfileModal: handles user profile viewing and settings modal
 import { navigate } from '../../lib/router';
-import { setupTwoFASetup } from '../twofa/TwoFASetup';
-
-const { open2faSetupModal } = setupTwoFASetup();
 
 export function setupProfileModal(): void {
   // Elements
@@ -47,7 +44,7 @@ export function setupProfileModal(): void {
       profileEmail.textContent = user.email;
       profileId.textContent = user.id.toString();
       profileOnlineStatus.textContent = user.online ? 'true' : 'false';
-      if (user.twofa_secret) {
+      if (user.twofa_secret && user.twofa_validated) {
         profile2FAStatus.textContent = 'true';
         profileSetup2FABtn.classList.add('hidden');
         profileDisable2FABtn.classList.remove('hidden');
@@ -74,28 +71,41 @@ export function setupProfileModal(): void {
   });
 
   // Close handlers
-  const closeModal = () => {
-    if (profileModal) {
-      profileModal.classList.add('hidden');
-    }
-    navigate('home');
-  };
-  profileModalCloseBtn.addEventListener('click', e => { e.preventDefault(); closeModal(); });
-  profileModal.addEventListener('click', e => { if (e.target === profileModal) closeModal(); });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !profileModal.classList.contains('hidden')) closeModal(); });
+  profileModalCloseBtn.addEventListener('click', e => { e.preventDefault(); navigate('home'); });
+  profileModal.addEventListener('click', e => { if (e.target === profileModal) navigate('home'); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !profileModal.classList.contains('hidden')) navigate('home'); });
 
   // 2FA setup button
   profileSetup2FABtn.addEventListener('click', e => {
-    e.preventDefault(); profileModal.classList.add('hidden'); open2faSetupModal();
+    e.preventDefault();
+    profileModal.classList.add('hidden');
+    navigate('setup-2fa');
   });
+
+  // Change Password button
+  profileChangePasswordBtn.addEventListener('click', e => {
+    e.preventDefault();
+    profileModal.classList.add('hidden');
+    navigate('change-password');
+  });
+
   // Disable 2FA button
   profileDisable2FABtn.addEventListener('click', async e => {
     e.preventDefault();
     try {
       const res = await fetch('/api/auth/2fa/delete', { method: 'DELETE', credentials: 'include' });
       const data = await res.json();
-      alert(res.ok ? data.message || '2FA disabled' : data.error || 'Disable 2FA failed');
-      history.back();
+      if (res.ok) {
+        alert(data.message || '2FA disabled. You will now be logged out.');
+        // Clear session and refresh
+        localStorage.removeItem('loggedIn');
+        localStorage.removeItem('username');
+        localStorage.removeItem('userEmail');
+        localStorage.removeItem('twofaEnabled');
+        window.location.reload();
+      } else {
+        alert(data.error || 'Disable 2FA failed');
+      }
     } catch (err) {
       console.error('Disable 2FA error:', err);
       alert('Error disabling 2FA');

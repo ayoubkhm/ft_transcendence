@@ -2,6 +2,7 @@
 import { show, hide } from '../../lib/dom';
 import { fetchJSON } from '../../lib/api';
 import { showPublicProfile } from '../profile/PublicProfileModal';
+import { navigate } from '../../lib/router';
 
 export function setupFriendsModal() {
   const friendsBtn = document.getElementById('friends-btn') as HTMLButtonElement | null;
@@ -97,18 +98,18 @@ export function setupFriendsModal() {
 
   friendsModalClose.addEventListener('click', (e) => {
     e.preventDefault();
-    history.back();
+    navigate('home');
   });
   // Close on backdrop click
   friendsModal.addEventListener('click', (e) => {
     if (e.target === friendsModal) {
-      history.back();
+      navigate('home');
     }
   });
   // Close on Escape key
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && !friendsModal.classList.contains('hidden')) {
-      history.back();
+      navigate('home');
     }
   });
 }

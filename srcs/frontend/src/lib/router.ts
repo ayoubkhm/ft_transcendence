@@ -1,5 +1,5 @@
 // Simple SPA router based on history API and hash
-export type View = 'home' | 'login' | 'game' | 'tournament' | 'friends' | 'profile';
+export type View = 'home' | 'login' | 'game' | 'tournament' | 'friends' | 'profile' | 'play-ai' | 'play-pvp' | 'change-password' | 'publicProfile' | 'signup' | 'setup-2fa';
 
 type RouteHandler = (params?: any) => void;
 
@@ -10,6 +10,12 @@ const routes: Record<View, RouteHandler[]> = {
   tournament: [],
   friends: [],
   profile: [],
+  'play-ai': [],
+  'play-pvp': [],
+  'change-password': [],
+  publicProfile: [],
+  signup: [],
+  'setup-2fa': [],
 };
 
 export function onRoute(view: View, handler: RouteHandler) {

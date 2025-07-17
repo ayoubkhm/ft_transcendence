@@ -1,5 +1,6 @@
 // TwoFASetup: handles two-factor authentication setup modal
 import { hide, show } from '../../lib/dom';
+import { navigate, onRoute } from '../../lib/router';
 
 /**
  * Sets up the 2FA setup modal and handlers.
@@ -13,7 +14,7 @@ export function setupTwoFASetup() {
   const setup2faForm = document.getElementById('2fa-setup-form') as HTMLFormElement | null;
   const setup2faCodeInput = document.getElementById('2fa-setup-code') as HTMLInputElement | null;
   if (!setup2faModal || !setup2faCloseBtn || !setup2faQr || !setup2faForm || !setup2faCodeInput) {
-    return { open2faSetupModal: () => {} };
+    return;
   }
 
   async function open2faSetupModal() {
@@ -37,15 +38,22 @@ export function setupTwoFASetup() {
     }
   }
 
+  onRoute('setup-2fa', open2faSetupModal);
+
   setup2faCloseBtn.addEventListener('click', e => {
     e.preventDefault();
-    hide(setup2faModal);
+    navigate('home');
   });
   setup2faModal.addEventListener('click', e => {
-    if (e.target === setup2faModal) hide(setup2faModal);
+    if (e.target === setup2faModal) navigate('home');
   });
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && !setup2faModal.classList.contains('hidden')) {
+      navigate('home');
+    }
+  });
+  onRoute('home', () => {
+    if (setup2faModal && !setup2faModal.classList.contains('hidden')) {
       hide(setup2faModal);
     }
   });
@@ -66,12 +74,17 @@ export function setupTwoFASetup() {
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
-        alert((data as any).message || '2FA successfully enabled');
+        alert('2FA has been successfully enabled. You will now be logged out. Please log in again to continue.');
         hide(setup2faModal);
         if (setup2faTestCodeDiv) {
           hide(setup2faTestCodeDiv);
         }
-        history.back();
+        // Clear session and refresh
+        localStorage.removeItem('loggedIn');
+        localStorage.removeItem('username');
+        localStorage.removeItem('userEmail');
+        localStorage.removeItem('twofaEnabled');
+        window.location.reload();
       } else {
         alert((data as any).error || '2FA setup verification failed');
       }
@@ -80,8 +93,6 @@ export function setupTwoFASetup() {
       alert('Error verifying 2FA code');
     }
   });
-
-  return { open2faSetupModal };
 }
 
 /**
@@ -120,7 +131,6 @@ export function setupTwoFALogin() {
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
-        alert((data as any).message || '2FA verification successful');
         hide(twofaLoginModal);
         localStorage.setItem('loggedIn', 'true');
         window.location.replace(`${location.pathname}${location.search}`);
