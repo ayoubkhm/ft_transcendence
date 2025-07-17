@@ -24,7 +24,8 @@ CREATE TYPE public_user AS (
     name TEXT,
     tag INTEGER,
     email TEXT,
-    avatar TEXT
+    avatar TEXT,
+	online BOOLEAN
 );
 
 CREATE TABLE IF NOT EXISTS users (
