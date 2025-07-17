@@ -81,18 +81,23 @@ export default function public_userRoutes (server: FastifyInstance, options: any
         console.log('🎯 Route /delete/:email called');
         const token = request.cookies.jwt_transcendence;
         if (!token)
-        return (reply.status(230).send({ error: "0403"}));
+        return (reply.status(403).send({ error: "No token provided"}));
         const tokenPayload = getTokenData(token);
-        console.log("[CHECK DATA] =",tokenPayload)
-        if (!tokenPayload?.admin && !tokenPayload?.id)
-        return (reply.status(230).send({ error: "0403"}));
+        if (!tokenPayload || !tokenPayload.id || !tokenPayload.email)
+            return (reply.status(403).send({ error: "Invalid token payload"}));
         const dfa = tokenPayload?.dfa;
         if (!dfa)
-        return (reply.status(230).send({ error: "1020" }));
+            return (reply.status(403).send({ error: "2FA not validated" }));
+
+        // Security check: allow deletion if user is admin OR is deleting their own account
+        if (!tokenPayload.admin && tokenPayload.email !== request.params.email) {
+            return reply.status(403).send({ error: "Forbidden: You can only delete your own account." });
+        }
+
         //sql delete avec email
         const user = await server.pg.query('SELECT * FROM delete_user($1)', [request.params.email]);
         if (!user)
-        return reply.status(230).send({ error: "1006" });
+        return reply.status(404).send({ error: "User not found" });
         reply.send({ response: "user deleted" });
     });
 
