@@ -115,13 +115,13 @@ export default async function friendsRoutes(server: FastifyInstance, options: an
                 return reply.status(230).send({ error: "0404" });
             const inviteRes = await server.pg.query(
                 'SELECT 1 FROM invites WHERE from_id = $1 AND to_id = $2 AND type = \'friend\'',
-                [id, requestID]
+                [requestID, id]
             );
             if ((inviteRes.rowCount ?? 0) === 0)
                 return reply.status(230).send({ error: "0404" });
             await server.pg.query(
                 'DELETE FROM invites WHERE from_id = $1 AND to_id = $2 AND type = \'friend\'',
-                [id, requestID]
+                [requestID, id]
             );
             return reply.send({ success: true, msg: 'Friend request rejected' });
         } catch (error) {
@@ -186,7 +186,8 @@ export default async function friendsRoutes(server: FastifyInstance, options: an
                 return reply.code(401).send({ error: 'Invalid token' });
             }
             const sql = `
-              SELECT u.id, u.name
+              SELECT u.id, u.name,
+                CASE WHEN u.online THEN 'online' ELSE 'offline' END as status
               FROM friends f
               JOIN users u ON
                 (f.user1_id = $1 AND u.id = f.user2_id)

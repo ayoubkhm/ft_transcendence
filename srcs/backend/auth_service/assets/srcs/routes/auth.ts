@@ -278,6 +278,18 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
       if (!isValid)
         return reply.status(401).send({ error: 'Invalid email or password' });
       console.log("[USER DATA]: ", user);
+
+      // Notify user_service that the user is logging in
+      await fetch(`http://user_service:3000/api/user/status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          credential: process.env.API_CREDENTIAL,
+          userId: user.id,
+          online: true,
+        }),
+      });
+      
       if (user.twofa_validated) {
         
         console.log("on est dans twofa TRUE", user);
@@ -328,7 +340,26 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
   }
 
   app.delete<{ Body: logoutBody }>('/logout', {preHandler:[isConnected]},async (request, reply) => {
-    reply.clearCookie('jwt_transcendence', {}).status(200).send();
+    try {
+      const token = request.cookies['jwt_transcendence'];
+      const userId = getTokenData(token).id;
+
+      // Notify user_service that the user is logging out
+      await fetch(`http://user_service:3000/api/user/status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          credential: process.env.API_CREDENTIAL,
+          userId: userId,
+          online: false,
+        }),
+      });
+
+      reply.clearCookie('jwt_transcendence', {}).status(200).send();
+    } catch (err) {
+      console.error('Logout failed:', err);
+      reply.status(500).send({ error: 'Internal server error' });
+    }
   });
 
   // Check authentication status and return user info if logged in and 2FA validated
