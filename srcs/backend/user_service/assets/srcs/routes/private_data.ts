@@ -67,19 +67,38 @@ export default async function private_userRoutes(server: FastifyInstance, option
     }
 
     server.put<{Body: profilePictureBody}>('/profile_picture', async (request, reply) => {
+      // Security: JWT validation and authorization
+      const token = (request.cookies as any)?.jwt_transcendence;
+      if (!token) {
+        return reply.status(401).send({ error: 'Unauthorized' });
+      }
+      let tokenPayload;
+      try {
+        tokenPayload = getTokenData(token);
+      } catch {
+        return reply.status(401).send({ error: 'Invalid token' });
+      }
+      
       const id = request.body?.id;
       const pp = request.body?.profPicture;
+
+      // Security check: allow if admin or self
+      if (!tokenPayload.admin && tokenPayload.id !== id) {
+        return reply.status(403).send({ error: 'Forbidden' });
+      }
+
       if (!pp || !id)
-        return reply.status(230).send({ error: "0401" });
+        return reply.status(400).send({ error: "Missing parameters" });
       try {
-        const result = null;
-        //requete pour ajouter un pp via lid du mec connecter.
+        // This part of the code is not implemented yet.
+        // When it is, it should use the validated 'id' to update the profile picture.
+        const result = null; 
         if (!result)
-          return reply.status(230).send({ error: "0401" });
+          return reply.status(501).send({ error: "Not implemented" });
         reply.status(200).send();
       } catch (error) {
           console.log('error', error)
-          return reply.status(230).send({ error: "0401" });
+          return reply.status(500).send({ error: "Internal server error" });
       }
     });
         
@@ -168,11 +187,13 @@ export default async function private_userRoutes(server: FastifyInstance, option
         const email = request.body.email;
         const name = request.body.name;
         const password = request.body.password;
-        const type = request.body.type;
-        const admin = request.body.admin;
+        
+        // Security: Do not allow setting admin from request
+        const type = request.body.type ?? 'user'; // Default to 'user'
+        const admin = false; // Default to false
+
         console.log("data::", email, name, password);
         
-        // Simulate creating user data
   try {
     // Attempt to create the user; new_user returns (success, msg, new_user_id)
     const twofa_validated = type === 'guest' ? false : true;
@@ -215,22 +236,39 @@ export default async function private_userRoutes(server: FastifyInstance, option
 
   server.put<{ Body: DfaUpdateBody, Params: DfaUpdateParams }>('/2fa/update/:id', async (request, reply) => {
     try {
+      // Security: JWT validation and authorization
+      const token = (request.cookies as any)?.jwt_transcendence;
+      if (!token) {
+        return reply.status(401).send({ error: 'Unauthorized' });
+      }
+      let tokenPayload;
+      try {
+        tokenPayload = getTokenData(token);
+      } catch {
+        return reply.status(401).send({ error: 'Invalid token' });
+      }
+
+      const id = parseInt(request.params.id, 10);
+
+      // Security check: allow if admin or self
+      if (!tokenPayload.admin && tokenPayload.id !== id) {
+        return reply.status(403).send({ error: 'Forbidden' });
+      }
+
       const twoFactorSecret = request.body?.twoFactorSecret;
       const twoFactorSecretTemp = request.body?.twoFactorSecretTemp;
-      const id = request.params.id
-      console.log("on est rentre", request.params.id);
+      
       if (twoFactorSecret)
         await server.pg.query('SELECT * FROM validate_2fa($1, $2)', [id, twoFactorSecret]);
       if (twoFactorSecretTemp)
         await server.pg.query('SELECT * FROM add_2fa_secret($1, $2)', [id, twoFactorSecretTemp]);
       else if (twoFactorSecretTemp === null)
         await server.pg.query('SELECT * FROM rm_2fa($1)', [id]);
-      console.log("on check le secret", twoFactorSecret);
-      console.log("on check le secret temp", twoFactorSecretTemp);
+      
       reply.status(200).send({ message: "user_2fa_secret_updated" });
     }
     catch (error) {
-    console.error('Insert user error:', error);
+    console.error('Update 2FA error:', error);
     return reply.status(500).send({ error: 'Internal server error' });
   }
   });
@@ -248,14 +286,39 @@ export default async function private_userRoutes(server: FastifyInstance, option
 
   server.put<{Body: passwordUpdateBody, Params: passwordUpdateParams}>('/password/:email', async (request, reply) => {
     try {
+      // Security: JWT validation and authorization
+      const token = (request.cookies as any)?.jwt_transcendence;
+      if (!token) {
+        return reply.status(401).send({ error: 'Unauthorized' });
+      }
+      let tokenPayload;
+      try {
+        tokenPayload = getTokenData(token);
+      } catch {
+        return reply.status(401).send({ error: 'Invalid token' });
+      }
+
+      // Security check: allow if admin or self
+      if (!tokenPayload.admin && tokenPayload.email !== request.params.email) {
+        return reply.status(403).send({ error: 'Forbidden' });
+      }
+
       const newPassword = request.body?.password;
       const email = request.params.email;
-      let changePassword = server.pg.query('SELECT * FROM update_user_password($1, $2)', [email, newPassword]);
-      if (!changePassword)
-        reply.status(230).send({ error: "Password dosent change" });
+      if (!newPassword) {
+        return reply.status(400).send({ error: 'Password cannot be empty' });
+      }
+      
+      const result = await server.pg.query('SELECT * FROM update_user_password($1, $2)', [email, newPassword]);
+      const row = result.rows[0];
+
+      if (!row || !row.success) {
+        return reply.status(404).send({ error: row.msg || "Password update failed" });
+      }
+      
       reply.status(200).send({ message: "user_password_updated" });
     } catch (error) {
-      console.error('Insert user error:', error);
+      console.error('Update password error:', error);
       return reply.status(500).send({ error: 'Internal server error' });
     }
   });

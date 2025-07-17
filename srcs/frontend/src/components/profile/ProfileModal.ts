@@ -1,5 +1,5 @@
 // ProfileModal: handles user profile viewing and settings modal
-import { navigate } from '../../lib/router';
+import { navigate, onRoute } from '../../lib/router';
 
 export function setupProfileModal(): void {
   // Elements
@@ -74,6 +74,13 @@ export function setupProfileModal(): void {
   profileModalCloseBtn.addEventListener('click', e => { e.preventDefault(); navigate('home'); });
   profileModal.addEventListener('click', e => { if (e.target === profileModal) navigate('home'); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && !profileModal.classList.contains('hidden')) navigate('home'); });
+
+  // Hide modal on home navigation
+  onRoute('home', () => {
+    if (profileModal && !profileModal.classList.contains('hidden')) {
+      profileModal.classList.add('hidden');
+    }
+  });
 
   // 2FA setup button
   profileSetup2FABtn.addEventListener('click', e => {

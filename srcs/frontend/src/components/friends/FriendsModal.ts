@@ -2,7 +2,7 @@
 import { show, hide } from '../../lib/dom';
 import { fetchJSON } from '../../lib/api';
 import { showPublicProfile } from '../profile/PublicProfileModal';
-import { navigate } from '../../lib/router';
+import { navigate, onRoute } from '../../lib/router';
 
 export function setupFriendsModal() {
   const friendsBtn = document.getElementById('friends-btn') as HTMLButtonElement | null;
@@ -88,7 +88,9 @@ export function setupFriendsModal() {
     if (state && state.view === 'friends') {
       openFriends();
     } else {
-      hide(friendsModal);
+      if (friendsModal) {
+        hide(friendsModal);
+      }
     }
   });
   // If loaded directly at #friends, open modal
@@ -110,6 +112,13 @@ export function setupFriendsModal() {
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && !friendsModal.classList.contains('hidden')) {
       navigate('home');
+    }
+  });
+
+  // Hide modal on home navigation
+  onRoute('home', () => {
+    if (friendsModal && !friendsModal.classList.contains('hidden')) {
+      hide(friendsModal);
     }
   });
 }

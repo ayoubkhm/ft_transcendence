@@ -44,19 +44,110 @@ export function setupTournamentDashboard() {
           tournamentTableBody.innerHTML = ''; // Clear existing rows
           tournaments.forEach((t: any) => {
             const row = document.createElement('tr');
-            row.innerHTML = `
-              <td class="px-4 py-2">${t.id}</td>
-              <td class="px-4 py-2">${t.name}</td>
-              <td class="px-4 py-2">${t.state}</td>
-              <td class="px-4 py-2">${t.nbr_players}/${t.max_players}</td>
-              <td class="px-4 py-2">N/A</td>
-              <td class="px-4 py-2">
-                <button class="bg-blue-500 text-white px-2 py-1 rounded mr-2">Join</button>
-                <button class="bg-gray-500 text-white px-2 py-1 rounded" data-id="${t.id}">Spectate</button>
-                <button class="bg-gray-500 text-white px-2 py-1 rounded" data-brackets-id="${t.id}">Brackets</button>
-              </td>
-            `;
+
+            // Sanitize and create cells
+            const idCell = document.createElement('td');
+            idCell.className = 'px-4 py-2';
+            idCell.textContent = t.id;
+            row.appendChild(idCell);
+
+            const nameCell = document.createElement('td');
+            nameCell.className = 'px-4 py-2';
+            nameCell.textContent = t.name;
+            row.appendChild(nameCell);
+
+            const stateCell = document.createElement('td');
+            stateCell.className = 'px-4 py-2';
+            stateCell.textContent = t.state;
+            row.appendChild(stateCell);
+
+            const playersCell = document.createElement('td');
+            playersCell.className = 'px-4 py-2';
+            playersCell.textContent = `${t.nbr_players}/${t.max_players}`;
+            row.appendChild(playersCell);
+
+            const winnerCell = document.createElement('td');
+            winnerCell.className = 'px-4 py-2';
+            winnerCell.textContent = 'N/A'; // Placeholder
+            row.appendChild(winnerCell);
+
+            const actionsCell = document.createElement('td');
+            actionsCell.className = 'px-4 py-2';
+            
+            const joinBtn = document.createElement('button');
+            joinBtn.className = 'bg-blue-500 text-white px-2 py-1 rounded mr-2';
+            joinBtn.textContent = 'Join';
+            joinBtn.dataset.tournamentId = t.id;
+            actionsCell.appendChild(joinBtn);
+
+            const spectateBtn = document.createElement('button');
+            spectateBtn.className = 'bg-gray-500 text-white px-2 py-1 rounded';
+            spectateBtn.dataset.id = t.id;
+            spectateBtn.textContent = 'Spectate';
+            actionsCell.appendChild(spectateBtn);
+
+            const bracketsBtn = document.createElement('button');
+            bracketsBtn.className = 'bg-gray-500 text-white px-2 py-1 rounded';
+            bracketsBtn.dataset.bracketsId = t.id;
+            bracketsBtn.textContent = 'Brackets';
+            actionsCell.appendChild(bracketsBtn);
+
+            row.appendChild(actionsCell);
             tournamentTableBody.appendChild(row);
+          });
+
+          // Add event listeners for join buttons
+          const joinButtons = tournamentTableBody.querySelectorAll('[data-tournament-id]');
+          joinButtons.forEach(button => {
+            button.addEventListener('click', async (e) => {
+              const tournamentId = (e.target as HTMLElement).dataset.tournamentId;
+              const email = localStorage.getItem('userEmail');
+              if (!email) {
+                alert('Please log in to join a tournament');
+                return;
+              }
+              let userId: number;
+              try {
+                const lookupRes = await fetch(`/api/user/lookup/${encodeURIComponent(email)}`, {
+                  method: 'POST',
+                  credentials: 'include',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({}),
+                });
+                if (!lookupRes.ok) {
+                  const err = await lookupRes.json().catch(() => ({}));
+                  alert('Failed to identify user: ' + (err.error || err.msg || lookupRes.statusText));
+                  return;
+                }
+                const userData = await lookupRes.json();
+                userId = userData.id;
+              } catch (err) {
+                console.error('Error looking up user:', err);
+                alert('Error identifying user');
+                return;
+              }
+
+              try {
+                const res = await fetch(`/api/tournament/${tournamentId}/join`, {
+                  method: 'POST',
+                  credentials: 'include',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ user_id: userId }),
+                });
+                if (!res.ok) {
+                  const err = await res.json().catch(() => ({}));
+                  alert('Failed to join tournament: ' + (err.error || err.msg || res.statusText));
+                  return;
+                }
+                alert('Successfully joined tournament');
+                // Refresh the tournament list
+                const playTournBtn = document.getElementById('play-tourn-btn') as HTMLButtonElement | null;
+                playTournBtn!.click();
+              } catch (err) {
+                console.error('Error joining tournament:', err);
+                alert('Failed to join tournament.');
+              }
+            });
           });
 
           // Add event listeners for spectate buttons
