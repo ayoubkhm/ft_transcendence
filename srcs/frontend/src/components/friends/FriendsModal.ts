@@ -22,13 +22,26 @@ export function setupFriendsModal() {
     friendRequestsList.innerHTML = '';
     try {
       // Load friends list
-      const friends = await fetchJSON<{ id: number; name: string }[]>('/api/user/friends', { credentials: 'include' });
+      const friends = await fetchJSON<{ id: number; name: string, status: 'online' | 'offline' }[]>('/api/user/friends', { credentials: 'include' });
       friends.forEach((f) => {
         const li = document.createElement('li');
-        li.className = 'px-2 py-1 bg-gray-700 rounded cursor-pointer';
-        li.textContent = f.name;
+        li.className = 'flex items-center justify-between px-2 py-1 bg-gray-700 rounded cursor-pointer';
+        
+        const nameSpan = document.createElement('span');
+        nameSpan.textContent = f.name;
+
+        const statusIndicator = document.createElement('span');
+        statusIndicator.className = `w-3 h-3 rounded-full ${f.status === 'online' ? 'bg-green-500' : 'bg-gray-500'}`;
+        
+        const container = document.createElement('div');
+        container.className = 'flex items-center gap-2';
+        container.appendChild(statusIndicator);
+        container.appendChild(nameSpan);
+
+        li.appendChild(container);
         // Click to view friend profile
-        li.addEventListener('click', () => {
+        li.addEventListener('click', (e) => {
+            e.stopPropagation();
             showPublicProfile(f.id);
         });
         friendsList.appendChild(li);

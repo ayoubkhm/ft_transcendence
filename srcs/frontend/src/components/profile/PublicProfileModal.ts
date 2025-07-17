@@ -56,7 +56,7 @@ export async function showPublicProfile(userId: number) {
         const res = await fetchJSON<{ status: string }>(`/api/user/friends/status/${user.id}`, { credentials: 'include' });
         if (res.status === 'friends') {
             publicProfileAddBtn.textContent = 'Friends';
-            publicProfileAddBtn.disabled = true;
+            publicProfileAddBtn.disabled = false;
         } else if (res.status === 'pending_sent') {
             publicProfileAddBtn.textContent = 'Cancel Request';
             publicProfileAddBtn.disabled = false;
@@ -163,6 +163,15 @@ export function setupPublicProfileModal() {
             } catch (err) {
                 console.error('Cancel friend request error:', err);
                 alert('Error canceling friend request');
+            }
+        } else if (action === 'Friends') {
+            if (publicProfileModal) {
+                publicProfileModal.classList.add('hidden');
+            }
+            const friendsModal = document.getElementById('friends-modal');
+            if (friendsModal) {
+                friendsModal.classList.remove('hidden');
+                navigate('friends');
             }
         }
     });

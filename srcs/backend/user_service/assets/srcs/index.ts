@@ -9,6 +9,7 @@ import fs from 'fs';
 import private_userRoutes from './routes/private_data';
 import public_userRoutes from './routes/public_data';
 import friendsRoutes from './routes/friends';
+import statusRoutes from './routes/status';
 // import tournamentsRoutes from './routes/tournaments';
 /* import jwt from 'jsonwebtoken'; */
 
@@ -37,6 +38,7 @@ server.register(cookiesPlugin, {});
 server.register(private_userRoutes, { prefix: '/api/user',});
 server.register(public_userRoutes, { prefix: '/api/user',});
 server.register(friendsRoutes, { prefix: '/api/user',});
+server.register(statusRoutes, { prefix: '/api/user',});
 // Tournament dashboard endpoints removed temporarily
 // server.register(tournamentsRoutes, { prefix: '/api/tournaments' });
 /* const SECRET = 'e4l+2nJoNiabS7MpIYdmzHTfs0ju5iy3xgg1o48+149NeJ4PXHzoIQ21THvoTgUGXbhF6mJYSJyU0EzEEcXiuw==';

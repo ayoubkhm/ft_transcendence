@@ -27,16 +27,9 @@ export default async function gamesRoutes (app: FastifyInstance)
 {
   // Create a new game: solo AI or PvP (first player only)
   app.post<{
-    Body: {
-		mode?: 'ai' | 'pvp';
-		difficulty?: 'easy' | 'medium' | 'hard';
-		isCustomOn?: boolean,
-		userId?: number | null,
-		tournamentId?: number,
-		round?: number
-	}
+    Body: { mode?: 'ai' | 'pvp'; difficulty?: 'easy' | 'medium' | 'hard'; isCustomOn?: boolean, userId?: number | null }
   }>('/game', async (request, reply) => {
-    const { mode = 'ai', difficulty, isCustomOn = true, tournamentId, round } = request.body;
+    const { mode = 'ai', difficulty, isCustomOn = true } = request.body;
     let userId = request.body.userId;
     if (!userId) {
         userId = 1; // FIXME: Hardcoded for debugging
@@ -45,22 +38,6 @@ export default async function gamesRoutes (app: FastifyInstance)
 
     try {
       await pgClient.connect();
-
-	  if (tournamentId && round) {
-		const res = await pgClient.query('SELECT * FROM new_game($1::INTEGER, NULL, $2, $3, $4, $5)', [userId, 'WAITING', 'TOURNAMENT', tournamentId, round]);
-		if (res.rows[0]?.success) {
-			const sqlGameId = res.rows[0].new_game_id;
-			const sessionId = randomUUID();
-			const playerId = randomUUID();
-			const game = new Game(playerId, '__PENDING__', 'medium', isCustomOn, sqlGameId);
-			sessions.set(sessionId, { game });
-			return { gameId: sessionId, playerId, token: genToken(sessionId, playerId) };
-		} else {
-			console.error("Database error message:", res.rows[0]?.msg);
-			reply.code(500).send({ error: 'Failed to create tournament game in database' });
-			return;
-		}
-	  }
 
       if (mode === 'ai') {
         const sessionId = randomUUID();
@@ -97,16 +74,15 @@ export default async function gamesRoutes (app: FastifyInstance)
             if (!state.isGameOver) {
               await game.step(1 / 60, pgClient);
             } else {
-              // Game is over, wait 2s before cleaning up to allow FE to fetch final state
+              console.log('✅ Game finished');
               clearInterval(interval);
-              setTimeout(() => {
-                console.log('✅ Game finished, cleaning up session');
-                sessions.delete(sessionId);
-              }, 2000);
+              await pgClient.end();
+              sessions.delete(sessionId);
             }
           } catch (err) {
             console.error('Error in game step:', err);
             clearInterval(interval);
+            await pgClient.end();
             sessions.delete(sessionId);
           }
         }, 1000 / 60);
@@ -136,7 +112,7 @@ export default async function gamesRoutes (app: FastifyInstance)
         }
 
         if (!sqlGameId) {
-          reply.code(500).send({ error: 'Failed to create PvP. game in database' });
+          reply.code(500).send({ error: 'Failed to create PvP game in database' });
           return;
         }
 
@@ -149,10 +125,6 @@ export default async function gamesRoutes (app: FastifyInstance)
     } catch (err) {
       console.error('❌ Fatal error in /game route:', err);
       reply.code(500).send({ error: 'Server crashed in /game route' });
-    } finally {
-      if (pgClient) {
-        pgClient.end().catch(err => console.error('Error closing DB connection:', err));
-      }
     }
   });
 
@@ -227,13 +199,10 @@ export default async function gamesRoutes (app: FastifyInstance)
             if (!state.isGameOver) {
               await session.game.step(1 / 60, pgClient); // ✅ on passe pgClient
             } else {
-              // Game is over, wait 10m before cleaning up to allow FE to fetch final state
+              console.log('🏁 PvP game over, cleaning up');
               clearInterval(interval);
-              setTimeout(async () => {
-                console.log('🏁 PvP game over, cleaning up');
-                await pgClient.end(); // ✅ on ferme proprement
-                sessions.delete(id);
-              }, 600000);
+              await pgClient.end(); // ✅ on ferme proprement
+              sessions.delete(id);
             }
           } catch (err) {
             console.error('❌ Error in PvP game loop:', err);
