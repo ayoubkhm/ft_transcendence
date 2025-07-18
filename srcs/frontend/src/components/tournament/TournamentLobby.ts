@@ -51,11 +51,11 @@ async function handleLeaveLobby() {
     }
 
     try {
-      const res = await fetch(`/api/tournaments/${userId}/leave`, {
+      const res = await fetch(`/api/tournaments/${currentTournamentName}/leave`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: currentTournamentName }),
+        body: JSON.stringify({ user_id: userId }),
       });
 
       if (res.ok) {

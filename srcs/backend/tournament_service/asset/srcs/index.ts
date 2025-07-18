@@ -4,7 +4,7 @@ import fastifyWebsocket from '@fastify/websocket';
 import 'dotenv/config';
 
 import bracketsRoute from './brackets';
-import httpRoutes from './routes';
+import httpRoutes from './routes/index';
 import websocketRoutes from './websocket';
 
 const server = Fastify();
