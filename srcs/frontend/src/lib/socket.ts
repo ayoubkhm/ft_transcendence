@@ -46,7 +46,8 @@ export function connect() {
   }
 
   // Adjust the URL to your environment (e.g., using window.location.host)
-  const wsUrl = `ws://${window.location.host}/api/tournaments/ws`;
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsUrl = `${protocol}//${window.location.host}/api/tournaments/ws`;
   console.log(`Connecting to WebSocket at ${wsUrl}`);
   
   socketClient = new WebSocket(wsUrl);

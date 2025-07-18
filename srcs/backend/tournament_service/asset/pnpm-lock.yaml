@@ -20,6 +20,9 @@ importers:
       fastify:
         specifier: ^5.4.0
         version: 5.4.0
+      ws:
+        specifier: ^8.18.3
+        version: 8.18.3
     devDependencies:
       '@types/node':
         specifier: ^20.0.0
