@@ -1,6 +1,6 @@
 import type { BracketMatch } from '../types/bracketsTypes.js';
 
-export default function renderMatch(match:BracketMatch): HTMLDivElement
+export default function renderMatch(match:BracketMatch, userId: number | null): HTMLDivElement
 {
 	const div = document.createElement("div");
 	const tag1String: string = match.p1_tag? (match.p1_tag.toString().padStart(4, '0')) : "...";
@@ -36,7 +36,7 @@ export default function renderMatch(match:BracketMatch): HTMLDivElement
 		${player1Name}
 	  	</div>
 		
-	${match.winner === true ? ` <div class="text-yellow-400 px-1 flex items-center justify-center text-base">🏆</div>` : ''}
+	${match.winner === true ? ` <div class="text-yellow-400 px-1 flex items-center justify-center text-base">���</div>` : ''}
 
 	  	<div class="text-zinc-300 tracking-wide bg-zinc-600 px-1 flex items-center justify-center w-11 text-[12px] font-bold font-mono">
 	  		<span>#</span>${tag1String}
@@ -55,6 +55,10 @@ export default function renderMatch(match:BracketMatch): HTMLDivElement
 	`;
 
 	div.className = "w-56 h-16 bg-white rounded shadow-md border border-gray-300 overflow-hidden transition-shadow duration-150 ease-in-out hover:shadow-lg hover:bg-gray-50 cursor-pointer";
+
+    if (userId && (match.p1_id === userId || match.p2_id === userId)) {
+        div.classList.add('border-2', 'border-blue-500');
+    }
 
 	return (div);
 }

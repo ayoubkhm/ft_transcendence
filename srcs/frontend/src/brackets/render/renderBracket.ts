@@ -3,7 +3,7 @@ import renderRoundColumn from "./renderRoundColumn.js"
 import type { BracketRound } from '../types/bracketsTypes.js';
 
 
-export default function renderBrackets(tname: string, tstate: string, twinner: {name: string, tag: number} | null, rounds: BracketRound[])
+export default function renderBrackets(tname: string, tstate: string, twinner: {name: string, tag: number} | null, rounds: BracketRound[], userId: number | null)
 {
 
 	const tournamentName = document.getElementById("brackets-tournament-name") as HTMLHeadingElement | null;
@@ -48,7 +48,7 @@ export default function renderBrackets(tname: string, tstate: string, twinner: {
 	{
 		const { round, matchs } = rounds[i];
 		
-		const roundColumn = renderRoundColumn(matchs, round, nbrMatchsRound1);
+		const roundColumn = renderRoundColumn(matchs, round, nbrMatchsRound1, userId);
 		wrapper.appendChild(roundColumn);
 
 		if (i < rounds.length - 1)

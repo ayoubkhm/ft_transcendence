@@ -1,7 +1,7 @@
 import renderMatch from "./renderMatch.js";
 import type { BracketMatch } from '../types/bracketsTypes.js';
 
-export default function renderRoundColumn(matches: BracketMatch[], round: number, nbrMatchsRound1: number): HTMLDivElement
+export default function renderRoundColumn(matches: BracketMatch[], round: number, nbrMatchsRound1: number, userId: number | null): HTMLDivElement
 {
 	const spacing = 74 * Math.pow(2, round) - 64;
 	var marginTop:number;
@@ -22,7 +22,7 @@ export default function renderRoundColumn(matches: BracketMatch[], round: number
 		const wrapper = document.createElement('div');
 		wrapper.style.marginTop = (i === 0) ? `${marginTop}px` : `${spacing}px`;
 
-		const matchDiv = renderMatch(match);
+		const matchDiv = renderMatch(match, userId);
 
 		wrapper.appendChild(matchDiv);
 		container.appendChild(wrapper);

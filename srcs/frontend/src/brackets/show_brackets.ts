@@ -1,20 +1,20 @@
 import renderBrackets from "./render/renderBracket.js";
 import type { BracketRound } from "./types/bracketsTypes"
 
-export default async function show_brackets(tournamentId: number)
+export default async function show_brackets(tournamentId: number, container?: HTMLElement)
 {
-    var bracketsPopup: HTMLDivElement | null = document.getElementById("brackets-popup") as HTMLDivElement | null;
-    if (!bracketsPopup)
-        return ;
-
-    bracketsPopup.classList.add('hidden');
-    
-    var bracketsContainer: HTMLDivElement | null = document.getElementById('brackets-container') as HTMLDivElement | null;
+    const bracketsContainer = container || document.getElementById('brackets-container') as HTMLDivElement | null;
     if (!bracketsContainer)
-        return ;
-    bracketsPopup.classList.remove('hidden');
+        return null;
 
-        try
+    if (!container) {
+        const bracketsPopup = document.getElementById("brackets-popup") as HTMLDivElement | null;
+        if (bracketsPopup) {
+            bracketsPopup.classList.remove('hidden');
+        }
+    }
+
+    try
     {  
         bracketsContainer.innerHTML = '';
         bracketsContainer.classList.remove('hidden');
@@ -41,11 +41,15 @@ export default async function show_brackets(tournamentId: number)
         {
             bracketsContainer.innerHTML = '';
             data = await res.json();
+            const userId = localStorage.getItem('userId');
             bracketsContainer.appendChild(renderBrackets(
                 data.tname,
                 data.tstate,
                 (data.twinner != null) ? ({name : data.twinner_name!, tag : data.twinner_tag!}) : null,
-                data.brackets));
+                data.brackets,
+                userId ? parseInt(userId, 10) : null
+            ));
+            return data;
             
         }
         catch (err)
@@ -59,5 +63,6 @@ export default async function show_brackets(tournamentId: number)
     {
         bracketsContainer.innerHTML = '<p>Failed to load brackets...</p>';
         console.error('[loadBrackets]', err);
+        return null;
     }
 }

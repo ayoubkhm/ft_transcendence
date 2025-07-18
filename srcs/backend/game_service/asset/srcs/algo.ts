@@ -415,18 +415,23 @@ export class Game
 		// 5) Fin de partie ?
 		if (left.score >= 7 || right.score >= 7)
 		{
-			this.state.winner = left.score > right.score ? 'left' : 'right';
-			console.log("\n\n\nHEYYYYYYYYYY ITS MEEEEEEEEE\n\n\n\n");
-			try
-			{
-				const res = await pgClient.query('SELECT * FROM win_game($1::INTEGER, $2::BOOLEAN)', [this.getGameId(), this.state.winner === 'left']);
-				console.log(`✅ Game ${this.getGameId()} marked as finished in DB`);
-				if (res.rows.length > 0 && res.rows[0].msg)
-					console.log(res.rows[0].msg);
-			}
-			catch (err)
-				{console.error(`❌ Error finalizing game ${this.getGameId()}:`, err);}
 			this.state.isGameOver = true;
+			this.state.winner = left.score > right.score ? 'left' : 'right';
+			const winner = this.state.winner === 'left' ? left : right;
+			
+			// If this is a tournament game, notify the tournament_service
+			if (this.gameId) {
+				fetch('http://tournament_service:3000/api/tournaments/game/end', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						gameId: this.gameId,
+						winnerId: winner.id,
+						p1_score: left.score,
+						p2_score: right.score,
+					}),
+				}).catch(err => console.error('Failed to notify tournament_service:', err));
+			}
 		}
 	}
     /**

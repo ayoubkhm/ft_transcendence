@@ -1,5 +1,6 @@
 // TournamentLobby.ts
 import { navigate } from '../../lib/router';
+import { showTournamentGame } from './TournamentGame';
 
 const tournamentLobbyModal = document.getElementById('tournament-lobby-modal') as HTMLElement;
 const tournamentLobbyClose = document.getElementById('tournament-lobby-close') as HTMLButtonElement;
@@ -106,7 +107,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (startTournamentBtn) {
     startTournamentBtn.addEventListener('click', async () => {
-      if (!currentTournamentName) return;
+      if (!currentTournamentName || !currentTournamentId) return;
 
       try {
         const res = await fetch(`/api/tournaments/${currentTournamentName}/start`, {
@@ -115,8 +116,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         if (res.ok) {
-          alert('Tournament started!');
-          // Optionally, you could transition to a brackets view here
+          // Hide the lobby modal
+          if (tournamentLobbyModal) {
+            tournamentLobbyModal.classList.add('hidden');
+          }
+          // Show the tournament game modal
+          showTournamentGame(currentTournamentId);
         } else {
           const err = await res.json();
           alert(`Failed to start tournament: ${err.error || err.msg}`);
@@ -140,8 +145,11 @@ document.addEventListener('DOMContentLoaded', () => {
           });
 
           if (res.ok) {
-            // The server will notify clients via WebSocket, so no alert is needed here for the owner.
-            // The owner will be redirected by the socket message handler.
+            // Deletion was successful, close the modal for the owner.
+            // Other clients will be notified by the WebSocket message.
+            closeSocket();
+            tournamentLobbyModal?.classList.add('hidden');
+            navigate('home');
           } else {
             const err = await res.json();
             alert(`Failed to delete tournament: ${err.error || err.msg}`);

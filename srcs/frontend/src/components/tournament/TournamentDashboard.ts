@@ -94,57 +94,6 @@ export function setupTournamentDashboard() {
             const actionsCell = document.createElement('td');
             actionsCell.className = 'px-4 py-2';
 
-            const currentUserId = localStorage.getItem('userId');
-            if (currentUserId && parseInt(currentUserId, 10) === t.owner_id) {
-                const startBtn = document.createElement('button');
-                startBtn.className = 'bg-green-500 text-white px-2 py-1 rounded mr-2';
-                startBtn.textContent = 'Start';
-                startBtn.addEventListener('click', async () => {
-                    try {
-                        const res = await fetch(`/api/tournaments/${t.name}/start`, {
-                            method: 'POST',
-                            credentials: 'include',
-                        });
-                        if (res.ok) {
-                            alert('Tournament started successfully');
-                            playTournBtn!.click();
-                        } else {
-                            const err = await res.json().catch(() => ({}));
-                            alert('Failed to start tournament: ' + (err.error || err.msg || res.statusText));
-                        }
-                    } catch (err) {
-                        console.error('Error starting tournament:', err);
-                        alert('Failed to start tournament.');
-                    }
-                });
-                actionsCell.appendChild(startBtn);
-
-                const deleteBtn = document.createElement('button');
-                deleteBtn.className = 'bg-red-500 text-white px-2 py-1 rounded mr-2';
-                deleteBtn.textContent = 'Delete';
-                deleteBtn.addEventListener('click', async () => {
-                    if (confirm(`Are you sure you want to delete the tournament "${t.name}"?`)) {
-                        try {
-                            const res = await fetch(`/api/tournaments/${t.name}`, {
-                                method: 'DELETE',
-                                credentials: 'include',
-                            });
-                            if (res.ok) {
-                                alert('Tournament deleted successfully');
-                                playTournBtn!.click();
-                            } else {
-                                const err = await res.json().catch(() => ({}));
-                                alert('Failed to delete tournament: ' + (err.error || err.msg || res.statusText));
-                            }
-                        } catch (err) {
-                            console.error('Error deleting tournament:', err);
-                            alert('Failed to delete tournament.');
-                        }
-                    }
-                });
-                actionsCell.appendChild(deleteBtn);
-            }
-            
             const joinBtn = document.createElement('button');
             joinBtn.className = 'bg-blue-500 text-white px-2 py-1 rounded mr-2';
             joinBtn.textContent = 'Join';
@@ -215,6 +164,10 @@ export function setupTournamentDashboard() {
                   return;
                 }
                 const tournamentName = (e.target as HTMLElement).closest('tr')?.querySelector('td:nth-child(2)')?.textContent || '';
+                // Hide the dashboard modal before showing the lobby
+                if (tournamentModal) {
+                  tournamentModal.classList.add('hidden');
+                }
                 showTournamentLobby(Number(tournamentId), tournamentName);
               } catch (err) {
                 console.error('Error joining tournament:', err);
@@ -251,7 +204,7 @@ export function setupTournamentDashboard() {
                 alert('Failed to load tournament id.');
                 return ;
               }
-              show_brackets(tournamentId!);
+              await show_brackets(tournamentId!);
               
             });
           });

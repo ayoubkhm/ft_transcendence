@@ -164,6 +164,64 @@ export default async function gamesRoutes (app: FastifyInstance)
     return state
   })
 
+  app.post('/game/:id/start', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const gameId = parseInt(id, 10);
+
+    if (sessions.has(id)) {
+      return { ok: true, message: 'Game already running' };
+    }
+
+    const pgClient = new Client({ connectionString: process.env.DATABASE_URL });
+    try {
+      await pgClient.connect();
+      const gameRes = await pgClient.query(
+        'SELECT g.p1_id, g.p2_id, u1.name as p1_name, u2.name as p2_name FROM games g JOIN users u1 ON g.p1_id = u1.id JOIN users u2 ON g.p2_id = u2.id WHERE g.id = $1',
+        [gameId]
+      );
+
+      if (gameRes.rows.length === 0) {
+        reply.code(404);
+        return { error: 'Game not found in database' };
+      }
+
+      const gameData = gameRes.rows[0];
+      // We need to create a token for each player to authenticate their inputs
+      const p1Token = genToken(id, gameData.p1_id.toString());
+      const p2Token = genToken(id, gameData.p2_id.toString());
+
+      const game = new Game(gameData.p1_name, gameData.p2_name, 'medium', true, gameId);
+      
+      const interval = setInterval(async () => {
+        try {
+          const state = game.getState();
+          if (!state.isGameOver) {
+            await game.step(1 / 60, pgClient);
+          } else {
+            clearInterval(interval);
+            await pgClient.end();
+            setTimeout(() => {
+              sessions.delete(id);
+            }, 30000);
+          }
+        } catch (err) {
+          console.error('Error in game step:', err);
+          clearInterval(interval);
+          await pgClient.end();
+          sessions.delete(id);
+        }
+      }, 1000 / 60);
+
+      sessions.set(id, { game, interval });
+      // Return tokens for both players
+      return { ok: true, p1Token, p2Token };
+    } catch (err) {
+      console.error('Error starting game from DB:', err);
+      reply.code(500);
+      return { error: 'Failed to start game' };
+    }
+  });
+
   app.post<{ Params: { id: string }, Body: { username: string } }>('/game/:id/join', async (request, reply) => {
     const { id } = request.params;
     const { username } = request.body;

@@ -1,6 +1,7 @@
 import { drawGame } from './GameCanvas';
 import { navigate, onRoute } from '../../lib/router';
 import { loginAsGuest } from '../auth/Auth';
+import { showTournamentGame } from '../tournament/TournamentGame';
 
 const imagePaths = {
   fake: './fake.png',
@@ -30,6 +31,7 @@ function loadImage(type: string, src: string): Promise<void> {
 
 // Canvas and related DOM elements
 const canvas = document.getElementById('game-canvas') as HTMLCanvasElement | null;
+const canvasWrapper = document.getElementById('canvas-wrapper') as HTMLElement | null;
 const ctx = canvas?.getContext('2d');
 const hero = document.getElementById('hero') as HTMLElement | null;
 const resultPre = document.getElementById('game-result') as HTMLPreElement | null;
@@ -152,8 +154,18 @@ async function fetchAndDraw(): Promise<void> {
       if(playerLeftName) playerLeftName.classList.add('hidden');
       if(playerRightName) playerRightName.classList.add('hidden');
 
-      hero.classList.remove('hidden');
-      canvas.classList.add('hidden');
+      // Check if this was a tournament game
+      const gameType = localStorage.getItem('currentGameType');
+      if (gameType === 'tournament') {
+        const tournamentId = localStorage.getItem('currentTournamentId');
+        if (tournamentId) {
+          showTournamentGame(parseInt(tournamentId, 10));
+        }
+      } else {
+        hero.classList.remove('hidden');
+        canvas.classList.add('hidden');
+      }
+
       togglePlayButtons(false);
       forfeitBtn.classList.add('hidden');
       shareDiv.classList.add('hidden');
@@ -161,6 +173,8 @@ async function fetchAndDraw(): Promise<void> {
       localStorage.removeItem('playerId');
       localStorage.removeItem('authToken');
       localStorage.removeItem('mode');
+      localStorage.removeItem('currentGameType');
+      localStorage.removeItem('currentTournamentId');
     }
   } catch (err) {
     console.error('[fetchAndDraw]', err);
@@ -226,6 +240,39 @@ function togglePlayButtons(disabled: boolean): void {
   playAIBtn.disabled = disabled;
   playPVPBtn.disabled = disabled;
 }
+
+export function pollGame(id: string) {
+  gameId = id;
+  const localUserId = localStorage.getItem('userId');
+  if (!localUserId) {
+      console.error("Cannot start game: user not logged in.");
+      return;
+  }
+  playerId = localUserId;
+  authToken = localStorage.getItem('authToken')!; 
+
+  // Navigate to the game URL to enable the polling loop
+  navigate('game', { id });
+
+  // Show the game canvas and hide other UI elements
+  if (canvas && hero && resultPre && forfeitBtn) {
+    canvas.classList.remove('hidden');
+    hero.classList.add('hidden');
+    resultPre.classList.add('hidden');
+    forfeitBtn.classList.remove('hidden');
+    forfeitBtn.disabled = false;
+  }
+  
+  togglePlayButtons(true);
+  canvas.focus();
+  lastInput = null;
+  
+  fetchAndDraw();
+  pollTimer = window.setInterval(fetchAndDraw, POLL_MS);
+  window.addEventListener('keydown', onKeyDown);
+  window.addEventListener('keyup', onKeyUp);
+}
+
 
 /** Set up game UI and event handlers */
 export function setupGame(): void {
@@ -394,4 +441,16 @@ function resumeGame() {
   window.addEventListener('keyup', onKeyUp);
   forfeitBtn.classList.remove('hidden');
   forfeitBtn.disabled = false;
+}
+
+export function attachCanvasTo(element: HTMLElement) {
+  if (canvas) {
+    element.appendChild(canvas);
+  }
+}
+
+export function detachCanvas() {
+  if (canvas && canvasWrapper) {
+    canvasWrapper.appendChild(canvas);
+  }
 }
