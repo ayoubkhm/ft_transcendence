@@ -27,30 +27,29 @@ export default async function gamesRoutes (app: FastifyInstance)
 {
   // Create a new game: solo AI or PvP (first player only)
   app.post<{
-    Body: { mode?: 'ai' | 'pvp'; difficulty?: 'easy' | 'medium' | 'hard'; isCustomOn?: boolean, userId?: number | null }
+    Body: { mode?: 'ai' | 'pvp'; difficulty?: 'easy' | 'medium' | 'hard'; isCustomOn?: boolean, username?: string }
   }>('/game', async (request, reply) => {
-    const { mode = 'ai', difficulty, isCustomOn = true } = request.body;
-    let userId = request.body.userId;
-    if (!userId) {
-        userId = 1; // FIXME: Hardcoded for debugging
+    const { mode = 'ai', difficulty, isCustomOn = true, username } = request.body;
+
+    if (!username) {
+        return reply.code(401).send({ error: 'You must be logged in to play.' });
     }
     const pgClient = new Client({ connectionString: process.env.DATABASE_URL });
 
     try {
       await pgClient.connect();
+      
+      const userRes = await pgClient.query('SELECT id FROM users WHERE name = $1', [username]);
+      if (userRes.rows.length === 0) {
+          return reply.code(404).send({ error: 'User not found' });
+      }
+      const userId = userRes.rows[0].id;
 
       if (mode === 'ai') {
-        const sessionId = randomUUID();
-        const playerId = randomUUID();
         const level = difficulty ?? 'medium';
         let sqlGameId: number | null = null;
 
-        let res;
-        if (userId) {
-            res = await pgClient.query('SELECT * FROM new_game($1::INTEGER)', [userId]);
-        } else {
-            res = await pgClient.query('SELECT * FROM new_game()');
-        }
+        const res = await pgClient.query('SELECT * FROM new_game($1::INTEGER)', [userId]);
 
         if (res.rows[0]?.success) {
           sqlGameId = res.rows[0].new_game_id;
@@ -65,8 +64,9 @@ export default async function gamesRoutes (app: FastifyInstance)
           return;
         }
 
-        const game = new Game(playerId, 'AI', level, isCustomOn, sqlGameId);
+        const game = new Game(username, 'AI', level, isCustomOn, sqlGameId);
         console.log('🎮 Game created with SQL ID:', sqlGameId);
+        const gameIdString = sqlGameId.toString();
 
         const interval = setInterval(async () => {
           try {
@@ -74,33 +74,30 @@ export default async function gamesRoutes (app: FastifyInstance)
             if (!state.isGameOver) {
               await game.step(1 / 60, pgClient);
             } else {
-              console.log('✅ Game finished');
+              console.log('✅ Game finished, starting 30s cleanup timer.');
               clearInterval(interval);
               await pgClient.end();
-              sessions.delete(sessionId);
+              // Keep session for 30s for clients to fetch final state
+              setTimeout(() => {
+                console.log(`Cleaning up AI game session ${gameIdString}`);
+                sessions.delete(gameIdString);
+              }, 30000);
             }
           } catch (err) {
             console.error('Error in game step:', err);
             clearInterval(interval);
             await pgClient.end();
-            sessions.delete(sessionId);
+            sessions.delete(gameIdString); // Clean up immediately on error
           }
         }, 1000 / 60);
 
-        sessions.set(sessionId, { game, interval });
-        return { gameId: sessionId, playerId, token: genToken(sessionId, playerId) };
+        sessions.set(gameIdString, { game, interval });
+        return { gameId: gameIdString, playerId: username, token: genToken(gameIdString, username) };
       }
 
       if (mode === 'pvp') {
-        const sessionId = randomUUID();
-        const playerId = randomUUID();
         const level = difficulty ?? 'medium';
         let sqlGameId: number | null = null;
-
-        if (!userId) {
-            reply.code(401).send({ error: 'You must be logged in to create a PvP game.' });
-            return;
-        }
 
         const res = await pgClient.query('SELECT * FROM new_game($1::INTEGER, NULL, $2)', [userId, 'WAITING']);
         if (res.rows[0]?.success) {
@@ -116,9 +113,10 @@ export default async function gamesRoutes (app: FastifyInstance)
           return;
         }
 
-        const game = new Game(playerId, '__PENDING__', level, isCustomOn, sqlGameId);
-        sessions.set(sessionId, { game });
-        return { gameId: sessionId, playerId, token: genToken(sessionId, playerId) };
+        const game = new Game(username, '__PENDING__', level, isCustomOn, sqlGameId);
+        const gameIdString = sqlGameId.toString();
+        sessions.set(gameIdString, { game });
+        return { gameId: gameIdString, playerId: username, token: genToken(gameIdString, username) };
       }
 
       reply.code(400).send({ error: 'Invalid mode' });
@@ -166,13 +164,19 @@ export default async function gamesRoutes (app: FastifyInstance)
     return state
   })
 
-  app.post<{ Params: { id: string } }>('/game/:id/join', async (request, reply) => {
+  app.post<{ Params: { id: string }, Body: { username: string } }>('/game/:id/join', async (request, reply) => {
     const { id } = request.params;
+    const { username } = request.body;
     const session = sessions.get(id);
 
     if (!session) {
       reply.code(404);
       return { error: 'Game not found' };
+    }
+
+    if (!username) {
+        reply.code(401).send({ error: 'You must be logged in to join a PvP game.' });
+        return;
     }
 
     const currentPlayers = session.game.getState().players;
@@ -182,8 +186,7 @@ export default async function gamesRoutes (app: FastifyInstance)
     }
 
     // 👤 Nouveau joueur
-    const newPlayerId = randomUUID();
-    session.game.joinPlayer(newPlayerId);
+    session.game.joinPlayer(username);
 
     // ▶️ Lancer la simulation si ce n’est pas déjà fait
     if (!session.interval) {
@@ -199,15 +202,20 @@ export default async function gamesRoutes (app: FastifyInstance)
             if (!state.isGameOver) {
               await session.game.step(1 / 60, pgClient); // ✅ on passe pgClient
             } else {
-              console.log('🏁 PvP game over, cleaning up');
+              console.log('🏁 PvP game over, starting 30s cleanup timer.');
               clearInterval(interval);
               await pgClient.end(); // ✅ on ferme proprement
-              sessions.delete(id);
+              // Keep session for 30s for clients to fetch final state
+              setTimeout(() => {
+                console.log(`Cleaning up PvP game session ${id}`);
+                sessions.delete(id);
+              }, 30000);
             }
           } catch (err) {
             console.error('❌ Error in PvP game loop:', err);
             clearInterval(interval);
             await pgClient.end();
+            sessions.delete(id); // Clean up immediately on error
           }
         }, 1000 / 60);
 
@@ -218,7 +226,7 @@ export default async function gamesRoutes (app: FastifyInstance)
         return { error: 'Failed to start game loop' };
       }
     }
-    return { gameId: id, playerId: newPlayerId, token: genToken(id, newPlayerId) };
+    return { gameId: id, playerId: username, token: genToken(id, username) };
   });
 
   

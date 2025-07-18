@@ -7,6 +7,19 @@ const PADDLE_H = 80;
 const BBALL_R = BALL_R * 4;
 
 export function drawGame(ctx: CanvasRenderingContext2D, state: any, images: Record<string, HTMLImageElement>) {
+  const playerLeftName = document.getElementById('player-left-name') as HTMLElement;
+  const playerRightName = document.getElementById('player-right-name') as HTMLElement;
+
+  if (state.players) {
+    playerLeftName.textContent = state.players[0].id;
+    playerRightName.textContent = state.players[1].id === '__PENDING__' ? 'Waiting...' : state.players[1].id;
+    playerLeftName.classList.remove('hidden');
+    playerRightName.classList.remove('hidden');
+  } else {
+    playerLeftName.classList.add('hidden');
+    playerRightName.classList.add('hidden');
+  }
+
   ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
   if (state.countdown && state.countdown > 0) {
     const prevAlign = ctx.textAlign;

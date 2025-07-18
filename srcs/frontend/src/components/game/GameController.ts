@@ -124,19 +124,33 @@ async function fetchAndDraw(): Promise<void> {
   }
 
   try {
-    const res = await fetch(`/api/game/${gameId}/state`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const state = await res.json();
-    drawGame(ctx, state, images);
-    if (state.isGameOver && pollTimer !== undefined) {
+    // Get the detailed state for rendering from the single source of truth: the game_service.
+    const renderRes = await fetch(`/api/game/${gameId}/state`);
+    if (!renderRes.ok) throw new Error(`HTTP ${renderRes.status} on render state`);
+    const renderState = await renderRes.json();
+    drawGame(ctx, renderState, images);
+
+    // Use the isGameOver flag from the game_service to end the game.
+    if (renderState.isGameOver && pollTimer !== undefined) {
       clearInterval(pollTimer);
       pollTimer = undefined;
       lastInput = null;
       if (document.fullscreenElement) {
         document.exitFullscreen?.();
       }
+      
+      const winnerSide = renderState.winner;
+      const winner = renderState.players.find(p => p.side === winnerSide);
+      
       resultPre.classList.remove('hidden');
-      resultPre.textContent = `Game Over — winner: ${state.winner}`;
+      resultPre.textContent = `Game Over — winner: ${winner ? winner.id : 'Unknown'}`;
+      
+      // Hide player names
+      const playerLeftName = document.getElementById('player-left-name') as HTMLElement;
+      const playerRightName = document.getElementById('player-right-name') as HTMLElement;
+      if(playerLeftName) playerLeftName.classList.add('hidden');
+      if(playerRightName) playerRightName.classList.add('hidden');
+
       hero.classList.remove('hidden');
       canvas.classList.add('hidden');
       togglePlayButtons(false);
@@ -164,9 +178,15 @@ export async function startGame(mode: 'ai' | 'pvp', difficulty?: string): Promis
   // resize canvas omitted for brevity
   canvas.focus();
   lastInput = null;
+  statusCheckCounter = 0;
   try {
     const isCustomOn = mode === 'ai' ? aiModalCustomToggle.checked : pvpModalCustomToggle.checked;
-    const body: any = { mode, isCustomOn };
+    const username = localStorage.getItem('username');
+    if (!username) {
+        alert('You must be logged in to play.');
+        return;
+    }
+    const body: any = { mode, isCustomOn, username };
     if (difficulty) body.difficulty = difficulty;
     const res = await fetch('/api/game', {
       method: 'POST',
@@ -279,10 +299,19 @@ export function setupGame(): void {
     e.preventDefault();
     const joinId = pvpModalJoinInput.value.trim();
     if (!joinId) { alert('Please enter a game ID to join'); return; }
+    const username = localStorage.getItem('username');
+    if (!username) {
+        alert('You must be logged in to join a game.');
+        return;
+    }
     try {
       // Preload images before joining
       await Promise.all(Object.entries(imagePaths).map(([type, src]) => loadImage(type, src)));
-      const res = await fetch(`/api/game/${joinId}/join`, { method: 'POST' });
+      const res = await fetch(`/api/game/${joinId}/join`, { 
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username })
+      });
       const data = await res.json();
       if (!res.ok) { alert(data.error || 'Failed to join game'); return; }
       gameId = data.gameId; playerId = data.playerId; authToken = data.token;
