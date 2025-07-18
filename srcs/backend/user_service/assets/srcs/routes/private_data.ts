@@ -165,7 +165,6 @@ export default async function private_userRoutes(server: FastifyInstance, option
     if (!result || result.rows.length === 0) {
       return reply.status(404).send({ error: 'User not found' });
     }
-    console.log('[LOOKUP] Utilisateur trouvé :', result.rows[0]);
     return reply.send(result.rows[0]);
 
   } catch (error) {

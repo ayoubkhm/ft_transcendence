@@ -45,7 +45,6 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
       });
       let user;
       const lookupdata = await response.json();
-      console.log("LOOKUPDATA: ", lookupdata);
       if (response.ok && !(error in lookupdata)) {
         if (!lookupdata.provider || lookupdata.provider !== 'google') {
           // User exists but not linked to Google, update provider
@@ -55,7 +54,6 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
       else {
         // User does not exist, create a new one
         const name = userInfo.given_name.trim().replace(/[^a-zA-Z0-9 ]/g, '_');
-        console.log('name', name);
         const response = await fetch(`http://user_service:3000/api/user/create`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -74,7 +72,6 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
         }
 
         user = await response.json();
-        console.log('[USER DATA] :', user)
       }
         const payloadBase = {
           id : user.id,
@@ -83,16 +80,13 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
           admin: user.admin,
           twofactorSecret: user.twofa_secret,
         };
-        console.log('[LA DATA] :', payloadBase);
         const jwtpayload = {
           data: { 
           ...payloadBase,
           dfa: !user.twofa_validated
           }
         };
-        console.log('[LA DATA SUITE] :', jwtpayload);
         const jwttoken = jwt.sign(jwtpayload, process.env.JWT_SECRET as string, { expiresIn: '24h' });
-        console.log("token:", jwttoken);
         if (jwttoken) 
           return reply.cookie('jwt_transcendence', jwttoken, {
             path: '/',
@@ -118,7 +112,6 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
 
   app.post('/guest', async (req, res) => {
     const name = "guest" + generateRandomName();
-    console.log("Nameg guest =", name);
     if (!name)
       return (res.status(230).send({ error: "1006" }));
     try {
@@ -150,7 +143,6 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
       const user = data;
       if (!user)
         throw (new Error("cannot upsert user in prisma"));
-      console.log("User guest created:", user);
       const token = jwt.sign({
         data: {
           id: user.id,
@@ -202,15 +194,11 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
                 }),
             });
             const data = await response.json();
-            console.log('[DATA signup] =', data);
             if (response.status != 200)
                 return (res.status(response.status).send({ error: data.error}))
             const user = data;
-            console.log('[DATA signup user] =', user);
             if (!user)
                 throw(new Error("cannot upsert user in prisma"));
-            console.log("🔐 JWT_SECRET =", process.env.JWT_SECRET);
-            console.log("ID DE SIGNUP===>", user.id);
             const token = jwt.sign({
             data: {
                 id: user.id,
@@ -221,7 +209,6 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
                 dfa: true
             }
             }, process.env.JWT_SECRET as string, { expiresIn: '24h' });
-            console.log('[TOKEN JWT Signup] =', token);
             if (!token)
                 throw(new Error("cannot generate user token"));
             return (res.cookie('jwt_transcendence', token, {
@@ -245,8 +232,6 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
       try {
       const email = request.body.email;
       const password = request.body.password;
-      console.log('Login attempt for email:', email);
-      console.log('Password:', password);
       if (
         !email ||
         !password ||
@@ -268,7 +253,6 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
         }),
       });
       const data = await response.json();
-      console.log("data:::::::::::::::::::", data);
       if (response.status !== 200)
         return reply.status(response.status).send({ error: data.error || 'Unknown error' });
       const user = data;
@@ -277,7 +261,6 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
       const isValid = await bcrypt.compare(password as string, user.password);
       if (!isValid)
         return reply.status(401).send({ error: 'Invalid email or password' });
-      console.log("[USER DATA]: ", user);
 
       // Notify user_service that the user is logging in
       await fetch(`http://user_service:3000/api/user/status`, {
@@ -292,7 +275,6 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
       
       if (user.twofa_validated) {
         
-        console.log("on est dans twofa TRUE", user);
         const pendingToken = jwt.sign(
           { data: { id: user.id, email, name: user.name, admin: user.admin, twoFactorSecret: user.twofa_secret, dfa: false } },
           process.env.JWT_SECRET as string,
@@ -308,7 +290,6 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
           sameSite: 'lax',
         }).send({ response: "success", need2FA: true });
       } else {
-        console.log("on est dans twofa FALSE", user.id);
         const token = jwt.sign({ data: {
           id: user.id,
           email: email,
@@ -317,11 +298,9 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
           twoFactorSecret: user.twofa_secret,
           dfa: true
         }}, process.env.JWT_SECRET as string, { expiresIn: '24h' });
-      console.log("token:", token);
       if (!token)
         throw (new Error("cannot generate user token"));
       // If no 2FA, send JWT token directly
-      console.log("token:", token);
       return reply.cookie('jwt_transcendence', token, {
         httpOnly: true,
         path: '/',

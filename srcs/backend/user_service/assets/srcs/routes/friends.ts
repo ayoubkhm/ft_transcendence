@@ -157,9 +157,7 @@ export default async function friendsRoutes(server: FastifyInstance, options: an
             if (!token)
                 return reply.status(230).send({ error: "0403" });
             const id = getTokenData(token).id;
-            console.log("ID", id);
             const targetID = Number(request.params.id);
-            console.log("ID", targetID);
             if (!id || !targetID)
                 return reply.status(230).send({ error: "0403" });
             if (id === targetID)

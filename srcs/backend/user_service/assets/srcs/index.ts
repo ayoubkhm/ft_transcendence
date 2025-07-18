@@ -40,23 +40,6 @@ server.register(private_userRoutes, { prefix: '/api/user',});
 server.register(public_userRoutes, { prefix: '/api/user',});
 server.register(friendsRoutes, { prefix: '/api/user',});
 server.register(statusRoutes, { prefix: '/api/user',});
-// Tournament dashboard endpoints removed temporarily
-// server.register(tournamentsRoutes, { prefix: '/api/tournaments' });
-/* const SECRET = 'e4l+2nJoNiabS7MpIYdmzHTfs0ju5iy3xgg1o48+149NeJ4PXHzoIQ21THvoTgUGXbhF6mJYSJyU0EzEEcXiuw==';
-
-const payload = {
-  data: {
-    id: 1,
-    email: 'mehdimail',
-    name: 'mehdi',
-    isAdmin: false,
-    twoFactorSecret: null,
-    dfa: true
-  }
-};
-
-const token = jwt.sign(payload, SECRET, { expiresIn: '24h' });
-console.log(token); */
 
 console.log(server.printRoutes());
 
