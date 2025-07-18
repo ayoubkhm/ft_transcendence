@@ -1,287 +1,204 @@
 // TournamentDashboard: handles listing, creating, and managing tournaments
-import show_brackets from '../../brackets/show_brackets.js';
+import { on, joinTournament } from '../../lib/socket';
 import { showTournamentLobby } from './TournamentLobby';
-import { loginAsGuest } from '../auth/Auth';
-
+import { loginAsGuest, getCurrentUserId } from '../auth/Auth';
 import { navigate, onRoute } from '../../lib/router';
+import show_brackets from '../../brackets/show_brackets.js';
+
+// Store the last received tournament list
+let currentTournaments: any[] = [];
+
+/**
+ * Renders the list of tournaments into the table.
+ * @param tournaments The array of tournament objects.
+ */
+async function renderTournamentList(tournaments: any[]) {
+  currentTournaments = tournaments; // Cache the latest list
+  const tournamentTableBody = document.getElementById('tournament-table-body') as HTMLTableSectionElement | null;
+  if (!tournamentTableBody) return;
+
+  tournamentTableBody.innerHTML = ''; // Clear existing rows
+
+  for (const t of tournaments) {
+    const row = document.createElement('tr');
+    row.dataset.tournamentId = t.id;
+
+    // Cells for ID, Name, State, Players
+    row.innerHTML = `
+      <td class="px-4 py-2">${t.id}</td>
+      <td class="px-4 py-2">${t.name}</td>
+      <td class="px-4 py-2 owner-name" data-owner-id="${t.owner_id}">Loading...</td>
+      <td class="px-4 py-2">${t.state}</td>
+      <td class="px-4 py-2">${t.nbr_players}/${t.max_players}</td>
+      <td class="px-4 py-2 actions"></td>
+    `;
+
+    // Create and append buttons to the actions cell
+    const actionsCell = row.querySelector('.actions')!;
+    
+    const joinBtn = document.createElement('button');
+    joinBtn.className = 'bg-blue-500 text-white px-2 py-1 rounded mr-2 join-btn';
+    joinBtn.textContent = 'Join';
+    actionsCell.appendChild(joinBtn);
+
+    const spectateBtn = document.createElement('button');
+    spectateBtn.className = 'bg-gray-500 text-white px-2 py-1 rounded spectate-btn';
+    spectateBtn.textContent = 'Spectate';
+    actionsCell.appendChild(spectateBtn);
+
+    const bracketsBtn = document.createElement('button');
+    bracketsBtn.className = 'bg-gray-500 text-white px-2 py-1 rounded ml-2 brackets-btn';
+    bracketsBtn.textContent = 'Brackets';
+    actionsCell.appendChild(bracketsBtn);
+
+    tournamentTableBody.appendChild(row);
+  }
+  
+  // Asynchronously fetch owner names after rendering the basic table
+  fetchOwnerNames();
+}
+
+/**
+ * Fetches and populates the owner names for the visible rows.
+ */
+async function fetchOwnerNames() {
+    const ownerCells = document.querySelectorAll('.owner-name[data-owner-id]');
+    for (const cell of ownerCells) {
+        const ownerId = (cell as HTMLElement).dataset.ownerId;
+        if (ownerId) {
+            try {
+                const userRes = await fetch(`/api/user/search/${ownerId}`, { credentials: 'include' });
+                if (userRes.ok) {
+                    const userData = await userRes.json();
+                    cell.textContent = userData.profile.name;
+                } else {
+                    cell.textContent = 'Unknown';
+                }
+            } catch (err) {
+                cell.textContent = 'Unknown';
+            }
+        }
+    }
+}
+
 export function setupTournamentDashboard() {
   const tournamentModal = document.getElementById('tournament-modal') as HTMLElement | null;
   const tournamentModalClose = document.getElementById('tournament-modal-close') as HTMLButtonElement | null;
   const tournamentTableBody = document.getElementById('tournament-table-body') as HTMLTableSectionElement | null;
-  // Close handlers for tournament modal
+
+  // --- Modal Handling ---
   const closeModal = () => {
-    if (tournamentModal) {
-      tournamentModal.classList.add('hidden');
-    }
+    if (tournamentModal) tournamentModal.classList.add('hidden');
     navigate('home');
   };
 
   if (tournamentModal && tournamentModalClose) {
     tournamentModalClose.addEventListener('click', (e) => { e.preventDefault(); closeModal(); });
-    tournamentModal.addEventListener('click', (e) => {
-      if (e.target === tournamentModal) closeModal();
-    });
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && !tournamentModal.classList.contains('hidden')) {
-        closeModal();
+    tournamentModal.addEventListener('click', (e) => { if (e.target === tournamentModal) closeModal(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !tournamentModal.classList.contains('hidden')) closeModal(); });
+  }
+  onRoute('home', () => { if (tournamentModal) tournamentModal.classList.add('hidden'); });
+
+  // --- WebSocket Event Handling ---
+  on('dashboard-update', (data) => {
+    console.log('Received dashboard-update:', data);
+    renderTournamentList(data);
+  });
+
+  on('tournament-update', (data) => {
+    console.log('Received single tournament-update:', data);
+    // Find and update the specific tournament in our cached list
+    const index = currentTournaments.findIndex(t => t.id === data.id);
+    if (index !== -1) {
+      currentTournaments[index] = data;
+      renderTournamentList(currentTournaments); // Re-render the whole list for simplicity
+    }
+  });
+
+  // --- Button Event Delegation ---
+  if (tournamentTableBody) {
+    tournamentTableBody.addEventListener('click', async (e) => {
+      const target = e.target as HTMLElement;
+      const row = target.closest('tr');
+      if (!row) return;
+      
+      const tournamentId = Number(row.dataset.tournamentId);
+      const tournament = currentTournaments.find(t => t.id === tournamentId);
+      if (!tournament) return;
+
+      // Handle JOIN button clicks
+      if (target.classList.contains('join-btn')) {
+        const userId = await getCurrentUserId();
+        if (!userId) {
+            console.error("Could not get user ID. Prompting guest login.");
+            await loginAsGuest();
+            const newUserId = await getCurrentUserId();
+            if (!newUserId) {
+                alert("Failed to login as guest. Cannot join tournament.");
+                return;
+            }
+            joinTournament(tournamentId, newUserId);
+        } else {
+            joinTournament(tournamentId, userId);
+        }
+        if (tournamentModal) tournamentModal.classList.add('hidden');
+        showTournamentLobby(tournamentId, tournament.name);
+      }
+
+      // Handle SPECTATE button clicks
+      if (target.classList.contains('spectate-btn')) {
+        console.log('Spectating tournament:', tournament);
+        // Logic to show tournament details without joining
+        showTournamentLobby(tournamentId, tournament.name, true); // Pass a 'spectate' flag
+      }
+
+      // Handle BRACKETS button clicks
+      if (target.classList.contains('brackets-btn')) {
+        await show_brackets(tournamentId);
       }
     });
   }
 
-  // Hide modal if we navigate away
-  onRoute('home', () => {
-    if (tournamentModal && !tournamentModal.classList.contains('hidden')) {
-      tournamentModal.classList.add('hidden');
-    }
-  });
-    const playTournBtn = document.getElementById('play-tourn-btn') as HTMLButtonElement | null;
+  // --- Main Button to Show Dashboard ---
+  const playTournBtn = document.getElementById('play-tourn-btn') as HTMLButtonElement | null;
   if (playTournBtn && tournamentModal) {
-    playTournBtn.addEventListener('click', async () => {
-      // Fetch and display tournaments
-      try {
-        const res = await fetch('/api/tournaments', { credentials: 'include' });
-        if (!res.ok) throw new Error('Failed to fetch tournaments');
-        const tournaments = await res.json();
-        if (tournamentTableBody) {
-          tournamentTableBody.innerHTML = ''; // Clear existing rows
-          for (const t of tournaments) {
-            const row = document.createElement('tr');
-
-            // Sanitize and create cells
-            const idCell = document.createElement('td');
-            idCell.className = 'px-4 py-2';
-            idCell.textContent = t.id;
-            row.appendChild(idCell);
-
-            const nameCell = document.createElement('td');
-            nameCell.className = 'px-4 py-2';
-            nameCell.textContent = t.name;
-            row.appendChild(nameCell);
-
-            const ownerCell = document.createElement('td');
-            ownerCell.className = 'px-4 py-2';
-            ownerCell.textContent = 'Loading...';
-            row.appendChild(ownerCell);
-
-            // Fetch owner name
-            try {
-              const userRes = await fetch(`/api/user/search/${t.owner_id}`, { credentials: 'include' });
-              if (userRes.ok) {
-                const userData = await userRes.json();
-                ownerCell.textContent = userData.profile.name;
-              } else {
-                ownerCell.textContent = 'Unknown';
-              }
-            } catch (err) {
-              ownerCell.textContent = 'Unknown';
-            }
-
-            const stateCell = document.createElement('td');
-            stateCell.className = 'px-4 py-2';
-            stateCell.textContent = t.state;
-            row.appendChild(stateCell);
-
-            const playersCell = document.createElement('td');
-            playersCell.className = 'px-4 py-2';
-            playersCell.textContent = `${t.nbr_players}/${t.max_players}`;
-            row.appendChild(playersCell);
-
-            const winnerCell = document.createElement('td');
-            winnerCell.className = 'px-4 py-2';
-            winnerCell.textContent = 'N/A'; // Placeholder
-            row.appendChild(winnerCell);
-
-            const actionsCell = document.createElement('td');
-            actionsCell.className = 'px-4 py-2';
-
-            const joinBtn = document.createElement('button');
-            joinBtn.className = 'bg-blue-500 text-white px-2 py-1 rounded mr-2';
-            joinBtn.textContent = 'Join';
-            joinBtn.dataset.tournamentId = t.id;
-            actionsCell.appendChild(joinBtn);
-
-            const spectateBtn = document.createElement('button');
-            spectateBtn.className = 'bg-gray-500 text-white px-2 py-1 rounded';
-            spectateBtn.dataset.id = t.id;
-            spectateBtn.textContent = 'Spectate';
-            actionsCell.appendChild(spectateBtn);
-
-            const bracketsBtn = document.createElement('button');
-            bracketsBtn.className = 'bg-gray-500 text-white px-2 py-1 rounded';
-            bracketsBtn.dataset.bracketsId = t.id;
-            bracketsBtn.textContent = 'Brackets';
-            actionsCell.appendChild(bracketsBtn);
-
-            row.appendChild(actionsCell);
-            tournamentTableBody.appendChild(row);
-          }
-
-          // Add event listeners for join buttons
-          const joinButtons = tournamentTableBody.querySelectorAll('[data-tournament-id]');
-          joinButtons.forEach(button => {
-            button.addEventListener('click', async (e) => {
-              const tournamentId = (e.target as HTMLElement).dataset.tournamentId;
-              let email = localStorage.getItem('userEmail');
-              if (!email) {
-                await loginAsGuest();
-                email = localStorage.getItem('userEmail');
-                if (!email) {
-                  console.error("Failed to login as guest.");
-                  return;
-                }
-              }
-              let userId: number;
-              try {
-                const lookupRes = await fetch(`/api/user/lookup/${encodeURIComponent(email)}`, {
-                  method: 'POST',
-                  credentials: 'include',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({}),
-                });
-                if (!lookupRes.ok) {
-                  const err = await lookupRes.json().catch(() => ({}));
-                  alert('Failed to identify user: ' + (err.error || err.msg || lookupRes.statusText));
-                  return;
-                }
-                const userData = await lookupRes.json();
-                userId = userData.id;
-              } catch (err) {
-                console.error('Error looking up user:', err);
-                alert('Error identifying user');
-                return;
-              }
-
-              try {
-                const res = await fetch(`/api/tournaments/${tournamentId}/join`, {
-                  method: 'POST',
-                  credentials: 'include',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ user_id: userId }),
-                });
-                if (!res.ok) {
-                  const err = await res.json().catch(() => ({}));
-                  alert('Failed to join tournament: ' + (err.error || err.msg || res.statusText));
-                  return;
-                }
-                const tournamentName = (e.target as HTMLElement).closest('tr')?.querySelector('td:nth-child(2)')?.textContent || '';
-                // Hide the dashboard modal before showing the lobby
-                if (tournamentModal) {
-                  tournamentModal.classList.add('hidden');
-                }
-                showTournamentLobby(Number(tournamentId), tournamentName);
-              } catch (err) {
-                console.error('Error joining tournament:', err);
-                alert('Failed to join tournament.');
-              }
-            });
-          });
-
-          // Add event listeners for spectate buttons
-          const spectateButtons = tournamentTableBody.querySelectorAll('[data-id]');
-          spectateButtons.forEach(button => {
-            button.addEventListener('click', async (e) => {
-              const tournamentId = (e.target as HTMLElement).dataset.id;
-              try {
-                const res = await fetch(`/api/tournaments/${tournamentId}`, { credentials: 'include' });
-                if (!res.ok) throw new Error('Failed to fetch tournament details');
-                const tournament = await res.json();
-                console.log('Spectating tournament:', tournament);
-                // You can now use the tournament data to display the details
-              } catch (err) {
-                console.error('Error fetching tournament details:', err);
-                alert('Failed to load tournament details.');
-              }
-            });
-          });
-
-          const bracketsButtons = tournamentTableBody.querySelectorAll('[data-brackets-id]');
-          bracketsButtons.forEach(button => {
-            button.addEventListener('click', async (e) =>
-            {
-              const tournamentId = Number((e.target as HTMLElement).dataset.bracketsId);;
-              if (!tournamentId)
-              {
-                alert('Failed to load tournament id.');
-                return ;
-              }
-              await show_brackets(tournamentId!);
-              
-            });
-          });
-
-        }
-      } catch (err) {
-        console.error('Error fetching tournaments:', err);
-        if (tournamentTableBody) {
-          tournamentTableBody.innerHTML = '<tr><td colspan="4" class="text-center text-red-500">Failed to load tournaments.</td></tr>';
-        }
-      }
-      // Show the modal
+    playTournBtn.addEventListener('click', () => {
+      // The dashboard will be populated by the 'dashboard-update' event
       tournamentModal.classList.remove('hidden');
       navigate('tournament');
     });
   }
 
-  // Create Tournament button handler
-    const tournamentCreateBtn = document.getElementById('tournament-create-btn') as HTMLButtonElement | null;
-    if (tournamentCreateBtn) {
-      tournamentCreateBtn.addEventListener('click', async () => {
-        const name = prompt('Enter tournament name:');
-        if (!name) return;
-        // Identify current user by email lookup to get owner_id
-        let email = localStorage.getItem('userEmail');
-        if (!email) {
-          await loginAsGuest();
-          email = localStorage.getItem('userEmail');
-          if (!email) {
-            console.error("Failed to login as guest.");
-            return;
-          }
+  // --- Create Tournament Button ---
+  const tournamentCreateBtn = document.getElementById('tournament-create-btn') as HTMLButtonElement | null;
+  if (tournamentCreateBtn) {
+    tournamentCreateBtn.addEventListener('click', async () => {
+      const name = prompt('Enter tournament name:');
+      if (!name) return;
+
+      const ownerId = await getCurrentUserId();
+      if (!ownerId) {
+        alert("You must be logged in to create a tournament.");
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/tournaments', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, owner_id: ownerId }),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || err.msg || res.statusText);
         }
-        let ownerId: number;
-        try {
-          const lookupRes = await fetch(
-            `/api/user/lookup/${encodeURIComponent(email)}`,
-            {
-              method: 'POST',
-              credentials: 'include',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({}),
-            }
-          );
-          if (!lookupRes.ok) {
-            const err = await lookupRes.json().catch(() => ({}));
-            alert('Failed to identify user: ' + (err.error || err.msg || lookupRes.statusText));
-            return;
-          }
-          const userData = await lookupRes.json();
-          ownerId = userData.id;
-        } catch (err) {
-          console.error('Error looking up user:', err);
-          alert('Error identifying user');
-          return;
-        }
-        // Create the tournament with name and owner_id
-        try {
-          const res = await fetch('/api/tournaments', {
-            method: 'POST',
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, owner_id: ownerId }),
-          });
-          if (!res.ok) {
-            const err = await res.json().catch(() => ({}));
-            alert('Failed to create tournament: ' + (err.error || err.msg || res.statusText));
-            return;
-          }
-          alert('Tournament created successfully');
-          // Refresh the tournament list
-        const playTournBtn  = document.getElementById('play-tourn-btn') as HTMLButtonElement | null;
-          playTournBtn!.click();
-        } catch (error) {
-          console.error('Error creating tournament:', error);
-          alert('Error creating tournament');
-        }
-      });
-    }
+        alert('Tournament created successfully');
+        // The dashboard will update automatically via WebSocket broadcast
+      } catch (error) {
+        console.error('Error creating tournament:', error);
+        alert(`Error creating tournament: ${error.message}`);
+      }
+    });
+  }
 }

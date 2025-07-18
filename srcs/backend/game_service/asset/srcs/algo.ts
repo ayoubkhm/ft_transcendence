@@ -144,8 +144,6 @@ export class Game
 					continue;
 				if (type === "v")
 					player.speedMultiplier /= POWER_UPV;
-				else if (type === "i")
-					player.speedMultiplier *= -1;
 				else if (type === "b")
 					player.paddle.h /= POWER_UPB;
 				else if (type === "f" && this.state.phantomBalls)
@@ -175,14 +173,6 @@ export class Game
 			case 'speedUp':
 				player.speedMultiplier = POWER_UPV;
 				player.power += "v";
-				break;
-			case 'invert':
-				if (!player.power.includes("i"))
-				{
-					player.speedMultiplier *= -1;
-					player.power += "i";
-				}
-				player.cpttime[player.power.indexOf("i")] = this.state.timer;
 				break;
 			case 'shield':
 				player.power += "s";
@@ -271,8 +261,6 @@ export class Game
 				newBall.type = 'shield';
 			else if(rand > 0.4)
 				newBall.type = 'bigger';
-			else if(rand > 0.2)
-				newBall.type = 'invert';
 			this.state.bonusBalls.push(newBall);
 		}
 		this.state.timer++;
@@ -281,16 +269,27 @@ export class Game
 		ball.y += ball.v.y * dt * this.ballspeedM;
 
 		// rebond haut/bas
-		if (ball.y - BALL_R <= 0 || ball.y + BALL_R >= GAME_HEIGHT)
-			ball.v.y *= -1;
+		if (ball.y - BALL_R <= 0) {
+			ball.v.y = Math.abs(ball.v.y); // Force vers le bas
+			ball.y = BALL_R; // Positionne JUSTE en dessous du bord
+				} else if (ball.y + BALL_R >= GAME_HEIGHT) {
+			ball.v.y = -Math.abs(ball.v.y); // Force vers le haut
+			ball.y = GAME_HEIGHT - BALL_R; // Positionne JUSTE au-dessus du bord
+				}
 
 		for (const b of this.state.bonusBalls || [])
 		{
 			b.x += b.v.x * dt;
 			b.y += b.v.y * dt;
 
-			if (b.y - BALL_R <= 0 || b.y + BALL_R >= GAME_HEIGHT)
-				b.v.y *= -1;
+			    if (b.y - BALL_R <= 0) {
+					b.v.y = Math.abs(b.v.y);
+					b.y = BALL_R;
+				}
+				else if (b.y + BALL_R >= GAME_HEIGHT) {
+					b.v.y = -Math.abs(b.v.y);
+					b.y = GAME_HEIGHT - BALL_R;
+				}
 
 			for (const player of this.state.players)
 			{
@@ -313,11 +312,20 @@ export class Game
 			pball.x += pball.v.x * dt;
 			pball.y += pball.v.y * dt;
 
-			if (pball.y - BALL_R <= 0 || pball.y + BALL_R >= GAME_HEIGHT)
-				pball.v.y *= -1;
+			// Collision haut/bas avec correction de position
+			if (pball.y - BALL_R <= 0) {
+				pball.v.y = Math.abs(pball.v.y); // Force vers le bas
+				pball.y = BALL_R; // Positionne JUSTE en dessous du bord
+			}
+			else if (pball.y + BALL_R >= GAME_HEIGHT) {
+				pball.v.y = -Math.abs(pball.v.y); // Force vers le haut
+				pball.y = GAME_HEIGHT - BALL_R; // Positionne JUSTE au-dessus du bord
+			}
 
-			if (pball.x - BALL_R <= 0 || pball.x + BALL_R >= GAME_WIDTH)
+			// Collision gauche/droite (inchangée mais corrigeable si besoin)
+			if (pball.x - BALL_R <= 0 || pball.x + BALL_R >= GAME_WIDTH) {
 				pball.v.x *= -1;
+			}
 		}
 
 		this.state.bonusBalls = (this.state.bonusBalls || []).filter(b => b.active);

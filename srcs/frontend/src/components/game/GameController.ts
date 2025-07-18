@@ -8,7 +8,6 @@ const imagePaths = {
   speedUp: './speed.png',
   shield: './shield.png',
   bigger: './bigger.png',
-  invert: './invert.png',
 };
 
 const images: { [key: string]: HTMLImageElement } = {};
