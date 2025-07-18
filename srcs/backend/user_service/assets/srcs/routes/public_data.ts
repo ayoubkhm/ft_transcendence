@@ -78,7 +78,6 @@ export default function public_userRoutes (server: FastifyInstance, options: any
     interface deleteUserParams {email: string}
 
     server.delete<{Params: deleteUserParams}>('/delete/:email', async (request, reply) => {
-        console.log('🎯 Route /delete/:email called');
         const token = request.cookies.jwt_transcendence;
         if (!token)
         return (reply.status(403).send({ success: false, error: "No token provided"}));
