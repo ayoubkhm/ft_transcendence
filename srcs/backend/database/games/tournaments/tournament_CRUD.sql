@@ -2,40 +2,41 @@ CREATE OR REPLACE FUNCTION new_tournament(
 	_name TEXT,
 	_owner_id INTEGER
 )
-RETURNS TABLE(success BOOLEAN, msg TEXT) AS $$
+RETURNS TABLE(success BOOLEAN, msg TEXT, tid INTEGER) AS $$
 DECLARE
-	_total_rounds INTEGER NOT NULL DEFAULT 1;
+	_id INTEGER;
 BEGIN
 	IF _name IS NULL THEN
-		RETURN QUERY SELECT FALSE, 'Pls specify a tournament name not null';
+		RETURN QUERY SELECT FALSE, 'Pls specify a tournament name not null', NULL::INTEGER;
 		RETURN ;
 	END IF;
 	IF _owner_id IS NULL THEN
-		RETURN QUERY SELECT FALSE, 'Pls specify a tournament owner id not null';
+		RETURN QUERY SELECT FALSE, 'Pls specify a tournament owner id not null', NULL::INTEGER;
 		RETURN ;
 	END IF;
 
 	IF NOT EXISTS (
 		SELECT 1 FROM users WHERE id = _owner_id
 	) THEN
-		RETURN QUERY SELECT FALSE, FORMAT('User with id %s doesn''t exists', _id);
+		RETURN QUERY SELECT FALSE, FORMAT('User with id %s doesn''t exists', _id), NULL::INTEGER;
 		RETURN ;
 	END IF;
 
 	INSERT INTO tournaments (name, owner_id)
-	VALUES (_name, _owner_id);
+	VALUES (_name, _owner_id)
+	RETURNING id INTO _id;
 	
-	RETURN QUERY SELECT TRUE, 'Tournament created successfully';
+	RETURN QUERY SELECT TRUE, 'Tournament created successfully', _id;
 
 EXCEPTION
 	WHEN unique_violation THEN
 		IF SQLERRM LIKE '%tournaments_name_key%' THEN
-			RETURN QUERY SELECT FALSE, 'Tournament name is already in use';
+			RETURN QUERY SELECT FALSE, 'Tournament name is already in use', NULL::INTEGER;
 		ELSE
-			RETURN QUERY SELECT FALSE, SQLERRM;
+			RETURN QUERY SELECT FALSE, SQLERRM, NULL::INTEGER;
 		END IF;
 	WHEN OTHERS THEN
-		RETURN QUERY SELECT FALSE, SQLERRM;
+		RETURN QUERY SELECT FALSE, SQLERRM, NULL::INTEGER;
 END;
 $$ LANGUAGE plpgsql;
 

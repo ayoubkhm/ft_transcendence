@@ -39,7 +39,7 @@ export type Ball = Vec & { v: Vec };
 export interface BonusBall extends Ball
 {
   active: boolean;
-  type: 'speedUp' | 'fake' | 'shield' | 'bigger' | 'invert';
+  type: 'speedUp' | 'fake' | 'shield' | 'bigger';
   owner?: 'left' | 'right';
 }
 
