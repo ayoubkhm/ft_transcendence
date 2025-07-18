@@ -8,7 +8,7 @@ import {
 import { aiPaddleMove } from './ai/index.js';
 import { Client } from 'pg';
 
-
+const BALL_XLR = 1.05;
 
 // AI difficulty levels
 type AIDifficulty = 'easy' | 'medium' | 'hard';
@@ -28,13 +28,15 @@ export class Game
     /** Countdown ticks (1 tick = 1/60s) before simulation starts */
     private countdownTicks: number;
 	gameId: number;
+	ballspeedM: number;
 
     constructor(
         leftId: string,
         rightId: string /* "AI" for solo */,
         aiDifficulty: AIDifficulty = 'medium',
         customOn: boolean = true,
-		gameId: number
+		gameId: number,
+
     ) {
 		this.gameId = gameId; 
         this.aiDifficulty = aiDifficulty;
@@ -44,6 +46,7 @@ export class Game
         this.distanceMoved = { [leftId]: 0, [rightId]: 0 };
         this.lastScorerId = null;
         this.streaks = { [leftId]: 0, [rightId]: 0 };
+		this.ballspeedM = 1;
         // Set initial countdown: 5 seconds at 60 ticks/s
         this.countdownTicks = 5 * 60;
         this.state =
@@ -274,8 +277,8 @@ export class Game
 		}
 		this.state.timer++;
 		// 3) Déplacement de la balle
-		ball.x += ball.v.x * dt;
-		ball.y += ball.v.y * dt;
+		ball.x += ball.v.x * dt * this.ballspeedM;
+		ball.y += ball.v.y * dt * this.ballspeedM;
 
 		// rebond haut/bas
 		if (ball.y - BALL_R <= 0 || ball.y + BALL_R >= GAME_HEIGHT)
@@ -337,6 +340,7 @@ export class Game
 				const speedMag = Math.hypot(ball.v.x, ball.v.y);
 				ball.v.x =	speedMag * Math.cos(bounceAngle);
 				ball.v.y =	speedMag * Math.sin(bounceAngle);
+				this.ballspeedM *= BALL_XLR;
 			}
 			else if (left.power.includes("s"))
 			{
@@ -363,6 +367,7 @@ export class Game
 				const speedMag = Math.hypot(ball.v.x, ball.v.y);
 				ball.v.x = -speedMag * Math.cos(bounceAngle);
 				ball.v.y =	speedMag * Math.sin(bounceAngle);
+				this.ballspeedM *= BALL_XLR;
 			}
 			else if (right.power.includes("s"))
 			{
@@ -388,6 +393,7 @@ export class Game
             }
             this.lastScorerId = scorer;
             resetBall(ball, -this.speed);
+			this.ballspeedM = 1;
         }
         if (ball.x > GAME_WIDTH) {
             // Left player scores
@@ -404,6 +410,7 @@ export class Game
             }
             this.lastScorerId = scorer;
             resetBall(ball, this.speed);
+			this.ballspeedM = 1;
         }
 		// 5) Fin de partie ?
 		if (left.score >= 7 || right.score >= 7)
