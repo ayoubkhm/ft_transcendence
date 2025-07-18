@@ -1,4 +1,4 @@
-// Initialize feature modules
+import { connect as connectWebSocket } from './lib/socket';
 import './lib/api';
 import './lib/dom';
 import './lib/router';
@@ -17,6 +17,9 @@ import { setupPublicProfileModal } from './components/profile/PublicProfileModal
 import setupTournamentBrackets from './brackets/setup.js'
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Establish WebSocket connection
+    connectWebSocket();
+
     setupLoginModal();
     setupSignupModal();
     setupChangePasswordModal();

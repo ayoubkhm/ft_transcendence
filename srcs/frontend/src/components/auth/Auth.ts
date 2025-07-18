@@ -10,6 +10,18 @@ const authGuest = document.getElementById('auth-guest') as HTMLElement | null;
 const logoutBtn = document.getElementById('logout-btn') as HTMLButtonElement | null;
 const userGreeting = document.getElementById('user-greeting') as HTMLElement | null;
 
+/**
+ * Retrieves the current user's ID from localStorage.
+ * @returns The user ID as a number, or null if not found or invalid.
+ */
+export function getCurrentUserId(): number | null {
+    const userIdStr = localStorage.getItem('userId');
+    if (!userIdStr) return null;
+    
+    const userId = parseInt(userIdStr, 10);
+    return isNaN(userId) ? null : userId;
+}
+
 // Update auth UI based on login state
 export function updateAuthView() {
     if (!authUser || !authGuest || !userGreeting) return;
