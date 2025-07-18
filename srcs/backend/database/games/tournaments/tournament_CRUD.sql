@@ -141,6 +141,9 @@ DECLARE
 	_total_rounds INTEGER;
 	_winner_id INTEGER;
 	round_games jsonb;
+	_winner BOOLEAN;
+	_lastp1_id INTEGER;
+	_lastp2_id INTEGER;
 BEGIN
 	SELECT round, total_rounds INTO _round, _total_rounds
 	FROM tournaments
@@ -162,20 +165,21 @@ BEGIN
 		RETURN ;
 	END IF;
 
-	SELECT jsonb_agg(jsonb_build_object(
-		'p1_id', p1_id,
-		'p2_id', p2_id,
-		'winner', winner
-	)) INTO round_games
-	FROM games
-	WHERE tournament_round = _round
-		AND tournament_id = _id;
+	IF _round = _total_rounds THEN
+		SELECT winner, p1_id, p2_id
+		INTO _winner, _lastp1_id, _lastp2_id
+		FROM games
+		WHERE tournament_id = _id
+			AND tournament_round = _round;
+	ELSE
+		_winner := NULL;
+	END IF;
 
-	IF (jsonb_array_length(round_games) = 1) THEN
-		IF ((round_games -> 0) ->> 'winner')::BOOLEAN THEN
-			_winner_id := ((round_games -> 0) ->> 'p1_id')::INTEGER;
+	IF (_winner IS NOT NULL) THEN 
+		IF _winner = TRUE THEN
+			_winner_id := _lastp1_id;
 		ELSE
-			_winner_id := ((round_games -> 0) ->> 'p2_id')::INTEGER;
+			_winner_id := _lastp2_id;
 		END IF;
 
 		UPDATE tournaments

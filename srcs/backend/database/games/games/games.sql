@@ -1,9 +1,6 @@
 CREATE TYPE game_state AS ENUM ('WAITING', 'RUNNING', 'PAUSE', 'OVER');
 CREATE TYPE game_type AS ENUM ('IA', 'TOURNAMENT', 'VS');
 
-CREATE TYPE public_game AS (
-
-);
 
 CREATE TABLE IF NOT EXISTS games (
 	id SERIAL PRIMARY KEY,
