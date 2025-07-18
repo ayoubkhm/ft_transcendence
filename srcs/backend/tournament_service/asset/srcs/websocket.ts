@@ -99,7 +99,7 @@ export async function broadcastDashboardUpdate(server: FastifyInstance, pgClient
 
     const client = pgClient || await server.pg.connect();
     try {
-        const result = await client.query('SELECT id, state, name, min_players, max_players, nbr_players, owner_id FROM tournaments');
+        const result = await client.query('SELECT t.id, t.state, t.name, t.min_players, t.max_players, t.nbr_players, t.owner_id, u.name as owner_name FROM tournaments t JOIN users u ON t.owner_id = u.id');
         const message = { type: 'dashboard-update', data: result.rows };
         for(const connection of connections) {
             safeSend(connection, message);
@@ -123,7 +123,61 @@ const websocketHandler: WebsocketHandler = (connection, req) => {
       const { type, tournament_id, user_id } = msg;
       if (!type) throw new Error("Message must have a 'type' property.");
       
+      // Note: The 'catch' block below will handle errors for all cases.
       switch (type) {
+        case 'create_tournament': {
+          const { name, owner_id } = msg;
+          if (!name || typeof owner_id !== 'number') {
+            throw new Error('create_tournament requires a name and owner_id.');
+          }
+          const client = await req.server.pg.connect();
+          try {
+            const result = await client.query('SELECT * FROM new_tournament($1::TEXT, $2::INTEGER)', [name, owner_id]);
+            const creationResult = result.rows[0];
+
+            if (!creationResult.success) {
+              throw new Error(creationResult.msg || 'Tournament creation failed in database.');
+            }
+
+            // Send a specific confirmation to the creator with the new ID and original name
+            safeSend(conn, {
+              type: 'tournament-created',
+              data: { id: creationResult.tid, name: name }
+            });
+
+            // Broadcast the updated list to everyone
+            await broadcastDashboardUpdate(req.server, client);
+          } finally {
+            client.release();
+          }
+          break;
+        }
+        case 'delete_tournament': {
+          const { name, owner_id } = msg;
+          if (!name || typeof owner_id !== 'number') {
+            throw new Error('delete_tournament requires a tournament name and owner_id.');
+          }
+          const client = await req.server.pg.connect();
+          try {
+            const tourRes = await client.query('SELECT id FROM tournaments WHERE name = $1 AND owner_id = $2', [name, owner_id]);
+            if (tourRes.rows.length === 0) throw new Error('Tournament not found or user is not the owner.');
+            const tournamentId = tourRes.rows[0].id;
+            await client.query('SELECT * FROM delete_tournament($1::TEXT)', [name]);
+            await broadcastTournamentUpdate(req.server, tournamentId, client);
+            await broadcastDashboardUpdate(req.server, client);
+          } finally {
+            client.release();
+          }
+          break;
+        }
+        case 'get_tournament_details': {
+          if (typeof tournament_id !== 'number') {
+            throw new Error('get_tournament_details requires a tournament_id.');
+          }
+          // This doesn't broadcast, it just sends the details back to the requester
+          await broadcastTournamentUpdate(req.server, tournament_id);
+          break;
+        }
         case 'join_tournament': {
           if (typeof tournament_id !== 'number' || typeof user_id !== 'number') {
             throw new Error('join_tournament requires tournament_id and user_id.');
@@ -142,29 +196,52 @@ const websocketHandler: WebsocketHandler = (connection, req) => {
           break;
         }
         case 'leave_tournament': {
-          if (typeof tournament_id !== 'number' || typeof user_id !== 'number') {
-              throw new Error('leave_tournament requires tournament_id and user_id.');
+          const { tournament_id, user_id, name } = msg;
+          if (typeof tournament_id !== 'number' || typeof user_id !== 'number' || !name) {
+              throw new Error('leave_tournament requires tournament_id, user_id, and name.');
           }
           const client = await req.server.pg.connect();
           try {
-              const tourRes = await client.query('SELECT name FROM tournaments WHERE id = $1', [tournament_id]);
-              if (tourRes.rows.length === 0) throw new Error('Tournament not found.');
-              await client.query('SELECT * FROM leave_tournament($1::INTEGER, $2::TEXT)', [user_id, tourRes.rows[0].name]);
+              await client.query('SELECT * FROM leave_tournament($1::INTEGER, $2::TEXT)', [user_id, name]);
+              // Broadcast updates FIRST, so the leaving user gets the message.
               await broadcastTournamentUpdate(req.server, tournament_id, client);
               await broadcastDashboardUpdate(req.server, client);
+              // THEN remove the user from the group.
               leaveGroup(conn, tournament_id);
           } finally {
               client.release();
           }
           break;
         }
+        case 'start_tournament': {
+          const { name } = msg;
+          if (!name) throw new Error('start_tournament requires a tournament name.');
+          const client = await req.server.pg.connect();
+          try {
+            const tourRes = await client.query('SELECT id FROM tournaments WHERE name = $1', [name]);
+            if (tourRes.rows.length === 0) throw new Error('Tournament not found.');
+            const tournamentId = tourRes.rows[0].id;
+            await client.query('SELECT * FROM start_tournament($1::TEXT)', [name]);
+            await broadcastTournamentUpdate(req.server, tournamentId, client);
+            await broadcastDashboardUpdate(req.server, client);
+          } finally {
+            client.release();
+          }
+          break;
+        }
         default:
-          safeSend(conn, { type: 'error', message: 'Unknown message type' });
+          // Send an error message back to the client for unknown message types
+          throw new Error(`Unknown message type: ${type}`);
       }
     } catch (e: unknown) {
       const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred';
       console.error("[WS] Error processing message:", errorMessage);
-      safeSend(conn, { type: 'error', message: 'Invalid message format or failed to process', details: errorMessage });
+      // Send a specific error message back to the originating client
+      safeSend(conn, { 
+        type: 'error', 
+        message: 'Failed to process your request.', 
+        details: errorMessage 
+      });
     }
   });
 

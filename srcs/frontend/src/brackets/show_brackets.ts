@@ -1,4 +1,4 @@
-import renderBrackets from "./render/renderBracket.js";
+import renderBrackets from "./render/renderBracket";
 import type { BracketRound } from "./types/bracketsTypes"
 
 export default async function show_brackets(tournamentId: number, container?: HTMLElement)

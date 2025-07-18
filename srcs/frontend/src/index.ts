@@ -14,12 +14,10 @@ import { initializeAuth } from './components/auth/Auth';
 import { setupGame } from './components/game/GameController';
 import { setupProfileModal } from './components/profile/ProfileModal';
 import { setupPublicProfileModal } from './components/profile/PublicProfileModal';
-import setupTournamentBrackets from './brackets/setup.js'
+import setupTournamentBrackets from './brackets/setup';
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Establish WebSocket connection
-    connectWebSocket();
-
+    // Set up all UI components and their event listeners first
     setupLoginModal();
     setupSignupModal();
     setupChangePasswordModal();
@@ -32,6 +30,9 @@ document.addEventListener('DOMContentLoaded', () => {
     setupProfileModal();
     setupPublicProfileModal();
     setupTournamentBrackets();
+
+    // Establish WebSocket connection only after everything is set up
+    connectWebSocket();
 });
 
 // Initialize 2FA setup and login handlers
