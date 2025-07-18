@@ -148,7 +148,9 @@ export async function showTournamentLobby(tournamentId: number, tournamentName: 
 
   // Listen for updates for this specific tournament
   on('tournament-update', (details) => {
-    if (details.id !== currentTournamentId) return; // Ensure it's the correct tournament
+    console.log('[Lobby] Received tournament-update:', details); // Log the entire object
+
+    if (!details || details.id !== currentTournamentId) return; // Ensure it's the correct tournament
     
     currentTournamentDetails = details; // Cache the latest details
 
@@ -194,12 +196,27 @@ export async function showTournamentLobby(tournamentId: number, tournamentName: 
       deleteTournamentBtn.classList.add('hidden'); // Hide the old delete button
     }
 
-    // If the tournament has started, navigate to the game view
-    if (details.state === 'IN_PROGRESS' || details.state === 'OVER') {
-        if (tournamentLobbyModal) {
-            tournamentLobbyModal.classList.add('hidden');
+    // If the tournament has started, hide the lobby and show the game modal
+    if (details.state === 'RUNNING' || details.state === 'OVER') {
+        console.log(`[Lobby] Tournament state is '${details.state}'. Preparing to show game modal.`);
+        const lobbyModal = document.getElementById('tournament-lobby-modal');
+        const gameModal = document.getElementById('tournament-game-modal');
+
+        if (lobbyModal) {
+            console.log('[Lobby] Hiding lobby modal.');
+            lobbyModal.classList.add('hidden');
+        } else {
+            console.error('[Lobby] Could not find lobby modal to hide.');
         }
-        showTournamentGame(details.id);
+
+        if (gameModal) {
+            console.log('[Lobby] Calling showTournamentGame and showing game modal.');
+            // Call showTournamentGame to populate the modal, then ensure it's visible.
+            showTournamentGame(details);
+            gameModal.classList.remove('hidden');
+        } else {
+            console.error('[Lobby] Could not find game modal to show.');
+        }
     }
   });
 
