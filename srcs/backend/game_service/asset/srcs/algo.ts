@@ -144,8 +144,6 @@ export class Game
 					continue;
 				if (type === "v")
 					player.speedMultiplier /= POWER_UPV;
-				else if (type === "i")
-					player.speedMultiplier *= -1;
 				else if (type === "b")
 					player.paddle.h /= POWER_UPB;
 				else if (type === "f" && this.state.phantomBalls)
@@ -175,14 +173,6 @@ export class Game
 			case 'speedUp':
 				player.speedMultiplier = POWER_UPV;
 				player.power += "v";
-				break;
-			case 'invert':
-				if (!player.power.includes("i"))
-				{
-					player.speedMultiplier *= -1;
-					player.power += "i";
-				}
-				player.cpttime[player.power.indexOf("i")] = this.state.timer;
 				break;
 			case 'shield':
 				player.power += "s";
@@ -271,8 +261,6 @@ export class Game
 				newBall.type = 'shield';
 			else if(rand > 0.4)
 				newBall.type = 'bigger';
-			else if(rand > 0.2)
-				newBall.type = 'invert';
 			this.state.bonusBalls.push(newBall);
 		}
 		this.state.timer++;
