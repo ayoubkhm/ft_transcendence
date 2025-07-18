@@ -105,3 +105,23 @@ if(logoutBtn) {
         updateAuthView();
     });
 }
+
+export async function loginAsGuest(): Promise<void> {
+  try {
+    const res = await fetch('/api/auth/guest', {
+      method: 'POST',
+      credentials: 'include',
+    });
+    if (!res.ok) {
+      throw new Error('Guest login failed');
+    }
+    const data = await res.json();
+    localStorage.setItem('loggedIn', 'true');
+    localStorage.setItem('username', data.name);
+    localStorage.setItem('userId', data.id);
+    localStorage.setItem('userEmail', data.email);
+    updateAuthView();
+  } catch (err) {
+    console.error('Guest login failed:', err);
+  }
+}

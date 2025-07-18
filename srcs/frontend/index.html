@@ -372,31 +372,72 @@
     </div>
   </div>
   <!-- Tournament Dashboard Modal -->
-  <div id="tournament-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-    <div class="bg-gray-800 rounded p-6 relative w-full max-w-3xl mx-2 text-white">
-      <button id="tournament-modal-close" class="absolute top-2 right-2 text-white text-xl">&times;</button>
-      <div class="flex justify-between items-center mb-4">
-        <h2 class="text-xl font-bold">Tournament Dashboard</h2>
-        <button id="tournament-create-btn" class="text-white text-sm bg-green-500 hover:bg-green-600 px-2 py-1 rounded">New Tournament</button>
+  <div id="tournament-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-40 hidden">
+    <div class="bg-gray-800 rounded-lg shadow-xl p-6 relative w-full max-w-4xl mx-4">
+      <button id="tournament-modal-close" class="absolute top-2 right-3 text-white text-2xl font-bold">&times;</button>
+      <h2 class="text-3xl font-bold mb-6 text-white text-center">Tournaments</h2>
+      <div class="mb-4 flex justify-end">
+        <button id="tournament-create-btn" class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded text-white font-semibold">
+          Create Tournament
+        </button>
       </div>
-      <div class="overflow-auto">
-        <table class="min-w-full bg-gray-700 text-left text-sm">
-          <thead>
-            <tr class="bg-gray-600">
-              <th class="px-2 py-1">ID</th>
-              <th class="px-2 py-1">Name</th>
-              <th class="px-2 py-1">Owner</th>
-              <th class="px-2 py-1">State</th>
-              <th class="px-2 py-1">Participants/Max Players</th>
-              <th class="px-2 py-1">Winner</th>
-              <th class="px-2 py-1">Actions</th>
+      <div class="overflow-y-auto max-h-[60vh]">
+        <table class="w-full text-left text-white">
+          <thead class="bg-gray-900 sticky top-0">
+            <tr>
+              <th class="px-4 py-2">ID</th>
+              <th class="px-4 py-2">Name</th>
+              <th class="px-4 py-2">Owner</th>
+              <th class="px-4 py-2">Status</th>
+              <th class="px-4 py-2">Players</th>
+              <th class="px-4 py-2">Winner</th>
+              <th class="px-4 py-2">Actions</th>
             </tr>
           </thead>
-          <tbody id="tournament-table-body" class="divide-y divide-gray-600"></tbody>
+          <tbody id="tournament-table-body">
+            <!-- Tournament rows will be dynamically inserted here -->
+          </tbody>
         </table>
       </div>
     </div>
   </div>
+
+  <!-- Tournament Lobby Modal -->
+  <div id="tournament-lobby-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-gray-800 rounded-lg p-6 relative w-full max-w-2xl mx-4">
+      <button id="tournament-lobby-close" class="absolute top-2 right-3 text-white text-2xl font-bold">&times;</button>
+      <h2 id="tournament-lobby-title" class="text-2xl font-bold mb-4 text-white">Lobby for Tournament</h2>
+      <div class="flex justify-between items-center mb-4">
+        <div>
+          <span class="font-semibold text-gray-300">Status:</span>
+          <span id="tournament-lobby-state" class="text-yellow-400">Waiting for players...</span>
+        </div>
+        <div>
+          <span class="font-semibold text-gray-300">Players:</span>
+          <span id="tournament-lobby-player-count" class="text-green-400">1/8</span>
+        </div>
+      </div>
+      <div class="bg-gray-900 rounded p-4 max-h-60 overflow-y-auto">
+        <table class="w-full text-left text-white">
+          <thead>
+            <tr>
+              <th class="px-2 py-1">Player</th>
+              <th class="px-2 py-1">Status</th>
+            </tr>
+          </thead>
+          <tbody id="tournament-lobby-players">
+            <!-- Player rows will be inserted here -->
+          </tbody>
+        </table>
+      </div>
+      <div class="flex justify-end gap-4 mt-6">
+        <button id="tournament-lobby-leave-btn" class="px-4 py-2 bg-red-600 hover:bg-red-700 rounded text-white">Leave Tournament</button>
+        <button id="tournament-lobby-delete-btn" class="px-4 py-2 bg-red-800 hover:bg-red-900 rounded text-white hidden">Delete Tournament</button>
+        <button id="tournament-lobby-start-btn" class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded text-white hidden">Start Tournament</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Logic SPA -->
   <script type="module" src="/src/index.ts"></script>
 </body>

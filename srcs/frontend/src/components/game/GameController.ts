@@ -1,5 +1,6 @@
 import { drawGame } from './GameCanvas';
 import { navigate, onRoute } from '../../lib/router';
+import { loginAsGuest } from '../auth/Auth';
 
 const imagePaths = {
   fake: './fake.png',
@@ -178,13 +179,16 @@ export async function startGame(mode: 'ai' | 'pvp', difficulty?: string): Promis
   // resize canvas omitted for brevity
   canvas.focus();
   lastInput = null;
-  statusCheckCounter = 0;
   try {
     const isCustomOn = mode === 'ai' ? aiModalCustomToggle.checked : pvpModalCustomToggle.checked;
-    const username = localStorage.getItem('username');
+    let username = localStorage.getItem('username');
     if (!username) {
-        alert('You must be logged in to play.');
+      await loginAsGuest();
+      username = localStorage.getItem('username');
+      if (!username) {
+        console.error("Failed to login as guest.");
         return;
+      }
     }
     const body: any = { mode, isCustomOn, username };
     if (difficulty) body.difficulty = difficulty;
@@ -299,10 +303,14 @@ export function setupGame(): void {
     e.preventDefault();
     const joinId = pvpModalJoinInput.value.trim();
     if (!joinId) { alert('Please enter a game ID to join'); return; }
-    const username = localStorage.getItem('username');
+    let username = localStorage.getItem('username');
     if (!username) {
-        alert('You must be logged in to join a game.');
+      await loginAsGuest();
+      username = localStorage.getItem('username');
+      if (!username) {
+        console.error("Failed to login as guest.");
         return;
+      }
     }
     try {
       // Preload images before joining

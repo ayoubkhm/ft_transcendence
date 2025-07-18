@@ -1,5 +1,7 @@
 // TournamentDashboard: handles listing, creating, and managing tournaments
 import show_brackets from '../../brackets/show_brackets.js';
+import { showTournamentLobby } from './TournamentLobby';
+import { loginAsGuest } from '../auth/Auth';
 
 import { navigate, onRoute } from '../../lib/router';
 export function setupTournamentDashboard() {
@@ -37,7 +39,7 @@ export function setupTournamentDashboard() {
     playTournBtn.addEventListener('click', async () => {
       // Fetch and display tournaments
       try {
-        const res = await fetch('/api/tournaments/tournaments', { credentials: 'include' });
+        const res = await fetch('/api/tournaments', { credentials: 'include' });
         if (!res.ok) throw new Error('Failed to fetch tournaments');
         const tournaments = await res.json();
         if (tournamentTableBody) {
@@ -99,7 +101,7 @@ export function setupTournamentDashboard() {
                 startBtn.textContent = 'Start';
                 startBtn.addEventListener('click', async () => {
                     try {
-                        const res = await fetch(`/api/tournament/${t.name}/start`, {
+                        const res = await fetch(`/api/tournaments/${t.name}/start`, {
                             method: 'POST',
                             credentials: 'include',
                         });
@@ -123,7 +125,7 @@ export function setupTournamentDashboard() {
                 deleteBtn.addEventListener('click', async () => {
                     if (confirm(`Are you sure you want to delete the tournament "${t.name}"?`)) {
                         try {
-                            const res = await fetch(`/api/tournament/${t.name}`, {
+                            const res = await fetch(`/api/tournaments/${t.name}`, {
                                 method: 'DELETE',
                                 credentials: 'include',
                             });
@@ -170,10 +172,14 @@ export function setupTournamentDashboard() {
           joinButtons.forEach(button => {
             button.addEventListener('click', async (e) => {
               const tournamentId = (e.target as HTMLElement).dataset.tournamentId;
-              const email = localStorage.getItem('userEmail');
+              let email = localStorage.getItem('userEmail');
               if (!email) {
-                alert('Please log in to join a tournament');
-                return;
+                await loginAsGuest();
+                email = localStorage.getItem('userEmail');
+                if (!email) {
+                  console.error("Failed to login as guest.");
+                  return;
+                }
               }
               let userId: number;
               try {
@@ -197,7 +203,7 @@ export function setupTournamentDashboard() {
               }
 
               try {
-                const res = await fetch(`/api/tournament/${tournamentId}/join`, {
+                const res = await fetch(`/api/tournaments/${tournamentId}/join`, {
                   method: 'POST',
                   credentials: 'include',
                   headers: { 'Content-Type': 'application/json' },
@@ -208,10 +214,8 @@ export function setupTournamentDashboard() {
                   alert('Failed to join tournament: ' + (err.error || err.msg || res.statusText));
                   return;
                 }
-                alert('Successfully joined tournament');
-                // Refresh the tournament list
-                const playTournBtn = document.getElementById('play-tourn-btn') as HTMLButtonElement | null;
-                playTournBtn!.click();
+                const tournamentName = (e.target as HTMLElement).closest('tr')?.querySelector('td:nth-child(2)')?.textContent || '';
+                showTournamentLobby(Number(tournamentId), tournamentName);
               } catch (err) {
                 console.error('Error joining tournament:', err);
                 alert('Failed to join tournament.');
@@ -225,7 +229,7 @@ export function setupTournamentDashboard() {
             button.addEventListener('click', async (e) => {
               const tournamentId = (e.target as HTMLElement).dataset.id;
               try {
-                const res = await fetch(`/api/tournaments/tournaments/${tournamentId}`, { credentials: 'include' });
+                const res = await fetch(`/api/tournaments/${tournamentId}`, { credentials: 'include' });
                 if (!res.ok) throw new Error('Failed to fetch tournament details');
                 const tournament = await res.json();
                 console.log('Spectating tournament:', tournament);
@@ -272,10 +276,14 @@ export function setupTournamentDashboard() {
         const name = prompt('Enter tournament name:');
         if (!name) return;
         // Identify current user by email lookup to get owner_id
-        const email = localStorage.getItem('userEmail');
+        let email = localStorage.getItem('userEmail');
         if (!email) {
-          alert('Please log in to create a tournament');
-          return;
+          await loginAsGuest();
+          email = localStorage.getItem('userEmail');
+          if (!email) {
+            console.error("Failed to login as guest.");
+            return;
+          }
         }
         let ownerId: number;
         try {
@@ -302,7 +310,7 @@ export function setupTournamentDashboard() {
         }
         // Create the tournament with name and owner_id
         try {
-          const res = await fetch('/api/tournament', {
+          const res = await fetch('/api/tournaments', {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },

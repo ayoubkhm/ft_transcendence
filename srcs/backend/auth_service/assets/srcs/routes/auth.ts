@@ -167,7 +167,7 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
         httpOnly: true,
         sameSite: 'lax',
         secure: process.env.NODE_ENV === 'prod'
-      }).send({ response: "successfully logged in", need2fa: false }));
+      }).send({ id: user.id, name: user.name, email: user.email }));
     } catch (err) {
       return (res.status(500).send({ error: "Internal server error" }));
     }
