@@ -20,6 +20,10 @@ let currentTournamentName: string | null = null;
 let currentTournamentDetails: any | null = null; // Cache for tournament data
 let tournamentSocket: WebSocket | null = null;
 
+export function isTournamentLobbyActive() {
+  return tournamentLobbyModal && !tournamentLobbyModal.classList.contains('hidden');
+}
+
 function closeSocket() {
   if (tournamentSocket) {
     tournamentSocket.close();
@@ -27,12 +31,13 @@ function closeSocket() {
   }
 }
 
-async function handleLeaveLobby() {
+export async function leaveTournamentLobby() {
   const userId = getCurrentUserId();
   if (!userId) {
     alert('You must be logged in to perform this action.');
     return;
   }
+  localStorage.removeItem('activeTournamentSession');
 
   // If the user is the owner, confirm deletion. Otherwise, confirm leaving.
   if (currentTournamentDetails && userId === currentTournamentDetails.owner_id) {
@@ -65,26 +70,26 @@ function initializeLobbyEventListeners() {
   if (tournamentLobbyClose) {
     tournamentLobbyClose.addEventListener('click', (e) => {
       e.preventDefault();
-      handleLeaveLobby();
+      leaveTournamentLobby();
     });
   }
 
   if (tournamentLobbyModal) {
     tournamentLobbyModal.addEventListener('click', (e) => {
       if (e.target === tournamentLobbyModal) {
-        handleLeaveLobby();
+        leaveTournamentLobby();
       }
     });
   }
 
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && tournamentLobbyModal && !tournamentLobbyModal.classList.contains('hidden')) {
-      handleLeaveLobby();
+      leaveTournamentLobby();
     }
   });
 
   if (leaveTournamentBtn) {
-    leaveTournamentBtn.addEventListener('click', handleLeaveLobby);
+    leaveTournamentBtn.addEventListener('click', leaveTournamentLobby);
   }
 
   if (startTournamentBtn) {
@@ -124,6 +129,7 @@ function initializeLobbyEventListeners() {
       closeSocket();
       tournamentLobbyModal.classList.add('hidden');
       currentTournamentId = null; // Clear the current tournament ID
+      localStorage.removeItem('activeTournamentSession');
       navigate('home');
     }
   });
@@ -218,6 +224,7 @@ export async function showTournamentLobby(tournamentId: number, tournamentName: 
   currentTournamentId = tournamentId;
   currentTournamentName = tournamentName;
   currentTournamentDetails = null; // Reset cache on new lobby
+  localStorage.setItem('activeTournamentSession', JSON.stringify({ tournamentId, tournamentName }));
 
 
   tournamentLobbyTitle.textContent = `Lobby for ${tournamentName}`;
@@ -238,6 +245,9 @@ export async function showTournamentLobby(tournamentId: number, tournamentName: 
 
     // If the tournament has started, hide the lobby and show the game modal
     if (details.state === 'RUNNING' || details.state === 'OVER') {
+        if (details.state === 'RUNNING') {
+            localStorage.setItem('activeTournamentGame', JSON.stringify({ id: details.id }));
+        }
         const lobbyModal = document.getElementById('tournament-lobby-modal');
         const gameModal = document.getElementById('tournament-game-modal');
 

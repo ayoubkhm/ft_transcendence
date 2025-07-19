@@ -2,6 +2,7 @@
 
 // This will hold the single, persistent WebSocket connection.
 let socketClient: WebSocket | null = null;
+let connectionPromise: Promise<void> | null = null;
 
 // A simple event emitter to allow different parts of the UI to subscribe to WebSocket events.
 const eventListeners: { [key: string]: ((data: any) => void)[] } = {};
@@ -36,58 +37,64 @@ export function on(eventName: string, callback: (data: any) => void): () => void
 }
 
 /**
- * Establishes the WebSocket connection.
- * This should be called once when the application loads.
+ * Establishes the WebSocket connection and returns a promise that resolves when connected.
  */
-export function connect() {
+export function connect(): Promise<void> {
   if (socketClient && socketClient.readyState === WebSocket.OPEN) {
-    console.log('WebSocket already connected.');
-    return;
+    return Promise.resolve();
   }
 
-  // Adjust the URL to your environment (e.g., using window.location.host)
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const wsUrl = `${protocol}//${window.location.host}/api/tournaments/ws`;
-  console.log(`Connecting to WebSocket at ${wsUrl}`);
-  
-  socketClient = new WebSocket(wsUrl);
+  if (connectionPromise) {
+    return connectionPromise;
+  }
 
-  socketClient.onopen = () => {
-    console.log('WebSocket connection established.');
-  };
+  connectionPromise = new Promise((resolve, reject) => {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/api/tournaments/ws`;
+    console.log(`Connecting to WebSocket at ${wsUrl}`);
+    
+    socketClient = new WebSocket(wsUrl);
 
-  socketClient.onclose = () => {
-    console.log('WebSocket connection closed. Attempting to reconnect...');
-    socketClient = null;
-    // Simple reconnect logic
-    setTimeout(connect, 3000);
-  };
+    socketClient.onopen = () => {
+      console.log('WebSocket connection established.');
+      emit('connect', null); // Emit a connect event for any legacy listeners
+      resolve();
+    };
 
-  socketClient.onerror = (error) => {
-    console.error('WebSocket error:', error);
-  };
+    socketClient.onclose = () => {
+      console.log('WebSocket connection closed. Attempting to reconnect...');
+      socketClient = null;
+      connectionPromise = null; // Allow reconnect attempts
+      setTimeout(connect, 3000);
+    };
 
-  socketClient.onmessage = (event) => {
-    try {
-      const message = JSON.parse(event.data);
-      console.log('[WS] Received:', message);
+    socketClient.onerror = (error) => {
+      console.error('WebSocket error:', error);
+      connectionPromise = null; // Allow reconnect attempts
+      reject(error);
+    };
 
-      if (message.type) {
-        // Emit the message type as an event that the UI can subscribe to.
-        emit(message.type, message.data || message);
+    socketClient.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data);
+        console.log('[WS] Received:', message);
 
-        // Handle global error messages
-        if (message.type === 'error') {
-          console.error('[WS] Received error from server:', message);
-          alert(`Server Error: ${message.message}\n\nDetails: ${message.details}`);
+        if (message.type) {
+          emit(message.type, message.data || message);
+          if (message.type === 'error') {
+            console.error('[WS] Received error from server:', message);
+            alert(`Server Error: ${message.message}\n\nDetails: ${message.details}`);
+          }
+        } else {
+          console.warn('[WS] Received message without a type:', message);
         }
-      } else {
-        console.warn('[WS] Received message without a type:', message);
+      } catch (e) {
+        console.error('[WS] Error parsing incoming message:', e);
       }
-    } catch (e) {
-      console.error('[WS] Error parsing incoming message:', e);
-    }
-  };
+    };
+  });
+
+  return connectionPromise;
 }
 
 /**

@@ -1,5 +1,5 @@
 
-import { showPublicProfile } from '../profile/PublicProfileModal';
+import { navigate } from '../../lib/router';
 
 // ─── User Search Suggestions ─────────────────────────────────
 export function setupUserSearch() {
@@ -36,7 +36,7 @@ export function setupUserSearch() {
                 li.addEventListener('click', () => {
                     suggestionsList.classList.add('hidden');
                     searchInput.value = u.name;
-                    showPublicProfile(u.id);
+                    navigate('publicProfile', { id: u.id });
                 });
                 suggestionsList.appendChild(li);
               });

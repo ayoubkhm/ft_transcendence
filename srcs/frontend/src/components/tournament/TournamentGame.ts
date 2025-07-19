@@ -18,7 +18,21 @@ let currentTournamentId: number | null = null;
 function joinTournamentGame(gameId: string) {
   // This will reuse the PvP join logic, which connects to the game's WebSocket
   // and handles the state updates. The backend will differentiate based on the message type.
-  joinPvPGame(gameId);
+  joinPvPGame(gameId, (state) => {
+    const winnerSide = state.winner;
+    const winner = state.players.find((p: any) => p.side === winnerSide);
+    const resultPre = document.getElementById('game-result') as HTMLPreElement;
+    resultPre.textContent = `Game Over — winner: ${winner ? winner.id : 'Unknown'}`;
+
+    const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
+    const forfeitBtn = document.getElementById('forfeit-btn') as HTMLButtonElement;
+    canvas.classList.add('hidden');
+    forfeitBtn.classList.add('hidden');
+    resultPre.classList.remove('hidden');
+
+    detachCanvas();
+    tournamentGameModal.classList.remove('hidden');
+  });
 }
 
 function displayRunningMatches(details: any) {
@@ -79,7 +93,7 @@ function displayRunningMatches(details: any) {
       button.addEventListener('click', (e) => {
           const gameId = (e.target as HTMLElement).dataset.gameId;
           if (gameId) {
-            hideTournamentGame(); // Hide the tournament modal
+            tournamentGameModal.classList.add('hidden');
             joinTournamentGame(gameId); // Join the specific game
           }
       });
@@ -87,6 +101,11 @@ function displayRunningMatches(details: any) {
 }
 
 export function showTournamentGame(details: any) {
+  console.log('[Tournament Redirection] showTournamentGame called with details:', details);
+  if (tournamentGameModal) {
+    tournamentGameModal.classList.remove('hidden');
+  }
+
   currentTournamentId = details.id;
   
   console.log('Populating tournament game modal with details:', details);
@@ -101,6 +120,7 @@ export function showTournamentGame(details: any) {
     show_brackets(newDetails.id, tournamentBracketsContainer);
     
     if (newDetails.state === 'OVER' && newDetails.winner_name) {
+      localStorage.removeItem('activeTournamentGame');
       const winnerDisplay = document.getElementById('tournament-winner-display') as HTMLElement;
       const winnerNameSpan = document.getElementById('tournament-winner-name') as HTMLElement;
       const winnerCloseBtn = document.getElementById('tournament-winner-close-btn') as HTMLButtonElement;
@@ -128,9 +148,13 @@ export function hideTournamentGame() {
     detachCanvas(); // Detach canvas FIRST
     tournamentGameModal.classList.add('hidden'); // Then hide the modal
     currentTournamentId = null;
+    localStorage.removeItem('activeTournamentSession');
   }
 }
 
-if (tournamentGameClose) {
-  tournamentGameClose.addEventListener('click', hideTournamentGame);
+export function isTournamentActive() {
+  return currentTournamentId !== null;
 }
+
+
+

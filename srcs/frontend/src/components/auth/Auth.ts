@@ -1,8 +1,6 @@
 
-import { setupTwoFALogin } from '../twofa/TwoFASetup';
 import { updateFriendsBadge } from '../friends/FriendsModal';
-
-const { show2faLogin } = setupTwoFALogin();
+import { navigate } from '../../lib/router';
 
 // Setup auth view toggles
 const authUser = document.getElementById('auth-user') as HTMLElement | null;
@@ -60,7 +58,7 @@ export async function initializeAuth() {
         } else {
             // Not authenticated or 2FA required
             if (res.status === 403 && data.error === 'Two-factor authentication required') {
-                show2faLogin();
+                navigate('login-2fa');
             }
             localStorage.removeItem('loggedIn');
             localStorage.removeItem('username');

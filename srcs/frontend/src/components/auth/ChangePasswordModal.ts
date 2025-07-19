@@ -1,3 +1,5 @@
+import { navigate, onRoute, getCurrentRoute } from '../../lib/router';
+
 export function setupChangePasswordModal() {
     const profileModal = document.getElementById('profile-modal') as HTMLElement | null;
     const profileChangePasswordBtn = document.getElementById('profile-change-password-btn') as HTMLButtonElement | null;
@@ -15,25 +17,44 @@ export function setupChangePasswordModal() {
 
     profileChangePasswordBtn.addEventListener('click', (e) => {
         e.preventDefault();
-        if(profileModal) profileModal.classList.add('hidden');
-        changePasswordModal.classList.remove('hidden');
+        navigate('change-password');
+    });
+
+    const closeModal = () => {
+        if (getCurrentRoute && getCurrentRoute() === 'change-password') {
+            history.back();
+        } else {
+            if (changePasswordModal) {
+                changePasswordModal.classList.add('hidden');
+            }
+        }
+    };
+
+    onRoute('change-password', () => {
+        if (profileModal) profileModal.classList.add('hidden');
+        if (changePasswordModal) changePasswordModal.classList.remove('hidden');
+    });
+
+    onRoute('profile', () => {
+        if (changePasswordModal) changePasswordModal.classList.add('hidden');
+        if (profileModal) profileModal.classList.remove('hidden');
     });
 
     // Close change-password modal
     changePasswordClose.addEventListener('click', (e) => {
         e.preventDefault();
-        changePasswordModal.classList.add('hidden');
+        closeModal();
     });
 
     changePasswordModal.addEventListener('click', (e) => {
         if (e.target === changePasswordModal) {
-            changePasswordModal.classList.add('hidden');
+            closeModal();
         }
     });
 
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && !changePasswordModal.classList.contains('hidden')) {
-            changePasswordModal.classList.add('hidden');
+            closeModal();
         }
     });
 
@@ -71,7 +92,7 @@ export function setupChangePasswordModal() {
 
             if (res.ok) {
                 alert(data.message || 'Password changed successfully');
-                changePasswordModal.classList.add('hidden');
+                closeModal();
             } else {
                 alert(data.error || 'Failed to change password');
             }

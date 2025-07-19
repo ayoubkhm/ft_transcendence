@@ -71,7 +71,6 @@ export function setupProfileModal(): void {
           profileAvatar.classList.add('hidden');
         }
       }
-      profileModal.classList.remove('hidden');
       navigate('profile');
     } catch (err) {
       console.error('Profile lookup error:', err);
@@ -87,6 +86,12 @@ export function setupProfileModal(): void {
   onRoute('home', () => {
     if (profileModal && !profileModal.classList.contains('hidden')) {
       profileModal.classList.add('hidden');
+    }
+  });
+
+  onRoute('profile', () => {
+    if (profileModal) {
+      profileModal.classList.remove('hidden');
     }
   });
 

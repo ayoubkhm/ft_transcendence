@@ -239,13 +239,17 @@ export default async function gamesRoutes (app: FastifyInstance)
               forfeitTimer: !!session.forfeitTimer,
             });
 
-            const isTournamentGame = gameState.type === 'TOURNAMENT';
             const isPlayer1 = gameState.players[0].id === username;
             const isPlayer2 = gameState.players[1].id === username;
             const isPending = gameState.players[1].id === '__PENDING__';
 
+            // If the player is already in the game, it's a reconnection.
+            if (isPlayer1 || isPlayer2) {
+              console.log(`[Game] Player '${username}' is reconnecting to game ${id}.`);
+              // The player is already part of the game, just confirm their join
+            }
             // If the player is not in the game and the game is pending, join them.
-            if (!isPlayer1 && !isPlayer2 && isPending) {
+            else if (!isPlayer1 && !isPlayer2 && isPending) {
               const pgClient = await app.pg.connect();
               try {
                 const userRes = await pgClient.query('SELECT id FROM users WHERE name = $1', [username]);

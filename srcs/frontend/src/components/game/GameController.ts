@@ -41,7 +41,6 @@ const resultPre = document.getElementById('game-result') as HTMLPreElement;
 const forfeitBtn = document.getElementById('forfeit-btn') as HTMLButtonElement;
 const playAIBtn = document.getElementById('play-ai-btn') as HTMLButtonElement;
 const playPVPBtn = document.getElementById('play-pvp-btn') as HTMLButtonElement;
-const playLocalPVPBtn = document.getElementById('play-local-pvp-btn') as HTMLButtonElement;
 const aiModal = document.getElementById('ai-modal') as HTMLElement;
 const aiModalClose = document.getElementById('ai-modal-close') as HTMLButtonElement;
 const aiModalStartBtn = document.getElementById('ai-modal-start-btn') as HTMLButtonElement;
@@ -52,6 +51,7 @@ const pvpModalClose = document.getElementById('pvp-modal-close') as HTMLButtonEl
 const pvpModalCreateBtn = document.getElementById('pvp-modal-create-btn') as HTMLButtonElement;
 const pvpModalJoinInput = document.getElementById('pvp-modal-join-input') as HTMLInputElement;
 const pvpModalJoinConfirmBtn = document.getElementById('pvp-modal-join-confirm-btn') as HTMLButtonElement;
+const pvpModalLocalBtn = document.getElementById('pvp-modal-local-btn') as HTMLButtonElement;
 const pvpModalCustomToggle = document.getElementById('pvp-modal-custom-toggle') as HTMLInputElement;
 const shareDiv = document.getElementById('share-id') as HTMLElement;
 const gameIdInput = document.getElementById('game-id-input') as HTMLInputElement;
@@ -185,6 +185,7 @@ function hideGameUI() {
     localGameLoopId = null;
   }
   // Clear game state
+  localStorage.removeItem('activeGameSession');
   gameId = null;
   playerId = null;
   authToken = null;
@@ -212,8 +213,9 @@ function localGameLoop() {
 async function startLocalPvPGame() {
   try {
     await loadImages();
-    localGame = new Game('Player 1', 'Player 2', null, null, 'VS', 'medium', true, 0);
-    showGameUI(false, true);
+    const isCustomOn = pvpModalCustomToggle.checked;
+    localGame = new Game('Player 1', 'Player 2', null, null, 'VS', 'medium', isCustomOn, 0);
+    navigate('local-game');
     localGameLoop();
   } catch (err) {
     console.error('[startLocalPvPGame]', err);
@@ -257,6 +259,7 @@ export async function startGame(mode: 'ai' | 'pvp', isCustomOn: boolean, difficu
     gameId = data.gameId;
     playerId = data.playerId;
     authToken = data.token;
+    localStorage.setItem('activeGameSession', JSON.stringify({ gameId, playerId, authToken }));
 
     const isWaiting = (mode === 'pvp');
     const isAI = (mode === 'ai');
@@ -277,7 +280,7 @@ export async function startGame(mode: 'ai' | 'pvp', isCustomOn: boolean, difficu
   }
 }
 
-export async function joinGame(gameIdToJoin: string) {
+export async function joinGame(gameIdToJoin: string, onGameOver?: (state: any) => void) {
   try {
     let username = localStorage.getItem('username');
     if (!username) {
@@ -310,12 +313,17 @@ export async function joinGame(gameIdToJoin: string) {
           drawGame(ctx, state, images);
         }
         if (state.isGameOver) {
-          handleGameOver(state);
+          if (onGameOver) {
+            onGameOver(state);
+          } else {
+            handleGameOver(state);
+          }
         }
       } else if (message.type === 'join_success') {
         // The backend confirms the join and sends the auth token
         authToken = message.data.token;
         playerId = message.data.playerId;
+        localStorage.setItem('activeGameSession', JSON.stringify({ gameId, playerId, authToken }));
         console.log(`[WS] Successfully joined game ${gameId}`);
       } else if (message.type === 'forfeit_timer_started') {
         const { duration } = message.payload;
@@ -380,6 +388,8 @@ function onKeyUp(e: KeyboardEvent) {
 }
 
 export function setupGame() {
+  // No longer check for active game session here, the router will handle it.
+
   forfeitBtn.addEventListener('click', () => {
     if (localGame) {
       localGame.handleInput('Player 1', { type: 'forfeit' });
@@ -393,51 +403,54 @@ export function setupGame() {
     }
   });
 
-  playAIBtn.addEventListener('click', () => aiModal.classList.remove('hidden'));
-  aiModalClose.addEventListener('click', () => aiModal.classList.add('hidden'));
+  playAIBtn.addEventListener('click', () => navigate('play-ai'));
+  aiModalClose.addEventListener('click', () => navigate('home'));
   aiModal.addEventListener('click', (e) => {
     if (e.target === aiModal) {
-      aiModal.classList.add('hidden');
+      navigate('home');
     }
   });
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && !aiModal.classList.contains('hidden')) {
-      aiModal.classList.add('hidden');
+      navigate('home');
     }
   });
   aiModalStartBtn.addEventListener('click', () => {
-    aiModal.classList.add('hidden');
+    navigate('home');
     const isCustomOn = aiModalCustomToggle.checked;
     startGame('ai', isCustomOn, aiModalDifficulty.value);
   });
 
   // --- PvP Modal Listeners ---
-  playPVPBtn.addEventListener('click', () => pvpModal.classList.remove('hidden'));
-  playLocalPVPBtn.addEventListener('click', startLocalPvPGame);
-  pvpModalClose.addEventListener('click', () => pvpModal.classList.add('hidden'));
+  playPVPBtn.addEventListener('click', () => navigate('play-pvp'));
+  pvpModalClose.addEventListener('click', () => navigate('home'));
   pvpModal.addEventListener('click', (e) => {
     if (e.target === pvpModal) {
-      pvpModal.classList.add('hidden');
+      navigate('home');
     }
   });
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && !pvpModal.classList.contains('hidden')) {
-      pvpModal.classList.add('hidden');
+      navigate('home');
     }
   });
   pvpModalCreateBtn.addEventListener('click', () => {
-    pvpModal.classList.add('hidden');
+    navigate('home');
     const isCustomOn = pvpModalCustomToggle.checked;
     startGame('pvp', isCustomOn);
   });
   pvpModalJoinConfirmBtn.addEventListener('click', () => {
     const gameIdToJoin = pvpModalJoinInput.value.trim();
     if (gameIdToJoin) {
-      pvpModal.classList.add('hidden');
+      navigate('home');
       joinGame(gameIdToJoin);
     } else {
       alert('Please enter a Game ID to join.');
     }
+  });
+  pvpModalLocalBtn.addEventListener('click', () => {
+    navigate('home');
+    startLocalPvPGame();
   });
 
   window.addEventListener('keydown', onKeyDown);
@@ -445,8 +458,43 @@ export function setupGame() {
 
 
   // Handle navigating away from the game
+  onRoute('game', (params) => {
+    const gameIdFromUrl = params?.id;
+    if (!gameIdFromUrl) {
+      // If we somehow navigate to #game without an ID, go home.
+      navigate('home');
+      return;
+    }
+
+    const sessionData = localStorage.getItem('activeGameSession');
+    if (sessionData) {
+      const { gameId: storedGameId, playerId: storedPlayerId, authToken: storedAuthToken } = JSON.parse(sessionData);
+      
+      // Only rejoin if the stored game matches the one in the URL
+      if (storedGameId === gameIdFromUrl) {
+        gameId = storedGameId;
+        playerId = storedPlayerId;
+        authToken = storedAuthToken;
+
+        showGameUI();
+        connectToGameSocket();
+        // Send a join message to ensure the server knows we're back
+        gameSocket!.onopen = () => {
+          console.log(`[WS] Reconnected to game ${gameId}`);
+          sendSocketMessage('join_pvp_game', { username: playerId });
+        };
+      }
+    }
+    // If there's no session data, the user might be a spectator or has joined via a link.
+    // The joinGame function will handle creating the session.
+  });
+
+  onRoute('local-game', () => {
+    showGameUI(false, true);
+  });
+
   onRoute('home', () => {
-    if (gameId) {
+    if (gameId || localGame) {
       hideGameUI();
     }
   });
