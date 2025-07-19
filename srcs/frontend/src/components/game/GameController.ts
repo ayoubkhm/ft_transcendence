@@ -1,7 +1,6 @@
 import { drawGame } from './GameCanvas';
 import { navigate, onRoute } from '../../lib/router';
 import { loginAsGuest } from '../auth/Auth';
-import { showTournamentGame } from '../tournament/TournamentGame';
 
 const imagePaths = {
   fake: './fake.png',
@@ -158,6 +157,7 @@ async function fetchAndDraw(): Promise<void> {
       if (gameType === 'tournament') {
         const tournamentId = localStorage.getItem('currentTournamentId');
         if (tournamentId) {
+          const { showTournamentGame } = await import('../tournament/TournamentGame');
           showTournamentGame(parseInt(tournamentId, 10));
         }
       } else {

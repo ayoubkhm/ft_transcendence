@@ -76,3 +76,7 @@ frontend:
 	@docker compose -p $(PROJECT_NAME) -f $(DOCKER_COMPOSE_FILE) up --build -d frontend
 nginx:
 	@docker compose -p $(PROJECT_NAME) -f $(DOCKER_COMPOSE_FILE) up --build -d nginx
+
+remake-tf:
+	@echo "Rebuilding tournament_service and frontend with logs..."
+	@docker compose -p $(PROJECT_NAME) -f $(DOCKER_COMPOSE_FILE) up --build tournament_service frontend

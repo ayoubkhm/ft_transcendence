@@ -75,6 +75,12 @@ export function connect() {
       if (message.type) {
         // Emit the message type as an event that the UI can subscribe to.
         emit(message.type, message.data || message);
+
+        // Handle global error messages
+        if (message.type === 'error') {
+          console.error('[WS] Received error from server:', message);
+          alert(`Server Error: ${message.message}\n\nDetails: ${message.details}`);
+        }
       } else {
         console.warn('[WS] Received message without a type:', message);
       }
@@ -99,6 +105,44 @@ function send(message: object) {
 // --- Public API for UI components ---
 
 /**
+ * Sends a message to create a new tournament.
+ * @param name The name of the tournament.
+ * @param ownerId The ID of the user creating the tournament.
+ */
+export function createTournament(name: string, ownerId: number) {
+  send({
+    type: 'create_tournament',
+    name: name,
+    owner_id: ownerId,
+  });
+}
+
+/**
+ * Sends a message to delete a tournament.
+ * @param name The name of the tournament to delete.
+ * @param ownerId The ID of the user deleting the tournament.
+ */
+export function deleteTournament(name: string, ownerId: number) {
+  send({
+    type: 'delete_tournament',
+    name: name,
+    owner_id: ownerId,
+  });
+}
+
+/**
+ * Requests the full details for a specific tournament.
+ * The backend will respond with a 'tournament-update' message.
+ * @param tournamentId The ID of the tournament.
+ */
+export function getTournamentDetails(tournamentId: number) {
+  send({
+    type: 'get_tournament_details',
+    tournament_id: tournamentId,
+  });
+}
+
+/**
  * Sends a message to join a tournament.
  * @param tournamentId The ID of the tournament to join.
  * @param userId The ID of the current user.
@@ -115,12 +159,25 @@ export function joinTournament(tournamentId: number, userId: number) {
  * Sends a message to leave a tournament.
  * @param tournamentId The ID of the tournament to leave.
  * @param userId The ID of the current user.
+ * @param name The name of the tournament to leave.
  */
-export function leaveTournament(tournamentId: number, userId: number) {
+export function leaveTournament(tournamentId: number, userId: number, name: string) {
   send({
     type: 'leave_tournament',
     tournament_id: tournamentId,
     user_id: userId,
+    name: name,
+  });
+}
+
+/**
+ * Sends a message to start a tournament.
+ * @param name The name of the tournament to start.
+ */
+export function startTournament(name: string) {
+  send({
+    type: 'start_tournament',
+    name: name,
   });
 }
 

@@ -1,9 +1,8 @@
 // TournamentDashboard: handles listing, creating, and managing tournaments
-import { on, joinTournament } from '../../lib/socket';
-import { showTournamentLobby } from './TournamentLobby';
+import { on, joinTournament, createTournament } from '../../lib/socket';
 import { loginAsGuest, getCurrentUserId } from '../auth/Auth';
 import { navigate, onRoute } from '../../lib/router';
-import show_brackets from '../../brackets/show_brackets.js';
+import show_brackets from '../../brackets/show_brackets';
 
 // Store the last received tournament list
 let currentTournaments: any[] = [];
@@ -27,11 +26,13 @@ async function renderTournamentList(tournaments: any[]) {
     row.innerHTML = `
       <td class="px-4 py-2">${t.id}</td>
       <td class="px-4 py-2">${t.name}</td>
-      <td class="px-4 py-2 owner-name" data-owner-id="${t.owner_id}">Loading...</td>
+      <td class="px-4 py-2">${t.owner_name}</td>
       <td class="px-4 py-2">${t.state}</td>
       <td class="px-4 py-2">${t.nbr_players}/${t.max_players}</td>
+      <td class="px-4 py-2">${t.winner_name || ''}</td>
       <td class="px-4 py-2 actions"></td>
     `;
+    tournamentTableBody.appendChild(row);
 
     // Create and append buttons to the actions cell
     const actionsCell = row.querySelector('.actions')!;
@@ -53,33 +54,10 @@ async function renderTournamentList(tournaments: any[]) {
 
     tournamentTableBody.appendChild(row);
   }
-  
-  // Asynchronously fetch owner names after rendering the basic table
-  fetchOwnerNames();
+
 }
 
-/**
- * Fetches and populates the owner names for the visible rows.
- */
-async function fetchOwnerNames() {
-    const ownerCells = document.querySelectorAll('.owner-name[data-owner-id]');
-    for (const cell of ownerCells) {
-        const ownerId = (cell as HTMLElement).dataset.ownerId;
-        if (ownerId) {
-            try {
-                const userRes = await fetch(`/api/user/search/${ownerId}`, { credentials: 'include' });
-                if (userRes.ok) {
-                    const userData = await userRes.json();
-                    cell.textContent = userData.profile.name;
-                } else {
-                    cell.textContent = 'Unknown';
-                }
-            } catch (err) {
-                cell.textContent = 'Unknown';
-            }
-        }
-    }
-}
+
 
 export function setupTournamentDashboard() {
   const tournamentModal = document.getElementById('tournament-modal') as HTMLElement | null;
@@ -115,6 +93,15 @@ export function setupTournamentDashboard() {
     }
   });
 
+  // Listen for the specific "created" event to navigate the creator to the lobby
+  on('tournament-created', async (data) => {
+    if (data && data.id && data.name) {
+      const { showTournamentLobby } = await import('./TournamentLobby');
+      if (tournamentModal) tournamentModal.classList.add('hidden');
+      showTournamentLobby(data.id, data.name);
+    }
+  });
+
   // --- Button Event Delegation ---
   if (tournamentTableBody) {
     tournamentTableBody.addEventListener('click', async (e) => {
@@ -128,6 +115,7 @@ export function setupTournamentDashboard() {
 
       // Handle JOIN button clicks
       if (target.classList.contains('join-btn')) {
+        const { showTournamentLobby } = await import('./TournamentLobby');
         const userId = await getCurrentUserId();
         if (!userId) {
             console.error("Could not get user ID. Prompting guest login.");
@@ -147,6 +135,7 @@ export function setupTournamentDashboard() {
 
       // Handle SPECTATE button clicks
       if (target.classList.contains('spectate-btn')) {
+        const { showTournamentLobby } = await import('./TournamentLobby');
         console.log('Spectating tournament:', tournament);
         // Logic to show tournament details without joining
         showTournamentLobby(tournamentId, tournament.name, true); // Pass a 'spectate' flag
@@ -182,23 +171,8 @@ export function setupTournamentDashboard() {
         return;
       }
 
-      try {
-        const res = await fetch('/api/tournaments', {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, owner_id: ownerId }),
-        });
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          throw new Error(err.error || err.msg || res.statusText);
-        }
-        alert('Tournament created successfully');
-        // The dashboard will update automatically via WebSocket broadcast
-      } catch (error) {
-        console.error('Error creating tournament:', error);
-        alert(`Error creating tournament: ${error.message}`);
-      }
+      createTournament(name, ownerId);
+      // The dashboard will update automatically, and the creator will be navigated to the lobby.
     });
   }
 }

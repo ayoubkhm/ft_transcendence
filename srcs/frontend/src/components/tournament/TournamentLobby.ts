@@ -1,6 +1,8 @@
 // TournamentLobby.ts
 import { navigate } from '../../lib/router';
 import { showTournamentGame } from './TournamentGame';
+import { on, leaveTournament, startTournament, deleteTournament, getTournamentDetails } from '../../lib/socket';
+import { getCurrentUserId } from '../auth/Auth';
 
 const tournamentLobbyModal = document.getElementById('tournament-lobby-modal') as HTMLElement;
 const tournamentLobbyClose = document.getElementById('tournament-lobby-close') as HTMLButtonElement;
@@ -14,6 +16,7 @@ const deleteTournamentBtn = document.getElementById('tournament-lobby-delete-btn
 
 let currentTournamentId: number | null = null;
 let currentTournamentName: string | null = null;
+let currentTournamentDetails: any | null = null; // Cache for tournament data
 let tournamentSocket: WebSocket | null = null;
 
 function closeSocket() {
@@ -24,148 +27,115 @@ function closeSocket() {
 }
 
 async function handleLeaveLobby() {
-  if (confirm('Leaving the lobby will remove you from the tournament. Are you sure?')) {
-    if (!currentTournamentName) return;
+  const userId = getCurrentUserId();
+  if (!userId) {
+    alert('You must be logged in to perform this action.');
+    return;
+  }
 
-    const email = localStorage.getItem('userEmail');
-    if (!email) {
-      alert('You must be logged in to leave a tournament.');
-      return;
+  // If the user is the owner, confirm deletion. Otherwise, confirm leaving.
+  if (currentTournamentDetails && userId === currentTournamentDetails.owner_id) {
+    if (confirm(`As the owner, leaving will delete the tournament. Are you sure you want to delete "${currentTournamentName}"?`)) {
+      deleteTournament(currentTournamentName!, userId);
+      // The tournament-deleted message will handle closing the modal
     }
-
-    let userId;
-    try {
-      const lookupRes = await fetch(`/api/user/lookup/${encodeURIComponent(email)}`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
-      });
-      if (!lookupRes.ok) throw new Error('User lookup failed');
-      const userData = await lookupRes.json();
-      userId = userData.id;
-    } catch (err) {
-      console.error('Error looking up user:', err);
-      alert('Could not verify your user ID.');
-      return;
-    }
-
-    try {
-      const res = await fetch(`/api/tournaments/${currentTournamentName}/leave`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: userId }),
-      });
-
-      if (res.ok) {
+  } else {
+    if (confirm('Leaving the lobby will remove you from the tournament. Are you sure?')) {
+      if (!currentTournamentId || !currentTournamentName) return;
+      leaveTournament(currentTournamentId, userId, currentTournamentName);
+      
+      // Hide the modal immediately for a responsive feel
+      tournamentLobbyModal.classList.add('hidden');
+      
+      // Give the WebSocket message a moment to be sent before navigating
+      setTimeout(() => {
         closeSocket();
-        tournamentLobbyModal.classList.add('hidden');
         navigate('tournaments');
-      } else {
-        const err = await res.json();
-        alert(`Failed to leave tournament: ${err.error || err.msg}`);
-      }
-    } catch (err) {
-      console.error('Leave tournament error:', err);
-      alert('An error occurred while trying to leave the tournament.');
+      }, 100);
     }
   }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  const tournamentLobbyModal = document.getElementById('tournament-lobby-modal') as HTMLElement;
-  const tournamentLobbyClose = document.getElementById('tournament-lobby-close') as HTMLButtonElement;
-  const leaveTournamentBtn = document.getElementById('tournament-lobby-leave-btn') as HTMLButtonElement;
-  const startTournamentBtn = document.getElementById('tournament-lobby-start-btn') as HTMLButtonElement;
-  const deleteTournamentBtn = document.getElementById('tournament-lobby-delete-btn') as HTMLButtonElement;
+let isLobbyInitialized = false;
 
-  if (tournamentLobbyClose) {
-    tournamentLobbyClose.addEventListener('click', (e) => {
+function initializeLobbyEventListeners() {
+  if (isLobbyInitialized) return;
+
+  const leaveBtn = document.getElementById('tournament-lobby-leave-btn') as HTMLButtonElement;
+  const startBtn = document.getElementById('tournament-lobby-start-btn') as HTMLButtonElement;
+  const deleteBtn = document.getElementById('tournament-lobby-delete-btn') as HTMLButtonElement;
+  const modal = document.getElementById('tournament-lobby-modal') as HTMLElement;
+  const closeBtn = document.getElementById('tournament-lobby-close') as HTMLButtonElement;
+
+  if (closeBtn) {
+    closeBtn.addEventListener('click', (e) => {
       e.preventDefault();
       handleLeaveLobby();
     });
   }
 
-  if (tournamentLobbyModal) {
-    tournamentLobbyModal.addEventListener('click', (e) => {
-      if (e.target === tournamentLobbyModal) {
+  if (modal) {
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
         handleLeaveLobby();
       }
     });
   }
 
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && tournamentLobbyModal && !tournamentLobbyModal.classList.contains('hidden')) {
+    if (e.key === 'Escape' && modal && !modal.classList.contains('hidden')) {
       handleLeaveLobby();
     }
   });
 
-  if (leaveTournamentBtn) {
-    leaveTournamentBtn.addEventListener('click', handleLeaveLobby);
+  if (leaveBtn) {
+    leaveBtn.addEventListener('click', handleLeaveLobby);
   }
 
-  if (startTournamentBtn) {
-    startTournamentBtn.addEventListener('click', async () => {
-      if (!currentTournamentName || !currentTournamentId) return;
-
-      try {
-        const res = await fetch(`/api/tournaments/${currentTournamentName}/start`, {
-          method: 'POST',
-          credentials: 'include',
-        });
-
-        if (res.ok) {
-          // Hide the lobby modal
-          if (tournamentLobbyModal) {
-            tournamentLobbyModal.classList.add('hidden');
-          }
-          // Show the tournament game modal
-          showTournamentGame(currentTournamentId);
-        } else {
-          const err = await res.json();
-          alert(`Failed to start tournament: ${err.error || err.msg}`);
-        }
-      } catch (err) {
-        console.error('Start tournament error:', err);
-        alert('An error occurred while trying to start the tournament.');
-      }
-    });
-  }
-
-  if (deleteTournamentBtn) {
-    deleteTournamentBtn.addEventListener('click', async () => {
+  if (startBtn) {
+    startBtn.addEventListener('click', () => {
       if (!currentTournamentName) return;
+      startTournament(currentTournamentName);
+    });
+  }
 
+  if (deleteBtn) {
+    deleteBtn.addEventListener('click', () => {
+      if (!currentTournamentName) return;
       if (confirm(`Are you sure you want to delete the tournament "${currentTournamentName}"?`)) {
-        try {
-          const res = await fetch(`/api/tournaments/${currentTournamentName}`, {
-            method: 'DELETE',
-            credentials: 'include',
-          });
-
-          if (res.ok) {
-            // Deletion was successful, close the modal for the owner.
-            // Other clients will be notified by the WebSocket message.
-            closeSocket();
-            tournamentLobbyModal?.classList.add('hidden');
-            navigate('home');
-          } else {
-            const err = await res.json();
-            alert(`Failed to delete tournament: ${err.error || err.msg}`);
-          }
-        } catch (err) {
-          console.error('Delete tournament error:', err);
-          alert('An error occurred while trying to delete the tournament.');
+        const ownerId = getCurrentUserId();
+        if (!ownerId) {
+          alert("You must be logged in to delete a tournament.");
+          return;
         }
+        deleteTournament(currentTournamentName, ownerId);
       }
     });
   }
-});
+
+  // This listener will now be active globally after the lobby has been initialized once
+  on('tournament-deleted', (data) => {
+    // If the deleted tournament is the one the user is currently viewing, show an alert and navigate
+    if (data.tournament_id === currentTournamentId) {
+      alert('The tournament has been deleted by the owner.');
+      closeSocket();
+      tournamentLobbyModal.classList.add('hidden');
+      currentTournamentId = null; // Clear the current tournament ID
+      navigate('home');
+    }
+  });
+
+  isLobbyInitialized = true;
+}
 
 export async function showTournamentLobby(tournamentId: number, tournamentName: string) {
+  // Ensure event listeners are attached
+  initializeLobbyEventListeners();
+
   currentTournamentId = tournamentId;
   currentTournamentName = tournamentName;
+  currentTournamentDetails = null; // Reset cache on new lobby
+
 
   tournamentLobbyTitle.textContent = `Lobby for ${tournamentName}`;
   tournamentLobbyPlayers.innerHTML = '<tr><td colspan="2" class="text-center py-4">Loading...</td></tr>';
@@ -176,59 +146,18 @@ export async function showTournamentLobby(tournamentId: number, tournamentName: 
   leaveTournamentBtn.classList.remove('hidden'); // Show by default
   tournamentLobbyModal.classList.remove('hidden');
 
-  // Establish WebSocket connection
-  const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const wsUrl = `${wsProtocol}//${window.location.host}/api/tournaments/${tournamentId}/ws`;
-  tournamentSocket = new WebSocket(wsUrl);
+  // Listen for updates for this specific tournament
+  on('tournament-update', (details) => {
+    console.log('[Lobby] Received tournament-update:', details); // Log the entire object
 
-  tournamentSocket.onmessage = (event) => {
-    const message = JSON.parse(event.data);
-    if (message.type === 'tournament-deleted') {
-      alert('The tournament has been deleted by the owner.');
-      closeSocket();
-      tournamentLobbyModal.classList.add('hidden');
-      navigate('home');
-    }
-  };
-
-  tournamentSocket.onclose = () => {
-    console.log('Tournament WebSocket closed.');
-  };
-
-  tournamentSocket.onerror = (error) => {
-    console.error('WebSocket error:', error);
-  };
-
-  try {
-    const detailsRes = await fetch(`/api/tournaments/${tournamentId}`, { credentials: 'include' });
-
-    if (!detailsRes.ok) {
-      throw new Error('Failed to fetch tournament data');
-    }
-
-    const details = await detailsRes.json();
+    if (!details || details.id !== currentTournamentId) return; // Ensure it's the correct tournament
+    
+    currentTournamentDetails = details; // Cache the latest details
 
     tournamentLobbyState.textContent = details.state;
     tournamentLobbyPlayerCount.textContent = `${details.nbr_players}/${details.max_players}`;
 
-    const email = localStorage.getItem('userEmail');
-    if (email) {
-      const lookupRes = await fetch(`/api/user/lookup/${encodeURIComponent(email)}`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
-      });
-      if (lookupRes.ok) {
-        const userData = await lookupRes.json();
-        if (userData.id === details.owner_id) {
-          startTournamentBtn.classList.remove('hidden');
-          deleteTournamentBtn.classList.remove('hidden');
-          leaveTournamentBtn.classList.add('hidden');
-        }
-      }
-    }
-
+    // Update player list
     tournamentLobbyPlayers.innerHTML = '';
     if (details.players.length === 0) {
       const tr = document.createElement('tr');
@@ -252,10 +181,45 @@ export async function showTournamentLobby(tournamentId: number, tournamentName: 
         tournamentLobbyPlayers.appendChild(tr);
       });
     }
-  } catch (err) {
-    console.error('Error fetching lobby data:', err);
-    tournamentLobbyPlayers.innerHTML = '<tr><td colspan="2" class="text-center py-4 text-red-500">Error loading players.</td></tr>';
-    tournamentLobbyState.textContent = 'Error';
-    tournamentLobbyPlayerCount.textContent = 'Error';
-  }
+
+    // Show/hide owner controls and set button text
+    const userId = getCurrentUserId();
+    if (userId && userId === details.owner_id) {
+      startTournamentBtn.classList.remove('hidden');
+      leaveTournamentBtn.textContent = 'Delete Tournament';
+      leaveTournamentBtn.classList.remove('hidden'); // Ensure it's visible
+      deleteTournamentBtn.classList.add('hidden'); // Hide the old delete button
+    } else {
+      startTournamentBtn.classList.add('hidden');
+      leaveTournamentBtn.textContent = 'Leave Tournament';
+      leaveTournamentBtn.classList.remove('hidden'); // Ensure it's visible
+      deleteTournamentBtn.classList.add('hidden'); // Hide the old delete button
+    }
+
+    // If the tournament has started, hide the lobby and show the game modal
+    if (details.state === 'RUNNING' || details.state === 'OVER') {
+        console.log(`[Lobby] Tournament state is '${details.state}'. Preparing to show game modal.`);
+        const lobbyModal = document.getElementById('tournament-lobby-modal');
+        const gameModal = document.getElementById('tournament-game-modal');
+
+        if (lobbyModal) {
+            console.log('[Lobby] Hiding lobby modal.');
+            lobbyModal.classList.add('hidden');
+        } else {
+            console.error('[Lobby] Could not find lobby modal to hide.');
+        }
+
+        if (gameModal) {
+            console.log('[Lobby] Calling showTournamentGame and showing game modal.');
+            // Call showTournamentGame to populate the modal, then ensure it's visible.
+            showTournamentGame(details);
+            gameModal.classList.remove('hidden');
+        } else {
+            console.error('[Lobby] Could not find game modal to show.');
+        }
+    }
+  });
+
+  // Request the initial details
+  getTournamentDetails(tournamentId);
 }
