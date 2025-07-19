@@ -185,7 +185,7 @@ CREATE OR REPLACE FUNCTION win_game (
 	_id INTEGER,
 	winner_is_p1 BOOLEAN DEFAULT TRUE
 )
-RETURNS TABLE(success BOOLEAN, msg TEXT) AS $$
+RETURNS TABLE(success BOOLEAN, msg TEXT, tid INTEGER) AS $$
 DECLARE
 	_state game_state;
 	_p1_id INTEGER;
@@ -194,7 +194,7 @@ DECLARE
 	_tournament_id INTEGER;
 BEGIN
 	IF _id IS NULL THEN
-		RETURN QUERY SELECT FALSE, 'Pls specify a id game not null';
+		RETURN QUERY SELECT FALSE, 'Pls specify a id game not null', NULL::INTEGER AS tid;
 		RETURN ;
 	END IF;
 	
@@ -204,12 +204,12 @@ BEGIN
 	WHERE id = _id;
 
 	IF NOT FOUND THEN
-		RETURN QUERY SELECT FALSE, 'Game with id % not found';
+		RETURN QUERY SELECT FALSE, 'Game with id % not found', NULL::INTEGER AS tid;
 		RETURN ;
 	END IF;
 
 	IF _state = 'OVER' THEN
-        RETURN QUERY SELECT 'Can''t win game that is already over';
+        RETURN QUERY SELECT 'Can''t win game that is already over', NULL::INTEGER AS tid;
         RETURN ;
     END IF;
 
@@ -255,10 +255,10 @@ BEGIN
 		END IF;
 	END IF;
 
-	RETURN QUERY SELECT TRUE, 'Game successfully won';
+	RETURN QUERY SELECT TRUE, 'Game successfully won', _tournament_id AS tid;
 	
 EXCEPTION
 	WHEN OTHERS THEN
-		RETURN QUERY SELECT FALSE, SQLERRM;
+		RETURN QUERY SELECT FALSE, SQLERRM, NULL::INTEGER AS tid;
 END;
 $$ LANGUAGE plpgsql;

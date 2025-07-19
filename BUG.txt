@@ -1,13 +1,9 @@
 Voici la liste des erreurs sous forme de points simples :
 
-    Impossible de supprimer le profil
     Impossible de modifier l’email, le nom, etc.
-    Pas d’avatar par défaut
-    Les infos du user restent après logout (formulaire signup)
-    Impossible de se connecter en guest
     Manque les stats : score, win, loss
     Impossible de quitter un tournoi (lobby)
     La croix pour quitter le tournoi (lobby) ne fonctionne pas
-    jarrive pas a me co avec google.
-    peut pas faire 2fa
+    jarrive pas a me co avec google. --> A corriger quand on sera à l'école
+    peut pas faire 2fa --> 
     
