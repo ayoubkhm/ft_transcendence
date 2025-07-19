@@ -3,7 +3,7 @@ CREATE OR REPLACE FUNCTION new_user(
 	_type TEXT DEFAULT 'guest',
 	_email TEXT DEFAULT NULL,
 	_password TEXT DEFAULT NULL,
-	_avatar TEXT DEFAULT '/default_avatar.jpg',
+	_avatar TEXT DEFAULT NULL,
 	is_2fa BOOLEAN DEFAULT FALSE,
 	_online BOOLEAN DEFAULT TRUE
 )
@@ -13,11 +13,11 @@ DECLARE
 BEGIN
 	IF is_2fa THEN
 		INSERT INTO users (name, type, email, password, avatar, online, twofa_secret, twofa_validated, active)
-		VALUES (_name, _type, _email, _password, _avatar, _online, NULL, FALSE, FALSE)
+		VALUES (_name, _type, _email, _password, COALESCE(_avatar, '/default_avatar.jpg'), _online, NULL, FALSE, FALSE)
 		RETURNING id INTO _new_user_id;
 	ELSE
 		INSERT INTO users (name, type, email, password, online, avatar)
-		VALUES (_name, _type, _email, _password, _online, _avatar)
+		VALUES (_name, _type, _email, _password, _online, COALESCE(_avatar, '/default_avatar.jpg'))
 		RETURNING id INTO _new_user_id;
 	END IF;
 	
@@ -33,7 +33,7 @@ EXCEPTION
 	WHEN OTHERS THEN
 		RETURN QUERY SELECT FALSE, SQLERRM, NULL::INTEGER;
 END;
-$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql;
 
 
 CREATE OR REPLACE FUNCTION update_user_email(_email TEXT, _newEmail TEXT)
@@ -366,4 +366,3 @@ EXCEPTION
     	RETURN QUERY SELECT FALSE, SQLERRM, NULL::public_user;
 END;
 $$ LANGUAGE plpgsql;
-
