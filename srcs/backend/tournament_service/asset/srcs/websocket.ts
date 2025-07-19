@@ -53,18 +53,28 @@ function safeSend(connection: SocketStream, payload: unknown): boolean {
 }
 
 export async function broadcastTournamentUpdate(server: FastifyInstance, tournamentId: number, pgClient?: PoolClient) {
+    console.log(`[Broadcast] Starting update for tournamentId: ${tournamentId}`);
+    
     const connections = socketsGroups.get(tournamentId);
-    if (!connections || connections.size === 0) return;
+    if (!connections || connections.size === 0) {
+      console.log(`[Broadcast] No active connections found for tournamentId: ${tournamentId}. Aborting.`);
+      return;
+    }
+    console.log(`[Broadcast] Found ${connections.size} connection(s) for tournamentId: ${tournamentId}.`);
   
     const client = pgClient || await server.pg.connect();
+    console.log('[Broadcast] Acquired DB client.');
     try {
+      console.log('[Broadcast] Querying DB for tournament, players, and brackets...');
       const [tournamentRes, playersRes, bracketsRes] = await Promise.all([
         client.query('SELECT id, state, name, nbr_players, max_players, owner_id FROM tournaments WHERE id = $1', [tournamentId]),
-        client.query('SELECT u.id, u.name FROM users u JOIN tournaments_players tp ON u.id = tp.player_id WHERE tp.tournament_id = $1', [tournamentId]),
+        client.query('SELECT u.id, u.name, tp.is_ready FROM users u JOIN tournaments_players tp ON u.id = tp.player_id WHERE tp.tournament_id = $1', [tournamentId]),
         client.query('SELECT * FROM get_brackets($1::INTEGER)', [tournamentId])
       ]);
+      console.log(`[Broadcast] DB queries complete. Found ${tournamentRes.rows.length} tournament(s), ${playersRes.rows.length} player(s).`);
   
       if (tournamentRes.rows.length === 0) {
+        console.log(`[Broadcast] Tournament ${tournamentId} not found in DB. Sending delete message.`);
         const deleteMessage = { type: 'tournament-deleted', tournament_id: tournamentId };
         for (const connection of connections) {
           safeSend(connection, deleteMessage);
@@ -77,19 +87,28 @@ export async function broadcastTournamentUpdate(server: FastifyInstance, tournam
       const ownerRes = await client.query('SELECT name FROM users WHERE id = $1', [tournament.owner_id]);
       const ownerName = ownerRes.rows.length > 0 ? ownerRes.rows[0].name : 'Unknown';
       const brackets = bracketsRes.rows.length > 0 && bracketsRes.rows[0].success ? bracketsRes.rows[0].brackets : [];
+      console.log(`[Broadcast] Owner name: ${ownerName}, Brackets found: ${!!brackets}`);
   
       const fullState = {
         type: 'tournament-update',
         data: { ...tournament, owner_name: ownerName, players: playersRes.rows, brackets: brackets },
       };
+      console.log('[Broadcast] Constructed fullState message:', JSON.stringify(fullState, null, 2));
   
+      let sentCount = 0;
       for (const connection of connections) {
-        safeSend(connection, fullState);
+        if (safeSend(connection, fullState)) {
+          sentCount++;
+        }
       }
+      console.log(`[Broadcast] Sent 'tournament-update' to ${sentCount} of ${connections.size} client(s).`);
     } catch (err) {
-      console.error(`[WS] Failed to broadcast for tournament ${tournamentId}:`, err);
+      console.error(`[Broadcast] FAILED to broadcast for tournament ${tournamentId}:`, err);
     } finally {
-      if (!pgClient) client.release();
+      if (!pgClient) {
+        client.release();
+        console.log('[Broadcast] Released DB client.');
+      }
     }
 }
 
@@ -236,6 +255,19 @@ const websocketHandler: WebsocketHandler = (connection, req) => {
           }
           break;
         }
+        case 'toggle_ready_status': {
+          if (typeof tournament_id !== 'number' || typeof user_id !== 'number') {
+            throw new Error('toggle_ready_status requires tournament_id and user_id.');
+          }
+          const client = await req.server.pg.connect();
+          try {
+            await client.query('SELECT * FROM toggle_player_ready($1::INTEGER, $2::INTEGER)', [user_id, tournament_id]);
+            await broadcastTournamentUpdate(req.server, tournament_id, client);
+          } finally {
+            client.release();
+          }
+          break;
+        }
         case 'start_tournament': {
           const { name } = msg;
           if (!name) throw new Error('start_tournament requires a tournament name.');
@@ -246,7 +278,10 @@ const websocketHandler: WebsocketHandler = (connection, req) => {
             const tournamentId = tourRes.rows[0].id;
 
             // Start the tournament first
-            await client.query('SELECT * FROM start_tournament($1::TEXT)', [name]);
+            const startResult = await client.query('SELECT * FROM start_tournament($1::TEXT)', [name]);
+            if (!startResult.rows[0].success) {
+              throw new Error(startResult.rows[0].msg || 'Failed to start tournament in DB.');
+            }
             
             // Immediately generate the first round of matches
             await client.query('SELECT * FROM next_round($1::INTEGER)', [tournamentId]);

@@ -122,13 +122,14 @@ export function createTournament(name: string, ownerId: number) {
  * @param name The name of the tournament to delete.
  * @param ownerId The ID of the user deleting the tournament.
  */
-export function deleteTournament(name: string, ownerId: number) {
-  send({
-    type: 'delete_tournament',
-    name: name,
-    owner_id: ownerId,
-  });
+export function deleteTournament(name: string, owner_id: number) {
+  send({ type: 'delete_tournament', name, owner_id });
 }
+
+export function toggleReadyStatus(tournament_id: number, user_id: number) {
+  send({ type: 'toggle_ready_status', tournament_id, user_id });
+}
+
 
 /**
  * Requests the full details for a specific tournament.

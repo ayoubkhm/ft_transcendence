@@ -30,6 +30,15 @@ BEGIN
 		RETURN ;
 	END IF;
 
+	-- Check if all players are ready
+	IF EXISTS (
+		SELECT 1 FROM tournaments_players
+		WHERE tournament_id = _id AND is_ready = FALSE
+	) THEN
+		RETURN QUERY SELECT FALSE, 'Not all players are ready.';
+		RETURN ;
+	END IF;
+
 	UPDATE tournaments
 	SET state = 'RUNNING'
 	WHERE id = _id;

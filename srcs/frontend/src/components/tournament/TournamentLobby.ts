@@ -1,7 +1,7 @@
 // TournamentLobby.ts
 import { navigate } from '../../lib/router';
 import { showTournamentGame } from './TournamentGame';
-import { on, leaveTournament, startTournament, deleteTournament, getTournamentDetails } from '../../lib/socket';
+import { on, leaveTournament, startTournament, deleteTournament, getTournamentDetails, toggleReadyStatus } from '../../lib/socket';
 import { getCurrentUserId } from '../auth/Auth';
 
 const tournamentLobbyModal = document.getElementById('tournament-lobby-modal') as HTMLElement;
@@ -13,6 +13,7 @@ const tournamentLobbyPlayers = document.getElementById('tournament-lobby-players
 const leaveTournamentBtn = document.getElementById('tournament-lobby-leave-btn') as HTMLButtonElement;
 const startTournamentBtn = document.getElementById('tournament-lobby-start-btn') as HTMLButtonElement;
 const deleteTournamentBtn = document.getElementById('tournament-lobby-delete-btn') as HTMLButtonElement;
+const readyBtn = document.getElementById('tournament-lobby-ready-btn') as HTMLButtonElement;
 
 let currentTournamentId: number | null = null;
 let currentTournamentName: string | null = null;
@@ -61,46 +62,40 @@ let isLobbyInitialized = false;
 function initializeLobbyEventListeners() {
   if (isLobbyInitialized) return;
 
-  const leaveBtn = document.getElementById('tournament-lobby-leave-btn') as HTMLButtonElement;
-  const startBtn = document.getElementById('tournament-lobby-start-btn') as HTMLButtonElement;
-  const deleteBtn = document.getElementById('tournament-lobby-delete-btn') as HTMLButtonElement;
-  const modal = document.getElementById('tournament-lobby-modal') as HTMLElement;
-  const closeBtn = document.getElementById('tournament-lobby-close') as HTMLButtonElement;
-
-  if (closeBtn) {
-    closeBtn.addEventListener('click', (e) => {
+  if (tournamentLobbyClose) {
+    tournamentLobbyClose.addEventListener('click', (e) => {
       e.preventDefault();
       handleLeaveLobby();
     });
   }
 
-  if (modal) {
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) {
+  if (tournamentLobbyModal) {
+    tournamentLobbyModal.addEventListener('click', (e) => {
+      if (e.target === tournamentLobbyModal) {
         handleLeaveLobby();
       }
     });
   }
 
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && modal && !modal.classList.contains('hidden')) {
+    if (e.key === 'Escape' && tournamentLobbyModal && !tournamentLobbyModal.classList.contains('hidden')) {
       handleLeaveLobby();
     }
   });
 
-  if (leaveBtn) {
-    leaveBtn.addEventListener('click', handleLeaveLobby);
+  if (leaveTournamentBtn) {
+    leaveTournamentBtn.addEventListener('click', handleLeaveLobby);
   }
 
-  if (startBtn) {
-    startBtn.addEventListener('click', () => {
+  if (startTournamentBtn) {
+    startTournamentBtn.addEventListener('click', () => {
       if (!currentTournamentName) return;
       startTournament(currentTournamentName);
     });
   }
 
-  if (deleteBtn) {
-    deleteBtn.addEventListener('click', () => {
+  if (deleteTournamentBtn) {
+    deleteTournamentBtn.addEventListener('click', () => {
       if (!currentTournamentName) return;
       if (confirm(`Are you sure you want to delete the tournament "${currentTournamentName}"?`)) {
         const ownerId = getCurrentUserId();
@@ -110,6 +105,14 @@ function initializeLobbyEventListeners() {
         }
         deleteTournament(currentTournamentName, ownerId);
       }
+    });
+  }
+
+  if (readyBtn) {
+    readyBtn.addEventListener('click', () => {
+      const userId = getCurrentUserId();
+      if (!currentTournamentId || !userId) return;
+      toggleReadyStatus(currentTournamentId, userId);
     });
   }
 
@@ -129,6 +132,11 @@ function initializeLobbyEventListeners() {
 }
 
 function renderLobby(details: any) {
+  const userId = getCurrentUserId();
+  const isOwner = userId && userId === details.owner_id;
+  const allPlayersReady = details.players.every((p: any) => p.is_ready);
+  const canStart = details.nbr_players >= details.min_players && allPlayersReady;
+
   tournamentLobbyState.textContent = details.state;
   tournamentLobbyPlayerCount.textContent = `${details.nbr_players}/${details.max_players}`;
 
@@ -149,7 +157,7 @@ function renderLobby(details: any) {
       nameTd.textContent = player.name;
       nameTd.className = 'px-2 py-1';
       const readyTd = document.createElement('td');
-      readyTd.textContent = '✅';
+      readyTd.textContent = player.is_ready ? '✅' : '❌';
       readyTd.className = 'px-2 py-1';
       tr.appendChild(nameTd);
       tr.appendChild(readyTd);
@@ -158,48 +166,27 @@ function renderLobby(details: any) {
   }
 
   // Show/hide owner controls and set button text
-  const userId = getCurrentUserId();
-  if (userId && userId === details.owner_id) {
+  if (isOwner) {
     startTournamentBtn.classList.remove('hidden');
+    startTournamentBtn.disabled = !canStart;
     leaveTournamentBtn.textContent = 'Delete Tournament';
-    leaveTournamentBtn.classList.remove('hidden'); // Ensure it's visible
-    deleteTournamentBtn.classList.add('hidden'); // Hide the old delete button
+    leaveTournamentBtn.classList.remove('hidden');
+    deleteTournamentBtn.classList.add('hidden');
+    readyBtn.classList.add('hidden'); // Hide ready button for owner
   } else {
     startTournamentBtn.classList.add('hidden');
     leaveTournamentBtn.textContent = 'Leave Tournament';
-    leaveTournamentBtn.classList.remove('hidden'); // Ensure it's visible
-    deleteTournamentBtn.classList.add('hidden'); // Hide the old delete button
+    leaveTournamentBtn.classList.remove('hidden');
+    deleteTournamentBtn.classList.add('hidden');
+    readyBtn.classList.remove('hidden'); // Show ready button for other players
   }
-}
 
-function updateLobby(details: any) {
-  // Only update the parts of the lobby that can change
-  tournamentLobbyState.textContent = details.state;
-  tournamentLobbyPlayerCount.textContent = `${details.nbr_players}/${details.max_players}`;
-
-  // Update player list
-  tournamentLobbyPlayers.innerHTML = '';
-  if (details.players.length === 0) {
-    const tr = document.createElement('tr');
-    const td = document.createElement('td');
-    td.colSpan = 2;
-    td.textContent = 'No players have joined yet.';
-    td.className = 'text-center py-4';
-    tr.appendChild(td);
-    tournamentLobbyPlayers.appendChild(tr);
-  } else {
-    details.players.forEach((player: any) => {
-      const tr = document.createElement('tr');
-      const nameTd = document.createElement('td');
-      nameTd.textContent = player.name;
-      nameTd.className = 'px-2 py-1';
-      const readyTd = document.createElement('td');
-      readyTd.textContent = '✅';
-      readyTd.className = 'px-2 py-1';
-      tr.appendChild(nameTd);
-      tr.appendChild(readyTd);
-      tournamentLobbyPlayers.appendChild(tr);
-    });
+  // Update Ready button text
+  const currentUser = details.players.find((p: any) => p.id === userId);
+  if (currentUser) {
+    readyBtn.textContent = currentUser.is_ready ? 'Not Ready' : 'Ready';
+    readyBtn.classList.remove(currentUser.is_ready ? 'bg-purple-600' : 'bg-green-600');
+    readyBtn.classList.add(currentUser.is_ready ? 'bg-green-600' : 'bg-purple-600');
   }
 }
 
@@ -223,41 +210,23 @@ export async function showTournamentLobby(tournamentId: number, tournamentName: 
 
   // Listen for updates for this specific tournament
   on('tournament-update', (details) => {
-    console.log('[Lobby] Received tournament-update:', details); // Log the entire object
-
-    if (!details || details.id !== currentTournamentId) return; // Ensure it's the correct tournament
+    if (!details || details.id !== currentTournamentId) return;
     
-    const wasLoading = !currentTournamentDetails; // Check if this is the first data load
-    currentTournamentDetails = details; // Cache the latest details
-
-    // If we were in a loading state, now we can render the full lobby
-    if (wasLoading) {
-      renderLobby(details);
-    } else {
-      // Otherwise, just update the dynamic parts
-      updateLobby(details);
-    }
+    currentTournamentDetails = details;
+    renderLobby(details);
 
     // If the tournament has started, hide the lobby and show the game modal
     if (details.state === 'RUNNING' || details.state === 'OVER') {
-        console.log(`[Lobby] Tournament state is '${details.state}'. Preparing to show game modal.`);
         const lobbyModal = document.getElementById('tournament-lobby-modal');
         const gameModal = document.getElementById('tournament-game-modal');
 
         if (lobbyModal) {
-            console.log('[Lobby] Hiding lobby modal.');
             lobbyModal.classList.add('hidden');
-        } else {
-            console.error('[Lobby] Could not find lobby modal to hide.');
         }
 
         if (gameModal) {
-            console.log('[Lobby] Calling showTournamentGame and showing game modal.');
-            // Call showTournamentGame to populate the modal, then ensure it's visible.
             showTournamentGame(details);
             gameModal.classList.remove('hidden');
-        } else {
-            console.error('[Lobby] Could not find game modal to show.');
         }
     }
   });

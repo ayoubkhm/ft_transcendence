@@ -26,7 +26,9 @@ BEGIN
 	VALUES (_name, _owner_id)
 	RETURNING id INTO _id;
 
-	PERFORM join_tournament(_owner_id, _name);
+	-- Automatically join the owner to their new tournament and mark them as ready
+	INSERT INTO tournaments_players (player_id, tournament_id, is_ready)
+	VALUES (_owner_id, _id, TRUE);
 	
 	RETURN QUERY SELECT TRUE, 'Tournament created successfully', _id;
 
