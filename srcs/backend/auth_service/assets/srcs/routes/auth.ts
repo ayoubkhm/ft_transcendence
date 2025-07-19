@@ -133,6 +133,7 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: name,
+          email: `${name}@guest.com`,
           type: 'guest',
           credential: process.env.API_CREDENTIAL,
         }),

@@ -133,6 +133,10 @@ export function setupTournamentDashboard() {
 
       // Handle JOIN button clicks
       if (target.classList.contains('join-btn')) {
+        // Disable the button to prevent double clicks
+        (target as HTMLButtonElement).disabled = true;
+        target.textContent = 'Joining...';
+
         const userId = await getCurrentUserId();
         if (!userId) {
             console.error("Could not get user ID. Prompting guest login.");
@@ -140,6 +144,8 @@ export function setupTournamentDashboard() {
             const newUserId = await getCurrentUserId();
             if (!newUserId) {
                 alert("Failed to login as guest. Cannot join tournament.");
+                (target as HTMLButtonElement).disabled = false; // Re-enable on failure
+                target.textContent = 'Join';
                 return;
             }
             // After guest login, proceed with the join logic
