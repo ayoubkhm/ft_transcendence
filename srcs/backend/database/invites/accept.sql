@@ -13,7 +13,7 @@ BEGIN
 
     IF ((invite_deleted IS NULL) OR (invite_deleted = FALSE)) THEN
         RETURN QUERY SELECT FALSE, 'Invite not found';
-        RETURN ;
+        
     END IF;
 
     DELETE FROM invites
@@ -46,7 +46,7 @@ BEGIN
 
     IF NOT FOUND THEN
         RETURN QUERY SELECT FALSE, 'User from not exists';
-        RETURN ;
+        
     END IF;
 
     RETURN QUERY SELECT * FROM accept_invite(_from_user_id, _to_user_id, _type);
@@ -70,7 +70,7 @@ BEGIN
 
     IF NOT FOUND THEN
         RETURN QUERY SELECT FALSE, 'User to not exists';
-        RETURN ;
+        
     END IF;
 
     RETURN QUERY SELECT * FROM accept_invite(_from_user_id, _to_user_id, _type);
@@ -95,7 +95,7 @@ BEGIN
 
     IF NOT FOUND THEN
         RETURN QUERY SELECT FALSE, 'User from not exists';
-        RETURN ;
+        
     END IF;
 
     SELECT id INTO _to_user_id
@@ -104,7 +104,7 @@ BEGIN
 
     IF NOT FOUND THEN
         RETURN QUERY SELECT FALSE, 'User to not exists';
-        RETURN ;
+        
     END IF;
 
     RETURN QUERY SELECT * FROM accept_invite(_from_user_id, _to_user_id, _type);

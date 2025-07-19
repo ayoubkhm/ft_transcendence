@@ -20,7 +20,7 @@ BEGIN
 
     IF (_type = 'friend') AND (_from_user_type = 'guest') THEN
         RETURN QUERY SELECT FALSE, 'Guest can''t make friends';
-        RETURN ;
+        
     END IF;
 
     SELECT type INTO _to_user_type
@@ -35,7 +35,7 @@ BEGIN
     IF _type = 'friend' THEN
         IF _to_user_type = 'guest' THEN
             RETURN QUERY SELECT FALSE, 'Can''t make friends with guest';
-            RETURN ;
+            
         END IF;
 
         IF EXISTS(
@@ -43,7 +43,7 @@ BEGIN
             WHERE ((user1_id = _from_user_id) AND (user2_id = _to_user_id))
                 OR ((user1_id = _to_user_id) AND (user2_id = _from_user_id))) THEN
                 RETURN QUERY SELECT FALSE, 'Users are already friends';
-                RETURN ;
+                
         END IF;
     END IF;
 
@@ -54,7 +54,7 @@ BEGIN
             AND type = _type
     ) THEN
         RETURN QUERY SELECT FALSE, 'Invite already exists';
-        RETURN ;
+        
     END IF;
 
     INSERT INTO invites (from_id, to_id, type)
@@ -92,7 +92,7 @@ BEGIN
 
     IF _type = 'friend' AND _from_user_type = 'guest' THEN
         RETURN QUERY SELECT FALSE, 'Guest can''t make friends';
-        RETURN ;
+        
     END IF;
 
     SELECT type INTO _to_user_type
@@ -106,7 +106,7 @@ BEGIN
     IF _type = 'friend' THEN
         IF _to_user_type = 'guest' THEN
             RETURN QUERY SELECT FALSE, 'Can''t make friends with guest';
-            RETURN ;
+            
         END IF;
 
         IF EXISTS(
@@ -114,7 +114,7 @@ BEGIN
             WHERE ((user1_id = _from_user_id) AND (user2_id = _to_user_id))
                 OR ((user1_id = _to_user_id) AND (user2_id = _from_user_id))) THEN
                 RETURN QUERY SELECT FALSE, 'Users are already friends';
-                RETURN ;
+                
         END IF;
     END IF;
 
@@ -125,7 +125,7 @@ BEGIN
             AND type = _type
     ) THEN
         RETURN QUERY SELECT FALSE, 'Invite already exists';
-        RETURN ;
+        
     END IF;
 
     INSERT INTO invites (from_id, to_id, type)
@@ -162,7 +162,7 @@ BEGIN
 
     IF _from_user_type = 'guest' THEN
         RETURN QUERY SELECT FALSE, 'Guest can''t make friends';
-        RETURN ;
+        
     END IF;
 
 
@@ -179,7 +179,7 @@ BEGIN
     IF _type = 'friend' THEN
         IF _to_user_type = 'guest' THEN
             RETURN QUERY SELECT FALSE, 'Can''t make friends with guest';
-            RETURN ;
+            
         END IF;
         
         IF EXISTS(
@@ -187,7 +187,7 @@ BEGIN
             WHERE ((user1_id = _from_user_id) AND (user2_id = _to_user_id))
                 OR ((user1_id = _to_user_id) AND (user2_id = _from_user_id))) THEN
                 RETURN QUERY SELECT FALSE, 'Users are already friends';
-                RETURN ;
+                
         END IF;
     END IF;
 
@@ -198,7 +198,7 @@ BEGIN
             AND type = _type
     ) THEN
         RETURN QUERY SELECT FALSE, 'Invite already exists';
-        RETURN ;
+        
     END IF;
 
     INSERT INTO invites (from_id, to_id, type)
@@ -237,7 +237,7 @@ BEGIN
 	
     IF _from_user_type = 'guest' THEN
         RETURN QUERY SELECT FALSE, 'Guest can''t make friends';
-        RETURN ;
+        
     END IF;
 
     SELECT id, type INTO _to_user_id, _to_user_type
@@ -252,7 +252,7 @@ BEGIN
     IF _type = 'friend' THEN
         IF _to_user_type = 'guest' THEN
             RETURN QUERY SELECT FALSE, 'Can''t make friends with guest';
-            RETURN ;
+            
         END IF;
 
         IF EXISTS(
@@ -260,7 +260,7 @@ BEGIN
             WHERE ((user1_id = _from_user_id) AND (user2_id = _to_user_id))
                 OR ((user1_id = _to_user_id) AND (user2_id = _from_user_id))) THEN
                 RETURN QUERY SELECT FALSE, 'Users are already friends';
-                RETURN ;
+                
         END IF;
     END IF;
 
@@ -271,7 +271,7 @@ BEGIN
             AND type = _type
     ) THEN
         RETURN QUERY SELECT FALSE, 'Invite already exists';
-        RETURN ;
+        
     END IF;
 
     INSERT INTO invites (from_id, to_id, type)
@@ -330,7 +330,7 @@ BEGIN
 
     IF NOT FOUND THEN
         RETURN QUERY SELECT FALSE, FORMAT('User from not found with email %s (delete invite fail)', _from_user_email);
-        RETURN ;
+        
     END IF;
 
 	DELETE FROM invites
@@ -367,7 +367,7 @@ BEGIN
 
     IF NOT FOUND THEN
         RETURN QUERY SELECT FALSE, FORMAT('User to not found with email %s (delete invite fail)', _to_user_email);
-        RETURN ;
+        
     END IF;
 
 	DELETE FROM invites
@@ -405,7 +405,7 @@ BEGIN
 
     IF NOT FOUND THEN
         RETURN QUERY SELECT FALSE, FORMAT('User from not found with email %s (delete invite fail)', _from_user_email);
-        RETURN ;
+        
     END IF;
 
     SELECT id INTO _to_user_id
@@ -414,7 +414,7 @@ BEGIN
 
     IF NOT FOUND THEN
         RETURN QUERY SELECT FALSE, FORMAT('User to not found with email %s (delete invite fail)', _to_user_email);
-        RETURN ;
+        
     END IF;
 
 	DELETE FROM invites
@@ -449,7 +449,7 @@ $$ LANGUAGE plpgsql;
 
 --     IF NOT FOUND THEN
 --         RETURN QUERY SELECT FALSE, FORMAT('User not found with email %s (get invite fail)', _user_email);
---         RETURN ;
+--         
 --     END IF;
 
 --     RETURN QUERY SELECT TRUE, 

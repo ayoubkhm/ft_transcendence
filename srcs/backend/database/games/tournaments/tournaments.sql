@@ -45,7 +45,7 @@ BEGIN
 
 	RETURN NEW;
 END;
-$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql;
 
 CREATE TRIGGER enforce_tournament_constraints
 BEFORE INSERT OR UPDATE ON tournaments

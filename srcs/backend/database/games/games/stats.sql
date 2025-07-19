@@ -6,7 +6,7 @@ RETURNS TABLE(success BOOLEAN, msg TEXT) AS $$
 BEGIN
 	IF NOT EXISTS (SELECT 1 FROM games WHERE id = _id) THEN
 		RETURN QUERY SELECT FALSE, 'No game found to score';
-		RETURN ;
+		
 	END IF;
 
 	IF _p1 THEN

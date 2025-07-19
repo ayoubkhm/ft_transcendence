@@ -39,12 +39,12 @@ BEGIN
 	
 	IF NOT FOUND THEN
 		RETURN QUERY SELECT FALSE, 'User not found';
-		RETURN ;
+		
 	END IF;
 
 	IF _validated IS NULL THEN
 		RETURN QUERY SELECT FALSE, 'User isnt 2fa';
-		RETURN ;
+		
 	END IF;
 
 	UPDATE users
@@ -77,12 +77,12 @@ BEGIN
 	
 	IF NOT FOUND THEN
 		RETURN QUERY SELECT FALSE, 'User not found';
-		RETURN ;
+		
 	END IF;
 
 	IF _validated IS NULL THEN
 		RETURN QUERY SELECT FALSE, 'User isnt 2fa';
-		RETURN ;
+		
 	END IF;
 
 	UPDATE users
@@ -117,7 +117,7 @@ BEGIN
 	WHERE id = _id;
 	IF is_2fa IS NOT NULL THEN
 		RETURN QUERY SELECT FALSE, 'User is already 2fa';
-		RETURN ;
+		
 	END IF;
 
 	UPDATE users
@@ -148,7 +148,7 @@ BEGIN
 	WHERE id = _id;
 	IF is_2fa IS NULL THEN
 		RETURN QUERY SELECT FALSE, 'User isn''t 2fa';
-		RETURN ;
+		
 	END IF;
 
 	UPDATE users

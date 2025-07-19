@@ -8,18 +8,18 @@ DECLARE
 BEGIN
 	IF _name IS NULL THEN
 		RETURN QUERY SELECT FALSE, 'Pls specify a tournament name not null', NULL::INTEGER;
-		RETURN ;
+		
 	END IF;
 	IF _owner_id IS NULL THEN
 		RETURN QUERY SELECT FALSE, 'Pls specify a tournament owner id not null', NULL::INTEGER;
-		RETURN ;
+		
 	END IF;
 
 	IF NOT EXISTS (
 		SELECT 1 FROM users WHERE id = _owner_id
 	) THEN
 		RETURN QUERY SELECT FALSE, FORMAT('User with id %s doesn''t exists', _id), NULL::INTEGER;
-		RETURN ;
+		
 	END IF;
 
 	INSERT INTO tournaments (name, owner_id, nbr_players)
@@ -156,7 +156,7 @@ BEGIN
 
 	IF NOT FOUND THEN
 		RETURN QUERY SELECT FALSE, FORMAT('Tournament with id %s not found', _id);
-		RETURN ; 
+		 
 	END IF;
 
 	IF EXISTS(
@@ -167,7 +167,7 @@ BEGIN
 			AND tournament_round = _round
 	) THEN
 		RETURN QUERY SELECT FALSE, 'All this round games havent finished, can''t go to next round';
-		RETURN ;
+		
 	END IF;
 
 	IF _round = _total_rounds THEN

@@ -128,7 +128,7 @@ DECLARE
 BEGIN
 	IF _id IS NULL THEN
 		RETURN QUERY SELECT FALSE, 'No tournament id provided (null): no brackets', NULL::TEXT as tname, NULL::tournament_state as tstate, NULL::INTEGER as twinner_id, NULL::TEXT as twinner_name, NULL::INTEGER as twinner_tag, '[]'::jsonb;
-		RETURN ;
+		
 	END IF;
 
 	SELECT name, state, winner_id INTO _name, _state, _winner_id
@@ -137,7 +137,7 @@ BEGIN
 
 	IF NOT FOUND THEN
 		RETURN QUERY SELECT FALSE, 'Tournament not found', NULL::TEXT as tname, NULL::tournament_state as tstate, NULL::INTEGER as twinner_id, NULL::TEXT as twinner_name, NULL::INTEGER as twinner_tag, '[]'::jsonb;
-		RETURN ;
+		
 	END IF;
 
 	IF _winner_id IS NOT NULL THEN

@@ -17,12 +17,12 @@ BEGIN
 	
 	IF _tournament_id IS NULL THEN
 		RETURN QUERY SELECT FALSE, 'Tournament not found';
-		RETURN ;
+		
 	END IF;
 
 	IF _tournament_state != 'LOBBY' THEN
 		RETURN QUERY SELECT FALSE, 'Tournament isnt prepping, cant join';
-		RETURN ;
+		
 	END IF;
 
 	IF EXISTS (
@@ -30,7 +30,7 @@ BEGIN
 		WHERE player_id = _id AND tournament_id = _tournament_id
 	) THEN
 		RETURN QUERY SELECT FALSE, 'User already joined this tournament';
-		RETURN ;
+		
 	END IF;
 
 	UPDATE tournaments SET nbr_players = nbr_players + 1
@@ -44,7 +44,7 @@ BEGIN
 	IF _nbr_players >= _min_players THEN
 		PERFORM update_brackets(_tournament_id);
 		RETURN QUERY SELECT TRUE, 'User joined successfully, brackets updated';
-		RETURN ;
+		
 	END IF;
 
 	RETURN QUERY SELECT TRUE, 'User joined successfully (brackets not update, not enough players)';
@@ -74,12 +74,12 @@ BEGIN
 	
 	IF NOT FOUND THEN
 		RETURN QUERY SELECT FALSE, 'Tournament not found';
-		RETURN ;
+		
 	END IF;
 
 	IF _state != 'LOBBY' THEN
 		RETURN QUERY SELECT FALSE, 'Can''t leave tournament: isnt prepping anymore';
-		RETURN ;
+		
 	END IF;
 
 	DELETE FROM tournaments_players

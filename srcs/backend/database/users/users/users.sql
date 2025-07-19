@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS users (
 	twofa_secret TEXT DEFAULT NULL,		-- nullable pour compte pas 2fa
 	twofa_validated BOOLEAN DEFAULT NULL,
 	active BOOLEAN NOT NULL DEFAULT TRUE,		-- nullable pour 2fa pas validated
-	avatar TEXT DEFAULT '/default_avatar.jpg',
+	avatar TEXT NOT NULL DEFAULT '/default_avatar.jpg',
 	tag INTEGER DEFAULT NULL
 );
 
@@ -50,9 +50,9 @@ BEGIN
 	IF NEW.type = 'signed' AND (NEW.email IS NULL OR NEW.password IS NULL) THEN
     	RAISE EXCEPTION 'Signed-in users must have email and password';
 	ELSIF NEW.type = 'oauth' THEN
-		IF NEW.password IS NOT NULL then 
+		IF NEW.password IS NOT NULL THEN 
 			RAISE EXCEPTION 'OAuth users via OAuth can''t have password';
-		ELSIF NEW.email IS NULL then
+		ELSIF NEW.email IS NULL THEN
 			RAISE EXCEPTION 'OAuth users must have email';
 		END IF;
 	ELSIF NEW.type = 'guest' AND (NEW.email IS NOT NULL OR NEW.password IS NOT NULL) THEN

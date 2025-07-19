@@ -3,7 +3,7 @@ CREATE OR REPLACE FUNCTION new_user(
 	_type TEXT DEFAULT 'guest',
 	_email TEXT DEFAULT NULL,
 	_password TEXT DEFAULT NULL,
-	_avatar TEXT DEFAULT NULL,
+	_avatar TEXT DEFAULT '/default_avatar.jpg',
 	is_2fa BOOLEAN DEFAULT FALSE,
 	_online BOOLEAN DEFAULT TRUE
 )
@@ -43,10 +43,10 @@ DECLARE
 BEGIN
 	IF _email IS NULL THEN
 		RETURN QUERY SELECT FALSE, 'User not found (email is null)';
-		RETURN ;
+		
 	ELSIF _newEmail IS NULL THEN
 		RETURN QUERY SELECT FALSE, 'New email can''t be null';
-		RETURN ;
+		
 	END IF;
 	UPDATE users
 	SET email = _newEmail
@@ -55,7 +55,7 @@ BEGIN
 
 	IF user_found THEN
 		RETURN QUERY SELECT TRUE, 'Email updated successfully';
-		RETURN ;
+		
 	END IF;
 	RETURN QUERY SELECT FALSE, 'No user found with that email (update email fail)';
 	
@@ -74,10 +74,10 @@ DECLARE
 BEGIN
 	IF _id IS NULL THEN
 		RETURN QUERY SELECT FALSE, 'User not found (_id is null)';
-		RETURN ;
+		
 	ELSIF _newEmail IS NULL THEN
 		RETURN QUERY SELECT FALSE, 'New email can''t be null';
-		RETURN ;
+		
 	END IF;
 
 	UPDATE users
@@ -87,7 +87,7 @@ BEGIN
 
 	IF user_found THEN
 		RETURN QUERY SELECT TRUE, 'Email updated successfully';
-		RETURN ;
+		
 	END IF;
 	RETURN QUERY SELECT FALSE, 'No user found with that id (update email fail)';
 	
@@ -109,10 +109,10 @@ DECLARE
 BEGIN
 	IF _email IS NULL THEN
 		RETURN QUERY SELECT FALSE, 'User not found (email is null)';
-		RETURN ;
+		
 	ELSIF _name IS NULL THEN
 		RETURN QUERY SELECT FALSE, 'New name can''t be null';
-		RETURN ;
+		
 	END IF;
 	UPDATE users
 	SET name = _name
@@ -121,7 +121,7 @@ BEGIN
 
 	IF user_found THEN
 		RETURN QUERY SELECT TRUE, 'Username updated successfully';
-		RETURN ;
+		
 	END IF;
 	RETURN QUERY SELECT FALSE, 'No user not found with that email (update name fail)';
 	
@@ -140,10 +140,10 @@ DECLARE
 BEGIN
 	IF _id IS NULL THEN
 		RETURN QUERY SELECT FALSE, 'User not found (id is null)';
-		RETURN ;
+		
 	ELSIF _name IS NULL THEN
 		RETURN QUERY SELECT FALSE, 'New name can''t be null';
-		RETURN ;
+		
 	END IF;
 	UPDATE users
 	SET name = _name
@@ -152,7 +152,7 @@ BEGIN
 
 	IF user_found THEN
 		RETURN QUERY SELECT TRUE, 'Username updated successfully';
-		RETURN ;
+		
 	END IF;
 	RETURN QUERY SELECT FALSE, 'No user not found with that id (update name fail)';
 	
@@ -172,10 +172,10 @@ DECLARE
 BEGIN
 	IF _email IS NULL THEN
 		RETURN QUERY SELECT FALSE, 'User not found (email is null)';
-		RETURN ;
+		
 	ELSIF _password IS NULL THEN
 		RETURN QUERY SELECT FALSE, 'New password can''t be null';
-		RETURN ;
+		
 	END IF;
 	UPDATE users
 	SET password = _password
@@ -184,7 +184,7 @@ BEGIN
 
 	IF user_found THEN
 		RETURN QUERY SELECT TRUE, 'Password updated successfully';
-		RETURN ;
+		
 	END IF;
 	RETURN QUERY SELECT FALSE, 'No user found with that email (update password fail)';
 	
@@ -201,10 +201,10 @@ DECLARE
 BEGIN
 	IF _id IS NULL THEN
 		RETURN QUERY SELECT FALSE, 'User not found (id is null)';
-		RETURN ;
+		
 	ELSIF _password IS NULL THEN
 		RETURN QUERY SELECT FALSE, 'New password can''t be null';
-		RETURN ;
+		
 	END IF;
 	UPDATE users
 	SET password = _password
@@ -213,7 +213,7 @@ BEGIN
 
 	IF user_found THEN
 		RETURN QUERY SELECT TRUE, 'Password updated successfully';
-		RETURN ;
+		
 	END IF;
 	RETURN QUERY SELECT FALSE, 'No user found with that id (update password fail)';
 	
@@ -231,10 +231,10 @@ DECLARE
 BEGIN
 	IF _email IS NULL THEN
 		RETURN QUERY SELECT FALSE, 'User not found (email is null)';
-		RETURN ;
+		
 	ELSIF _avatar IS NULL THEN
 		RETURN QUERY SELECT FALSE, 'New password can''t be null';
-		RETURN ;
+		
 	END IF;
 	UPDATE users
 	SET avatar = _avatar
@@ -243,7 +243,7 @@ BEGIN
 
 	IF user_found THEN
 		RETURN QUERY SELECT TRUE, 'Password updated successfully';
-		RETURN ;
+		
 	END IF;
 	RETURN QUERY SELECT FALSE, 'No user found with that email % (update avatar fail)', _email;
 	
@@ -260,10 +260,10 @@ DECLARE
 BEGIN
 	IF _id IS NULL THEN
 		RETURN QUERY SELECT FALSE, 'User not found (id is null)';
-		RETURN ;
+		
 	ELSIF _avatar IS NULL THEN
 		RETURN QUERY SELECT FALSE, 'New password can''t be null';
-		RETURN ;
+		
 	END IF;
 	UPDATE users
 	SET avatar = _avatar
@@ -272,7 +272,7 @@ BEGIN
 
 	IF user_found THEN
 		RETURN QUERY SELECT TRUE, 'Password updated successfully';
-		RETURN ;
+		
 	END IF;
 	RETURN QUERY SELECT FALSE, 'No user found with that id % (update avatar fail)', _id;
 	
@@ -333,7 +333,7 @@ BEGIN
 	WHERE id = _id;
 	IF NOT FOUND THEN
 		RETURN QUERY SELECT FALSE, 'User not found with this id', NULL::public_user;
-		RETURN ;
+		
 	END IF;
 	
 	RETURN QUERY SELECT TRUE, 'User public info successfully retrieved', ROW(_id, _name, _tag, _email, _avatar, _online)::public_user;
@@ -357,7 +357,7 @@ BEGIN
 	WHERE email = _email;
 	IF NOT FOUND THEN
 		RETURN QUERY SELECT FALSE, 'User not found with this email', NULL::public_user;
-		RETURN ;
+		
 	END IF;
 	
 	RETURN QUERY SELECT TRUE, 'User public info successfully retrieved', ROW(_id, _name, _tag, _email, _avatar, _online)::public_user;
