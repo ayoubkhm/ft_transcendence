@@ -67,7 +67,7 @@ export async function broadcastTournamentUpdate(server: FastifyInstance, tournam
     try {
       console.log('[Broadcast] Querying DB for tournament, players, and brackets...');
       const [tournamentRes, playersRes, bracketsRes] = await Promise.all([
-        client.query('SELECT id, state, name, nbr_players, max_players, owner_id FROM tournaments WHERE id = $1', [tournamentId]),
+        client.query('SELECT id, state, name, nbr_players, min_players, max_players, owner_id FROM tournaments WHERE id = $1', [tournamentId]),
         client.query('SELECT u.id, u.name, tp.is_ready FROM users u JOIN tournaments_players tp ON u.id = tp.player_id WHERE tp.tournament_id = $1', [tournamentId]),
         client.query('SELECT * FROM get_brackets($1::INTEGER)', [tournamentId])
       ]);

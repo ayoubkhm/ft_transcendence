@@ -22,8 +22,8 @@ BEGIN
 		RETURN ;
 	END IF;
 
-	INSERT INTO tournaments (name, owner_id)
-	VALUES (_name, _owner_id)
+	INSERT INTO tournaments (name, owner_id, nbr_players)
+	VALUES (_name, _owner_id, 1)
 	RETURNING id INTO _id;
 
 	-- Automatically join the owner to their new tournament and mark them as ready

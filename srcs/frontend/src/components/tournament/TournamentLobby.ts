@@ -137,6 +137,18 @@ function renderLobby(details: any) {
   const allPlayersReady = details.players.every((p: any) => p.is_ready);
   const canStart = details.nbr_players >= details.min_players && allPlayersReady;
 
+  // --- DEBUG LOG ---
+  console.log({
+    message: "[Lobby Render] Status Check",
+    isOwner,
+    playerCount: details.nbr_players,
+    minPlayers: details.min_players,
+    allPlayersReady,
+    canStart,
+    players: details.players,
+  });
+  // --- END DEBUG LOG ---
+
   tournamentLobbyState.textContent = details.state;
   tournamentLobbyPlayerCount.textContent = `${details.nbr_players}/${details.max_players}`;
 
@@ -173,6 +185,15 @@ function renderLobby(details: any) {
     leaveTournamentBtn.classList.remove('hidden');
     deleteTournamentBtn.classList.add('hidden');
     readyBtn.classList.add('hidden'); // Hide ready button for owner
+
+    // Update Start button style based on whether it's enabled
+    if (startTournamentBtn.disabled) {
+      startTournamentBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
+      startTournamentBtn.classList.add('bg-gray-500', 'cursor-not-allowed');
+    } else {
+      startTournamentBtn.classList.add('bg-green-600', 'hover:bg-green-700');
+      startTournamentBtn.classList.remove('bg-gray-500', 'cursor-not-allowed');
+    }
   } else {
     startTournamentBtn.classList.add('hidden');
     leaveTournamentBtn.textContent = 'Leave Tournament';
