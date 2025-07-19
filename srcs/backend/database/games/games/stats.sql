@@ -6,7 +6,7 @@ RETURNS TABLE(success BOOLEAN, msg TEXT) AS $$
 BEGIN
 	IF NOT EXISTS (SELECT 1 FROM games WHERE id = _id) THEN
 		RETURN QUERY SELECT FALSE, 'No game found to score';
-		
+		RETURN ;
 	END IF;
 
 	IF _p1 THEN
@@ -23,3 +23,59 @@ EXCEPTION
 		RETURN QUERY SELECT FALSE, SQLERRM;
 END;
 $$ LANGUAGE plpgsql;
+
+
+
+CREATE OR REPLACE FUNCTION apply_bonus(
+	_id INTEGER,
+	_p1 BOOLEAN DEFAULT TRUE
+)
+RETURNS TABLE(success BOOLEAN, msg TEXT) AS $$
+BEGIN
+	IF NOT EXISTS (SELECT 1 FROM games WHERE id = _id) THEN
+		RETURN QUERY SELECT FALSE, 'No game found to apply bonus';
+		RETURN ;
+	END IF;
+
+	IF _p1 THEN
+		UPDATE games SET p1_bonus_count = p1_bonus_count + 1
+		WHERE id = _id;
+	ELSE
+		UPDATE games SET p2_bonus_count = p2_bonus_count + 1
+		WHERE id = _id;
+	END IF;
+	RETURN QUERY SELECT TRUE, 'Bonus successfully applied';
+	
+EXCEPTION
+	WHEN OTHERS THEN
+		RETURN QUERY SELECT FALSE, SQLERRM;
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION successfull_block(
+	_id INTEGER,
+	_p1 BOOLEAN DEFAULT TRUE
+)
+RETURNS TABLE(success BOOLEAN, msg TEXT) AS $$
+BEGIN
+	IF NOT EXISTS (SELECT 1 FROM games WHERE id = _id) THEN
+		RETURN QUERY SELECT FALSE, 'No game found to apply block';
+		RETURN ;
+	END IF;
+
+	IF _p1 THEN
+		UPDATE games SET p1_block_count = p1_block_count + 1
+		WHERE id = _id;
+	ELSE
+		UPDATE games SET p2_block_count = p2_block_count + 1
+		WHERE id = _id;
+	END IF;
+	RETURN QUERY SELECT TRUE, 'Block successfully applied';
+	
+EXCEPTION
+	WHEN OTHERS THEN
+		RETURN QUERY SELECT FALSE, SQLERRM;
+END;
+$$ LANGUAGE plpgsql;
+

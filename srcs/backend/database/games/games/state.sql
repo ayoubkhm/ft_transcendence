@@ -9,7 +9,7 @@ DECLARE
 BEGIN
 	IF _id IS NULL THEN
 		RETURN QUERY SELECT FALSE, 'Pls specify a id game not null';
-		
+		RETURN ;
 	END IF;
 	
 	SELECT state
@@ -19,12 +19,12 @@ BEGIN
 
 	IF NOT FOUND THEN
 		RETURN QUERY SELECT FALSE, 'Game with id % not found', _id;
-		
+		RETURN ;
 	END IF;
 
 	IF _state = 'OVER' THEN
         RETURN QUERY SELECT 'Can''t abandon game that is already over';
-        
+        RETURN ;
     END IF;
 
     IF is_p1 THEN
@@ -57,7 +57,7 @@ DECLARE
 BEGIN
 	IF _id IS NULL THEN
 		RETURN QUERY SELECT FALSE, 'Pls specify a id game not null';
-		
+		RETURN ;
 	END IF;
 	
 	SELECT state
@@ -67,12 +67,12 @@ BEGIN
 
 	IF NOT FOUND THEN
 		RETURN QUERY SELECT FALSE, 'Game with id % not found', _id;
-		
+		RETURN ;
 	END IF;
 
 	IF _state != 'RUNNING' THEN
         RETURN QUERY SELECT 'Can''t pause game : is %', _state;
-        
+        RETURN ;
     END IF;
 
     UPDATE games
@@ -97,7 +97,7 @@ DECLARE
 BEGIN
 	IF _id IS NULL THEN
 		RETURN QUERY SELECT FALSE, 'Pls specify a id game not null';
-		
+		RETURN ;
 	END IF;
 	
 	SELECT state
@@ -107,12 +107,12 @@ BEGIN
 
 	IF NOT FOUND THEN
 		RETURN QUERY SELECT FALSE, 'Game with id % not found', _id;
-		
+		RETURN ;
 	END IF;
 
 	IF _state != 'PAUSE' THEN
         RETURN QUERY SELECT 'Can''t unpause game : is %', _state;
-        
+        RETURN ;
     END IF;
 
     UPDATE games
@@ -141,7 +141,7 @@ DECLARE
 BEGIN
 	IF _id IS NULL THEN
 		RETURN QUERY SELECT FALSE, 'Pls specify a id game not null';
-		
+		RETURN ;
 	END IF;
 	
 	SELECT state, p1_id, p2_id, p1_winnerof, p2_winnerof
@@ -151,22 +151,22 @@ BEGIN
 	
 	IF NOT FOUND THEN
 		RETURN QUERY SELECT FALSE, 'Game with id % not found', _id;
-		
+		RETURN ;
 	END IF;
 
 	IF _state != 'WAITING' THEN
         RETURN QUERY SELECT FALSE, 'Can''t start game that isnt preping';
-        
+        RETURN ;
     END IF;
 
 	IF (_p1_id IS NULL AND (_p1_winnerof IS NOT NULL)) THEN
 		RETURN QUERY SELECT FALSE, FORMAT('Can''t start game: waiting for result of game %s to know who p1 is', _p1_winnerof);
-		
+		RETURN ;
 	END IF;
 
 	IF (_p2_id IS NULL AND (_p2_winnerof IS NOT NULL)) THEN
 		RETURN QUERY SELECT FALSE, FORMAT('Can''t start game: waiting for result of game %s to know who p2 is', _p2_winnerof);
-		
+		RETURN ;
 	END IF;
 
     UPDATE games
@@ -195,7 +195,7 @@ DECLARE
 BEGIN
 	IF _id IS NULL THEN
 		RETURN QUERY SELECT FALSE, 'Pls specify a id game not null', NULL::INTEGER AS tid;
-		
+		RETURN ;
 	END IF;
 	
 	SELECT state, p1_id, p2_id, tournament_round, tournament_id
@@ -205,12 +205,12 @@ BEGIN
 
 	IF NOT FOUND THEN
 		RETURN QUERY SELECT FALSE, 'Game with id % not found', NULL::INTEGER AS tid;
-		
+		RETURN ;
 	END IF;
 
 	IF _state = 'OVER' THEN
         RETURN QUERY SELECT 'Can''t win game that is already over', NULL::INTEGER AS tid;
-        
+        RETURN ;
     END IF;
 
 

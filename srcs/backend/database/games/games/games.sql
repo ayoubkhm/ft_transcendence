@@ -18,7 +18,11 @@ CREATE TABLE IF NOT EXISTS games (
 	tournament_id INTEGER DEFAULT NULL REFERENCES tournaments(id) ON DELETE CASCADE,
 	tournament_round INTEGER DEFAULT NULL,
 	p1_winnerof INTEGER DEFAULT NULL REFERENCES games(id),
-	p2_winnerof INTEGER DEFAULT NULL REFERENCES games(id)
+	p2_winnerof INTEGER DEFAULT NULL REFERENCES games(id),
+	p1_block_count INTEGER DEFAULT 0,
+	p2_block_count INTEGER DEFAULT 0,
+	p1_bonus_count INTEGER DEFAULT 0,
+	p2_bonus_count INTEGER DEFAULT 0
 );
 
 
@@ -60,6 +64,10 @@ BEGIN
 		RAISE EXCEPTION 'Game has a winner but isn''t over';
 	ELSIF (NEW.winner IS NULL) AND (NEW.state = 'OVER') THEN
 		RAISE EXCEPTION 'Game is over but has no winner';
+	END IF;
+
+	IF (NEW.p1_block_count < 0) OR (NEW.p2_block_count < 0) OR (NEW.p1_bonus_count < 0) OR (NEW.p2_bonus_count < 0) THEN
+		RAISE EXCEPTION 'Game : count cant be negative';
 	END IF;
 
   RETURN NEW;

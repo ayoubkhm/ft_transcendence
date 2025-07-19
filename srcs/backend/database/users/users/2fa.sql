@@ -6,6 +6,7 @@ RETURNS TABLE(success BOOLEAN, msg TEXT) AS $$
 BEGIN
 	IF new_2fa_secret IS NULL THEN
 		RETURN QUERY SELECT FALSE, '2fa secret can''t be null', NULL::INTEGER;
+		RETURN ;
 	END IF;
 	UPDATE users
 	SET twofa_secret = new_2fa_secret,
@@ -31,6 +32,7 @@ DECLARE
 BEGIN
 	IF new_2fa_secret IS NULL THEN
 		RETURN QUERY SELECT FALSE, '2fa secret can''t be null';
+		RETURN ;
 	END IF;
 
 	SELECT twofa_validated INTO _validated
@@ -39,12 +41,12 @@ BEGIN
 	
 	IF NOT FOUND THEN
 		RETURN QUERY SELECT FALSE, 'User not found';
-		
+		RETURN ;
 	END IF;
 
 	IF _validated IS NULL THEN
 		RETURN QUERY SELECT FALSE, 'User isnt 2fa';
-		
+		RETURN ;
 	END IF;
 
 	UPDATE users
@@ -77,12 +79,12 @@ BEGIN
 	
 	IF NOT FOUND THEN
 		RETURN QUERY SELECT FALSE, 'User not found';
-		
+		RETURN ;
 	END IF;
 
 	IF _validated IS NULL THEN
 		RETURN QUERY SELECT FALSE, 'User isnt 2fa';
-		
+		RETURN ;
 	END IF;
 
 	UPDATE users
@@ -111,13 +113,14 @@ DECLARE
 BEGIN
 	IF new_2fa_secret IS NULL THEN
 		RETURN QUERY SELECT FALSE, '2fa secret can''t be null', NULL::INTEGER;
+		RETURN ;
 	END IF;
 	SELECT twofa_secret INTO is_2fa
 	FROM users
 	WHERE id = _id;
 	IF is_2fa IS NOT NULL THEN
 		RETURN QUERY SELECT FALSE, 'User is already 2fa';
-		
+		RETURN ;
 	END IF;
 
 	UPDATE users
@@ -148,7 +151,7 @@ BEGIN
 	WHERE id = _id;
 	IF is_2fa IS NULL THEN
 		RETURN QUERY SELECT FALSE, 'User isn''t 2fa';
-		
+		RETURN ;
 	END IF;
 
 	UPDATE users
