@@ -39,9 +39,13 @@ BEGIN
 		RAISE EXCEPTION 'Can''t have max players % < to min players %', NEW.max_players, NEW.min_players;
 	END IF;
 
+	IF (LENGTH(NEW.name) > 20) THEN
+		RAISE EXCEPTION 'Tournament name cannot exceed 20 characters';
+	END IF;
+
 	RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$ LANGUAGE plpgsql;
 
 CREATE TRIGGER enforce_tournament_constraints
 BEFORE INSERT OR UPDATE ON tournaments

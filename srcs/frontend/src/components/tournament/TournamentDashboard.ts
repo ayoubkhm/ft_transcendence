@@ -184,7 +184,10 @@ export function setupTournamentDashboard() {
   const tournamentCreateBtn = document.getElementById('tournament-create-btn') as HTMLButtonElement | null;
   if (tournamentCreateBtn) {
     tournamentCreateBtn.addEventListener('click', async () => {
-      const name = prompt('Enter tournament name:');
+      let name = prompt('Enter tournament name (max 20 characters):');
+      while (name && name.length > 20) {
+        name = prompt('Tournament name is too long. Please enter a name with a maximum of 20 characters:');
+      }
       if (!name) return;
 
       const ownerId = await getCurrentUserId();
