@@ -2,8 +2,8 @@
 node_modules/
 Makefile
 ## Build output
-/dist/
-/build/
+dist/
+build/
 *.tsbuildinfo
 
 ## Logs
