@@ -54,6 +54,11 @@ export function setupChangePasswordModal() {
             return;
         }
 
+        if (current === npass) {
+            alert('Old and new password has to be different');
+            return;
+        }
+
         try {
             const res = await fetch('/api/auth/password', {
                 method: 'PUT',
