@@ -106,41 +106,64 @@ export default async function gamesRoutes (app: FastifyInstance)
           return;
         }
 
-        const game = new Game(app, username, 'AI', level, isCustomOn, sqlGameId);
+        const game = new Game(username, 'AI', level, isCustomOn, sqlGameId);
         const gameIdString = sqlGameId.toString();
 
-        let interval: any; // Use 'any' to avoid type conflicts
-        interval = setInterval(() => {
-          game.step(1 / 60);
-          broadcastGameState(gameIdString);
+        const interval = setInterval(async () => {
+          const pgClient = await app.pg.connect();
+          try {
+            await game.step(1 / 60, pgClient);
+            broadcastGameState(gameIdString);
+          } finally {
+            pgClient.release();
+          }
         }, 1000 / 60);
 
         sessions.set(gameIdString, { game, interval, clients: new Set() });
         return { gameId: gameIdString, playerId: username, token: genToken(gameIdString, username) };
       }
 
-      // PvP mode logic remains largely the same for creation
+      // PvP mode logic
       if (mode === 'pvp') {
-        // ... (PvP creation logic)
+        const level = difficulty ?? 'medium';
+        let sqlGameId: number | null = null;
+
+        const res = await pgClient.query('SELECT * FROM new_game($1::INTEGER, NULL, $2)', [userId, 'WAITING']);
+        if (res.rows[0]?.success) {
+          sqlGameId = res.rows[0].new_game_id;
+        } else {
+          reply.code(500).send({ error: 'Failed to create PvP game in database' });
+          return;
+        }
+
+        if (!sqlGameId) {
+          reply.code(500).send({ error: 'Failed to create PvP game in database' });
+          return;
+        }
+
+        const game = new Game(username, '__PENDING__', level, isCustomOn, sqlGameId);
+        const gameIdString = sqlGameId.toString();
+        sessions.set(gameIdString, { game, clients: new Set() });
+        return { gameId: gameIdString, playerId: username, token: genToken(gameIdString, username) };
       }
 
-      return reply.code(400).send({ error: 'Invalid mode' });
+      reply.code(400).send({ error: 'Invalid mode' });
     } catch (err) {
       console.error('❌ Fatal error in /game route:', err);
-      return reply.code(500).send({ error: 'Server crashed in /game route' });
+      reply.code(500).send({ error: 'Server crashed in /game route' });
     } finally {
       pgClient.release();
     }
   });
 
-  // WebSocket endpoint for streaming game state updates and receiving input
+  // WebSocket endpoint
   app.get('/game/:id/ws', { websocket: true }, (connection, request) => {
     const { socket } = connection;
     const { id } = request.params as { id: string };
     
     joinGame(id, socket);
 
-    socket.on('message', (rawMessage) => {
+    socket.on('message', async (rawMessage) => {
       try {
         const message = JSON.parse(rawMessage.toString());
         const session = sessions.get(id);
@@ -150,14 +173,34 @@ export default async function gamesRoutes (app: FastifyInstance)
           case 'game_input': {
             const { playerId, type, ts, token } = message.payload;
             const expectedToken = genToken(id, playerId);
-            if (!token || token !== expectedToken) {
-              console.warn(`[WS] Invalid token for game ${id} from player ${playerId}`);
-              return;
-            }
+            if (!token || token !== expectedToken) return;
             session.game.handleInput(playerId, { type, ts });
             break;
           }
-          // Handle other message types like 'join_pvp' in the future
+          case 'join_pvp_game': {
+            const { username } = message.payload;
+            if (!username || session.game.getState().players[1].id !== '__PENDING__') {
+              socket.send(JSON.stringify({ type: 'error', message: 'Game not available for join' }));
+              return;
+            }
+            
+            session.game.joinPlayer(username);
+            const token = genToken(id, username);
+            socket.send(JSON.stringify({ type: 'join_success', data: { token, playerId: username } }));
+
+            if (!session.interval) {
+              session.interval = setInterval(async () => {
+                const pgClient = await app.pg.connect();
+                try {
+                  await session.game.step(1 / 60, pgClient);
+                  broadcastGameState(id);
+                } finally {
+                  pgClient.release();
+                }
+              }, 1000 / 60);
+            }
+            break;
+          }
         }
       } catch (err) {
         console.error('[WS] Error processing message:', err);

@@ -40,9 +40,18 @@ const forfeitBtn = document.getElementById('forfeit-btn') as HTMLButtonElement;
 const playAIBtn = document.getElementById('play-ai-btn') as HTMLButtonElement;
 const playPVPBtn = document.getElementById('play-pvp-btn') as HTMLButtonElement;
 const aiModal = document.getElementById('ai-modal') as HTMLElement;
+const aiModalClose = document.getElementById('ai-modal-close') as HTMLButtonElement;
 const aiModalStartBtn = document.getElementById('ai-modal-start-btn') as HTMLButtonElement;
 const aiModalDifficulty = document.getElementById('ai-modal-difficulty') as HTMLSelectElement;
 const aiModalCustomToggle = document.getElementById('ai-modal-custom-toggle') as HTMLInputElement;
+const pvpModal = document.getElementById('pvp-modal') as HTMLElement;
+const pvpModalClose = document.getElementById('pvp-modal-close') as HTMLButtonElement;
+const pvpModalCreateBtn = document.getElementById('pvp-modal-create-btn') as HTMLButtonElement;
+const pvpModalJoinInput = document.getElementById('pvp-modal-join-input') as HTMLInputElement;
+const pvpModalJoinConfirmBtn = document.getElementById('pvp-modal-join-confirm-btn') as HTMLButtonElement;
+const pvpModalCustomToggle = document.getElementById('pvp-modal-custom-toggle') as HTMLInputElement;
+const shareDiv = document.getElementById('share-id') as HTMLElement;
+const gameIdInput = document.getElementById('game-id-input') as HTMLInputElement;
 
 // --- State ---
 let gameSocket: WebSocket | null = null;
@@ -106,7 +115,7 @@ function sendInput(type: 'move_up' | 'move_down' | 'stop') {
 
 // --- Game Flow & UI Management ---
 
-function showGameUI() {
+function showGameUI(isWaiting = false) {
   hero.classList.add('hidden');
   resultPre.classList.add('hidden');
   canvas.classList.remove('hidden');
@@ -114,6 +123,14 @@ function showGameUI() {
   playAIBtn.disabled = true;
   playPVPBtn.disabled = true;
   canvas.focus();
+
+  if (isWaiting && ctx) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = 'white';
+    ctx.font = '24px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('Waiting for opponent...', canvas.width / 2, canvas.height / 2);
+  }
 }
 
 function hideGameUI() {
@@ -123,6 +140,7 @@ function hideGameUI() {
   resultPre.classList.remove('hidden');
   playAIBtn.disabled = false;
   playPVPBtn.disabled = false;
+  shareDiv.classList.add('hidden'); // Hide the share div
   if (gameSocket) {
     gameSocket.close();
   }
@@ -168,13 +186,84 @@ export async function startGame(mode: 'ai' | 'pvp', isCustomOn: boolean, difficu
     playerId = data.playerId;
     authToken = data.token;
 
-    showGameUI();
+    const isWaiting = (mode === 'pvp');
+    showGameUI(isWaiting);
+
+    if (isWaiting) {
+      shareDiv.classList.remove('hidden');
+      gameIdInput.value = gameId!;
+    }
+
     connectToGameSocket();
     navigate('game', { id: gameId });
 
   } catch (err) {
     console.error('[startGame]', err);
     alert(`Error starting game: ${err.message}`);
+    hideGameUI();
+  }
+}
+
+export async function joinGame(gameIdToJoin: string) {
+  try {
+    let username = localStorage.getItem('username');
+    if (!username) {
+      await loginAsGuest();
+      username = localStorage.getItem('username');
+      if (!username) throw new Error("Failed to login as guest.");
+    }
+
+    gameId = gameIdToJoin;
+    playerId = username; // Tentatively set playerId
+
+    showGameUI();
+    
+    // Connect to the WebSocket, then send the join message
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${wsProtocol}//${window.location.host}/api/game/${gameId}/ws`;
+    gameSocket = new WebSocket(wsUrl);
+
+    gameSocket.onopen = () => {
+      console.log(`[WS] Game socket connected for joining game ${gameId}`);
+      sendSocketMessage('join_pvp_game', { username });
+    };
+
+    gameSocket.onmessage = (event) => {
+      const message = JSON.parse(event.data);
+      if (message.type === 'game_state_update') {
+        const state = message.data;
+        if (ctx) {
+          drawGame(ctx, state, images);
+        }
+        if (state.isGameOver) {
+          handleGameOver(state);
+        }
+      } else if (message.type === 'join_success') {
+        // The backend confirms the join and sends the auth token
+        authToken = message.data.token;
+        playerId = message.data.playerId;
+        console.log(`[WS] Successfully joined game ${gameId}`);
+      } else if (message.type === 'error') {
+        alert(`Error joining game: ${message.message}`);
+        hideGameUI();
+        navigate('home');
+      }
+    };
+
+    gameSocket.onerror = (error) => {
+      console.error('[WS] Game socket error:', error);
+      hideGameUI();
+    };
+
+    gameSocket.onclose = () => {
+      console.log('[WS] Game socket closed.');
+    };
+
+    navigate('game', { id: gameId });
+
+  } catch (err) {
+    console.error('[joinGame]', err);
+    alert(`Error joining game: ${err.message}`);
     hideGameUI();
   }
 }
@@ -200,10 +289,49 @@ export function setupGame() {
   });
 
   playAIBtn.addEventListener('click', () => aiModal.classList.remove('hidden'));
+  aiModalClose.addEventListener('click', () => aiModal.classList.add('hidden'));
+  aiModal.addEventListener('click', (e) => {
+    if (e.target === aiModal) {
+      aiModal.classList.add('hidden');
+    }
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !aiModal.classList.contains('hidden')) {
+      aiModal.classList.add('hidden');
+    }
+  });
   aiModalStartBtn.addEventListener('click', () => {
     aiModal.classList.add('hidden');
     const isCustomOn = aiModalCustomToggle.checked;
     startGame('ai', isCustomOn, aiModalDifficulty.value);
+  });
+
+  // --- PvP Modal Listeners ---
+  playPVPBtn.addEventListener('click', () => pvpModal.classList.remove('hidden'));
+  pvpModalClose.addEventListener('click', () => pvpModal.classList.add('hidden'));
+  pvpModal.addEventListener('click', (e) => {
+    if (e.target === pvpModal) {
+      pvpModal.classList.add('hidden');
+    }
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !pvpModal.classList.contains('hidden')) {
+      pvpModal.classList.add('hidden');
+    }
+  });
+  pvpModalCreateBtn.addEventListener('click', () => {
+    pvpModal.classList.add('hidden');
+    const isCustomOn = pvpModalCustomToggle.checked;
+    startGame('pvp', isCustomOn);
+  });
+  pvpModalJoinConfirmBtn.addEventListener('click', () => {
+    const gameIdToJoin = pvpModalJoinInput.value.trim();
+    if (gameIdToJoin) {
+      pvpModal.classList.add('hidden');
+      joinGame(gameIdToJoin);
+    } else {
+      alert('Please enter a Game ID to join.');
+    }
   });
 
   window.addEventListener('keydown', onKeyDown);
