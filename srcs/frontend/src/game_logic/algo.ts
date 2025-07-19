@@ -4,8 +4,7 @@ import {
   GameState, ClientInput, Ball, BonusBall,
   POWER_UPV, POWER_UPB
 } from './types.js';
-import { aiPaddleMove } from './ai/index.js';
-import { PoolClient } from 'pg';
+import { aiPaddleMove } from './ai.js';
 
 const BALL_XLR = 1.05;
 
@@ -101,24 +100,16 @@ export class Game
 	getGameId(): number {return this.gameId;}
 
 
-	async addScore(pgClient: PoolClient, scorerIsLeft: boolean): Promise<void>
+	async addScore(scorerIsLeft: boolean): Promise<void>
 	{
-		console.log("\n\n\nHEYYYYYYYYYY NEW SCORE\n\n\n\n");
-		try {
-			const res = await pgClient.query('SELECT * FROM score($1::INTEGER, $2::BOOLEAN)',
-			[this.getGameId(), scorerIsLeft]);
-			if (res.rows.length > 0 && res.rows[0].msg)
-				console.log(res.rows[0].msg);
-		} catch (err) {
-			console.error('Error calling score() for game', this.getGameId(), err);
-		}
+		console.log("Score updated locally");
 	}
 
 
 	// ────────────────────────────────────────────────────────────────────────
 	// GESTION DES INPUTS JOUEUR HUMAIN
 	// ────────────────────────────────────────────────────────────────────────
-   handleInput(id: string, msg: ClientInput)
+   handleInput(id: string, msg: any)
    {
        const p = this.state.players.find(pl => pl.id === id);
        if (!p) return;
@@ -209,10 +200,10 @@ export class Game
 		player.i++;
 	}
 
-	// ────────────────────────────────────────────────────────────────────────
+	// ───────────────────────────────────────────���────────────────────────────
 	// BOUCLE DE SIMULATION
 	// ────────────────────────────────────────────────────────────────────────
-	async step(dt: number, pgClient: PoolClient): Promise<void>
+	async step(dt: number): Promise<void>
 	{
 
         // Countdown before simulation starts
@@ -393,7 +384,7 @@ export class Game
 		// 4) Score et fin de manche
         if (ball.x < 0) {
             // Right player scores
-			await this.addScore(pgClient, false);
+			await this.addScore(false);
             right.score++;
             // Update scoring streaks
             const scorer = right.id;
@@ -412,7 +403,7 @@ export class Game
             // Left player scores
             left.score++;
             // Update scoring streaks
-			await this.addScore(pgClient, true);
+			await this.addScore(true);
             const scorer = left.id;
             const other = right.id;
             if (this.lastScorerId === scorer) {
@@ -430,21 +421,6 @@ export class Game
 		{
 			this.state.isGameOver = true;
 			this.state.winner = left.score > right.score ? 'left' : 'right';
-			const winner = this.state.winner === 'left' ? left : right;
-			
-			// If this is a tournament game, notify the tournament_service
-			if (this.gameId) {
-				fetch('http://tournament_service:3000/api/tournaments/game/end', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						gameId: this.gameId,
-						winnerId: winner.dbId,
-						p1_score: left.score,
-						p2_score: right.score,
-					}),
-				}).catch(err => console.error('Failed to notify tournament_service:', err));
-			}
 		}
 	}
     /**

@@ -1,6 +1,8 @@
 import { drawGame, drawForfeitTimer } from './GameCanvas';
 import { navigate, onRoute } from '../../lib/router';
 import { loginAsGuest } from '../auth/Auth';
+import { Game } from '../../game_logic/algo.js';
+
 
 // --- Image Preloading ---
 const imagePaths = {
@@ -39,6 +41,7 @@ const resultPre = document.getElementById('game-result') as HTMLPreElement;
 const forfeitBtn = document.getElementById('forfeit-btn') as HTMLButtonElement;
 const playAIBtn = document.getElementById('play-ai-btn') as HTMLButtonElement;
 const playPVPBtn = document.getElementById('play-pvp-btn') as HTMLButtonElement;
+const playLocalPVPBtn = document.getElementById('play-local-pvp-btn') as HTMLButtonElement;
 const aiModal = document.getElementById('ai-modal') as HTMLElement;
 const aiModalClose = document.getElementById('ai-modal-close') as HTMLButtonElement;
 const aiModalStartBtn = document.getElementById('ai-modal-start-btn') as HTMLButtonElement;
@@ -52,6 +55,14 @@ const pvpModalJoinConfirmBtn = document.getElementById('pvp-modal-join-confirm-b
 const pvpModalCustomToggle = document.getElementById('pvp-modal-custom-toggle') as HTMLInputElement;
 const shareDiv = document.getElementById('share-id') as HTMLElement;
 const gameIdInput = document.getElementById('game-id-input') as HTMLInputElement;
+const playerLeftControls = document.getElementById('player-left-controls') as HTMLElement;
+const playerRightControls = document.getElementById('player-right-controls') as HTMLElement;
+const playerAIControls = document.getElementById('player-ai-controls') as HTMLElement;
+const playerLeftName = document.getElementById('player-left-name') as HTMLElement;
+const playerRightName = document.getElementById('player-right-name') as HTMLElement;
+
+
+
 
 // --- State ---
 let gameSocket: WebSocket | null = null;
@@ -59,6 +70,9 @@ let gameId: string | null = null;
 let playerId: string | null = null;
 let authToken: string | null = null;
 let lastInput: 'move_up' | 'move_down' | 'stop' | null = null;
+let localGame: Game | null = null;
+let localGameLoopId: number | null = null;
+
 
 let forfeitTimerId: number | null = null;
 
@@ -124,13 +138,20 @@ function sendInput(type: 'move_up' | 'move_down' | 'stop') {
 
 // --- Game Flow & UI Management ---
 
-function showGameUI(isWaiting = false) {
+function showGameUI(isWaiting = false, isLocal = false, isAI = false) {
   hero.classList.add('hidden');
   resultPre.classList.add('hidden');
   canvas.classList.remove('hidden');
   forfeitBtn.classList.remove('hidden');
   playAIBtn.disabled = true;
   playPVPBtn.disabled = true;
+  if (isLocal) {
+    playerLeftControls.classList.remove('hidden');
+    playerRightControls.classList.remove('hidden');
+  }
+  if (isAI) {
+    playerAIControls.classList.remove('hidden');
+  }
   canvas.focus();
 
   if (isWaiting && ctx) {
@@ -151,15 +172,56 @@ function hideGameUI() {
   playAIBtn.disabled = false;
   playPVPBtn.disabled = false;
   shareDiv.classList.add('hidden'); // Hide the share div
+  playerLeftControls.classList.add('hidden');
+  playerRightControls.classList.add('hidden');
+  playerAIControls.classList.add('hidden');
+  playerLeftName.classList.add('hidden');
+  playerRightName.classList.add('hidden');
   if (gameSocket) {
     gameSocket.close();
+  }
+  if (localGameLoopId) {
+    cancelAnimationFrame(localGameLoopId);
+    localGameLoopId = null;
   }
   // Clear game state
   gameId = null;
   playerId = null;
   authToken = null;
   lastInput = null;
+  localGame = null;
 }
+
+function localGameLoop() {
+  if (!localGame) return;
+
+  localGame.step(1 / 60); // 60 FPS
+  const state = localGame.getState();
+
+  if (ctx) {
+    drawGame(ctx, state, images);
+  }
+
+  if (state.isGameOver) {
+    handleGameOver(state);
+  } else {
+    localGameLoopId = requestAnimationFrame(localGameLoop);
+  }
+}
+
+async function startLocalPvPGame() {
+  try {
+    await loadImages();
+    localGame = new Game('Player 1', 'Player 2', null, null, 'VS', 'medium', true, 0);
+    showGameUI(false, true);
+    localGameLoop();
+  } catch (err) {
+    console.error('[startLocalPvPGame]', err);
+    alert(`Error starting local game: ${err.message}`);
+    hideGameUI();
+  }
+}
+
 
 function handleGameOver(state: any) {
   const winnerSide = state.winner;
@@ -197,7 +259,8 @@ export async function startGame(mode: 'ai' | 'pvp', isCustomOn: boolean, difficu
     authToken = data.token;
 
     const isWaiting = (mode === 'pvp');
-    showGameUI(isWaiting);
+    const isAI = (mode === 'ai');
+    showGameUI(isWaiting, false, isAI);
 
     if (isWaiting) {
       shareDiv.classList.remove('hidden');
@@ -297,21 +360,37 @@ export async function joinGame(gameIdToJoin: string) {
 // --- Event Listeners ---
 
 function onKeyDown(e: KeyboardEvent) {
-  if (e.key === 'ArrowUp') sendInput('move_up');
-  if (e.key === 'ArrowDown') sendInput('move_down');
+  if (localGame) {
+    if (e.key === 'w') localGame.handleInput('Player 1', { type: 'move_up' });
+    if (e.key === 's') localGame.handleInput('Player 1', { type: 'move_down' });
+    if (e.key === 'ArrowUp') localGame.handleInput('Player 2', { type: 'move_up' });
+    if (e.key === 'ArrowDown') localGame.handleInput('Player 2', { type: 'move_down' });
+  } else {
+    if (e.key === 'ArrowUp') sendInput('move_up');
+    if (e.key === 'ArrowDown') sendInput('move_down');
+  }
 }
 function onKeyUp(e: KeyboardEvent) {
-  if (e.key === 'ArrowUp' || e.key === 'ArrowDown') sendInput('stop');
+  if (localGame) {
+    if (e.key === 'w' || e.key === 's') localGame.handleInput('Player 1', { type: 'stop' });
+    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') localGame.handleInput('Player 2', { type: 'stop' });
+  } else {
+    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') sendInput('stop');
+  }
 }
 
 export function setupGame() {
   forfeitBtn.addEventListener('click', () => {
-    sendSocketMessage('game_input', {
-      playerId,
-      type: 'forfeit',
-      ts: Date.now(),
-      token: authToken,
-    });
+    if (localGame) {
+      localGame.handleInput('Player 1', { type: 'forfeit' });
+    } else {
+      sendSocketMessage('game_input', {
+        playerId,
+        type: 'forfeit',
+        ts: Date.now(),
+        token: authToken,
+      });
+    }
   });
 
   playAIBtn.addEventListener('click', () => aiModal.classList.remove('hidden'));
@@ -334,6 +413,7 @@ export function setupGame() {
 
   // --- PvP Modal Listeners ---
   playPVPBtn.addEventListener('click', () => pvpModal.classList.remove('hidden'));
+  playLocalPVPBtn.addEventListener('click', startLocalPvPGame);
   pvpModalClose.addEventListener('click', () => pvpModal.classList.add('hidden'));
   pvpModal.addEventListener('click', (e) => {
     if (e.target === pvpModal) {
@@ -362,6 +442,7 @@ export function setupGame() {
 
   window.addEventListener('keydown', onKeyDown);
   window.addEventListener('keyup', onKeyUp);
+
 
   // Handle navigating away from the game
   onRoute('home', () => {
