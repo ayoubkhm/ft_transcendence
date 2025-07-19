@@ -83,6 +83,10 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION get_stats(_id INTEGER)
 RETURNS jsonb AS $$
 BEGIN
+	IF _id IS NULL THEN
+		RETURN '{}'::jsonb;
+	END IF;
+
 	IF NOT EXISTS (SELECT 1 FROM users WHERE id = _id) THEN
 		RETURN '{}'::jsonb;
 	END IF;
