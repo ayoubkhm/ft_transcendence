@@ -3,7 +3,7 @@ CREATE OR REPLACE FUNCTION new_user(
 	_type TEXT DEFAULT 'guest',
 	_email TEXT DEFAULT NULL,
 	_password TEXT DEFAULT NULL,
-	_avatar TEXT DEFAULT NULL,
+	_avatar TEXT DEFAULT '/default_avatar.jpg',
 	is_2fa BOOLEAN DEFAULT FALSE,
 	_online BOOLEAN DEFAULT TRUE
 )

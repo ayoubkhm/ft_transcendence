@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS users (
 	twofa_secret TEXT DEFAULT NULL,		-- nullable pour compte pas 2fa
 	twofa_validated BOOLEAN DEFAULT NULL,
 	active BOOLEAN NOT NULL DEFAULT TRUE,		-- nullable pour 2fa pas validated
-	avatar TEXT DEFAULT NULL,
+	avatar TEXT DEFAULT '/default_avatar.jpg',
 	tag INTEGER DEFAULT NULL
 );
 
