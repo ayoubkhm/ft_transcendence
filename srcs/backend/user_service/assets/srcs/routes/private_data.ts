@@ -59,48 +59,6 @@ export default async function private_userRoutes(server: FastifyInstance, option
     }
     return reply.status(400).send({ error: 'No file uploaded under field "avatar"' });
   });
-
-    interface profilePictureBody{
-        credential: string,
-        profPicture: string,
-        id: number
-    }
-
-    server.put<{Body: profilePictureBody}>('/profile_picture', async (request, reply) => {
-      // Security: JWT validation and authorization
-      const token = (request.cookies as any)?.jwt_transcendence;
-      if (!token) {
-        return reply.status(401).send({ error: 'Unauthorized' });
-      }
-      let tokenPayload;
-      try {
-        tokenPayload = getTokenData(token);
-      } catch {
-        return reply.status(401).send({ error: 'Invalid token' });
-      }
-      
-      const id = request.body?.id;
-      const pp = request.body?.profPicture;
-
-      // Security check: allow if admin or self
-      if (!tokenPayload.admin && tokenPayload.id !== id) {
-        return reply.status(403).send({ error: 'Forbidden' });
-      }
-
-      if (!pp || !id)
-        return reply.status(400).send({ error: "Missing parameters" });
-      try {
-        // This part of the code is not implemented yet.
-        // When it is, it should use the validated 'id' to update the profile picture.
-        const result = null; 
-        if (!result)
-          return reply.status(501).send({ error: "Not implemented" });
-        reply.status(200).send();
-      } catch (error) {
-          console.log('error', error)
-          return reply.status(500).send({ error: "Internal server error" });
-      }
-    });
         
     interface PrivateDataParams {
       email: string;
@@ -190,8 +148,6 @@ export default async function private_userRoutes(server: FastifyInstance, option
         // Security: Do not allow setting admin from request
         const type = request.body.type ?? 'user'; // Default to 'user'
         const admin = false; // Default to false
-
-        console.log("data::", email, name, password);
         
   try {
     // Attempt to create the user; new_user returns (success, msg, new_user_id)
@@ -357,7 +313,6 @@ export default async function private_userRoutes(server: FastifyInstance, option
       } else {
         return reply.status(400).send({ error: 'Invalid flag' });
       }
-      //reply.status(200).send({ message: "user_password_updated" });
     } catch (error) {
       console.error('Update password error:', error);
       return reply.status(500).send({ error: 'Internal server error' });
