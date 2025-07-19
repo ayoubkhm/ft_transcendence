@@ -304,8 +304,20 @@ export class Game
 				{
 					b.active = false;
 					this.applyBonus(player.side, b.type);
+
+					// dont await, db can wait, game cant
+					fetch('http://game_service:3001/api/games/applyBonus', {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify({
+							id: this.gameId,
+							playerisLeft: (player.side === 'left'),
+							bonus: b.type,
+						}),
+					});
 				}
-				
 			}
 			
 		}
@@ -340,6 +352,18 @@ export class Game
 		if (ball.x - BALL_R <= PADDLE_W)
 		{
 			left.cpttch++;
+			// dont await, db can wait, game cant
+			fetch('http://game_service:3001/api/games/block', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({
+					id: this.gameId,
+					playerisLeft: (true)
+				}),
+			});
+
 			const py = left.paddle.y;
 			if (ball.y >= py && ball.y <= py + left.paddle.h)
 			{
@@ -367,6 +391,19 @@ export class Game
 		if (ball.x + BALL_R >= GAME_WIDTH - PADDLE_W)
 		{
 			right.cpttch++;
+			// dont await, db can wait, game cant
+			fetch('http://game_service:3001/api/games/block', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({
+					id: this.gameId,
+					playerisLeft: (false)
+				}),
+			});
+			
+
 			const py = right.paddle.y;
 			if (ball.y >= py && ball.y <= py + right.paddle.h)
 			{
@@ -430,7 +467,7 @@ export class Game
 		{
 			this.state.isGameOver = true;
 			this.state.winner = left.score > right.score ? 'left' : 'right';
-			const winner = this.state.winner === 'left' ? left : right;
+			const winner: boolean = (this.state.winner === 'left');
 			
 			// If this is a tournament game, notify the tournament_service
 			if (this.gameId) {
@@ -439,9 +476,7 @@ export class Game
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({
 						gameId: this.gameId,
-						winnerId: winner.dbId,
-						p1_score: left.score,
-						p2_score: right.score,
+						winnerSide: winner
 					}),
 				}).catch(err => console.error('Failed to notify tournament_service:', err));
 			}
