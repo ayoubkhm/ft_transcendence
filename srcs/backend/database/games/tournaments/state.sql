@@ -47,4 +47,3 @@ EXCEPTION
 END;
 $$ LANGUAGE plpgsql;
 
-

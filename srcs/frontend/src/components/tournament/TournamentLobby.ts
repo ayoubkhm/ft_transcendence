@@ -128,6 +128,81 @@ function initializeLobbyEventListeners() {
   isLobbyInitialized = true;
 }
 
+function renderLobby(details: any) {
+  tournamentLobbyState.textContent = details.state;
+  tournamentLobbyPlayerCount.textContent = `${details.nbr_players}/${details.max_players}`;
+
+  // Update player list
+  tournamentLobbyPlayers.innerHTML = '';
+  if (details.players.length === 0) {
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    td.colSpan = 2;
+    td.textContent = 'No players have joined yet.';
+    td.className = 'text-center py-4';
+    tr.appendChild(td);
+    tournamentLobbyPlayers.appendChild(tr);
+  } else {
+    details.players.forEach((player: any) => {
+      const tr = document.createElement('tr');
+      const nameTd = document.createElement('td');
+      nameTd.textContent = player.name;
+      nameTd.className = 'px-2 py-1';
+      const readyTd = document.createElement('td');
+      readyTd.textContent = '✅';
+      readyTd.className = 'px-2 py-1';
+      tr.appendChild(nameTd);
+      tr.appendChild(readyTd);
+      tournamentLobbyPlayers.appendChild(tr);
+    });
+  }
+
+  // Show/hide owner controls and set button text
+  const userId = getCurrentUserId();
+  if (userId && userId === details.owner_id) {
+    startTournamentBtn.classList.remove('hidden');
+    leaveTournamentBtn.textContent = 'Delete Tournament';
+    leaveTournamentBtn.classList.remove('hidden'); // Ensure it's visible
+    deleteTournamentBtn.classList.add('hidden'); // Hide the old delete button
+  } else {
+    startTournamentBtn.classList.add('hidden');
+    leaveTournamentBtn.textContent = 'Leave Tournament';
+    leaveTournamentBtn.classList.remove('hidden'); // Ensure it's visible
+    deleteTournamentBtn.classList.add('hidden'); // Hide the old delete button
+  }
+}
+
+function updateLobby(details: any) {
+  // Only update the parts of the lobby that can change
+  tournamentLobbyState.textContent = details.state;
+  tournamentLobbyPlayerCount.textContent = `${details.nbr_players}/${details.max_players}`;
+
+  // Update player list
+  tournamentLobbyPlayers.innerHTML = '';
+  if (details.players.length === 0) {
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    td.colSpan = 2;
+    td.textContent = 'No players have joined yet.';
+    td.className = 'text-center py-4';
+    tr.appendChild(td);
+    tournamentLobbyPlayers.appendChild(tr);
+  } else {
+    details.players.forEach((player: any) => {
+      const tr = document.createElement('tr');
+      const nameTd = document.createElement('td');
+      nameTd.textContent = player.name;
+      nameTd.className = 'px-2 py-1';
+      const readyTd = document.createElement('td');
+      readyTd.textContent = '✅';
+      readyTd.className = 'px-2 py-1';
+      tr.appendChild(nameTd);
+      tr.appendChild(readyTd);
+      tournamentLobbyPlayers.appendChild(tr);
+    });
+  }
+}
+
 export async function showTournamentLobby(tournamentId: number, tournamentName: string) {
   // Ensure event listeners are attached
   initializeLobbyEventListeners();
@@ -152,48 +227,15 @@ export async function showTournamentLobby(tournamentId: number, tournamentName: 
 
     if (!details || details.id !== currentTournamentId) return; // Ensure it's the correct tournament
     
+    const wasLoading = !currentTournamentDetails; // Check if this is the first data load
     currentTournamentDetails = details; // Cache the latest details
 
-    tournamentLobbyState.textContent = details.state;
-    tournamentLobbyPlayerCount.textContent = `${details.nbr_players}/${details.max_players}`;
-
-    // Update player list
-    tournamentLobbyPlayers.innerHTML = '';
-    if (details.players.length === 0) {
-      const tr = document.createElement('tr');
-      const td = document.createElement('td');
-      td.colSpan = 2;
-      td.textContent = 'No players have joined yet.';
-      td.className = 'text-center py-4';
-      tr.appendChild(td);
-      tournamentLobbyPlayers.appendChild(tr);
+    // If we were in a loading state, now we can render the full lobby
+    if (wasLoading) {
+      renderLobby(details);
     } else {
-      details.players.forEach((player: any) => {
-        const tr = document.createElement('tr');
-        const nameTd = document.createElement('td');
-        nameTd.textContent = player.name;
-        nameTd.className = 'px-2 py-1';
-        const readyTd = document.createElement('td');
-        readyTd.textContent = '✅';
-        readyTd.className = 'px-2 py-1';
-        tr.appendChild(nameTd);
-        tr.appendChild(readyTd);
-        tournamentLobbyPlayers.appendChild(tr);
-      });
-    }
-
-    // Show/hide owner controls and set button text
-    const userId = getCurrentUserId();
-    if (userId && userId === details.owner_id) {
-      startTournamentBtn.classList.remove('hidden');
-      leaveTournamentBtn.textContent = 'Delete Tournament';
-      leaveTournamentBtn.classList.remove('hidden'); // Ensure it's visible
-      deleteTournamentBtn.classList.add('hidden'); // Hide the old delete button
-    } else {
-      startTournamentBtn.classList.add('hidden');
-      leaveTournamentBtn.textContent = 'Leave Tournament';
-      leaveTournamentBtn.classList.remove('hidden'); // Ensure it's visible
-      deleteTournamentBtn.classList.add('hidden'); // Hide the old delete button
+      // Otherwise, just update the dynamic parts
+      updateLobby(details);
     }
 
     // If the tournament has started, hide the lobby and show the game modal

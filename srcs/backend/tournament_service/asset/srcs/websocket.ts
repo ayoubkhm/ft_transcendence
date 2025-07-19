@@ -186,7 +186,15 @@ const websocketHandler: WebsocketHandler = (connection, req) => {
           try {
             const tourRes = await client.query('SELECT name FROM tournaments WHERE id = $1', [tournament_id]);
             if (tourRes.rows.length === 0) throw new Error('Tournament not found.');
-            await client.query('SELECT * FROM join_tournament($1::INTEGER, $2::TEXT)', [user_id, tourRes.rows[0].name]);
+            
+            const joinResult = await client.query('SELECT * FROM join_tournament($1::INTEGER, $2::TEXT)', [user_id, tourRes.rows[0].name]);
+            if (!joinResult.rows[0].success) {
+              throw new Error(joinResult.rows[0].msg || 'Failed to join tournament in DB.');
+            }
+
+            // Send a specific success message back to the user who joined
+            safeSend(conn, { type: 'join_tournament_success', data: { tournament_id } });
+
             joinGroup(conn, tournament_id);
             await broadcastTournamentUpdate(req.server, tournament_id, client);
             await broadcastDashboardUpdate(req.server, client);

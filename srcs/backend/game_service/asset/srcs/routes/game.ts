@@ -20,6 +20,7 @@ interface GameSession {
   game: Game;
   interval?: IntervalRef;
   clients: Set<WebSocket>;
+  forfeitTimer?: NodeJS.Timeout;
 }
 
 const sessions = new Map<string, GameSession>()
@@ -106,7 +107,7 @@ export default async function gamesRoutes (app: FastifyInstance)
           return;
         }
 
-        const game = new Game(username, 'AI', level, isCustomOn, sqlGameId);
+        const game = new Game(username, 'AI', userId, null, 'IA', level, isCustomOn, sqlGameId);
         const gameIdString = sqlGameId.toString();
 
         const interval = setInterval(async () => {
@@ -141,7 +142,7 @@ export default async function gamesRoutes (app: FastifyInstance)
           return;
         }
 
-        const game = new Game(username, '__PENDING__', level, isCustomOn, sqlGameId);
+        const game = new Game(username, '__PENDING__', userId, null, 'VS', level, isCustomOn, sqlGameId);
         const gameIdString = sqlGameId.toString();
         sessions.set(gameIdString, { game, clients: new Set() });
         return { gameId: gameIdString, playerId: username, token: genToken(gameIdString, username) };
@@ -161,13 +162,58 @@ export default async function gamesRoutes (app: FastifyInstance)
     const { socket } = connection;
     const { id } = request.params as { id: string };
     
+    console.log(`[WS] New client connection established for game ${id}`);
     joinGame(id, socket);
 
     socket.on('message', async (rawMessage) => {
+      console.log(`[WS] Received message for game ${id}:`, rawMessage.toString());
       try {
         const message = JSON.parse(rawMessage.toString());
-        const session = sessions.get(id);
-        if (!session) return;
+        let session = sessions.get(id);
+
+        if (!session) {
+          console.log(`[WS] No session for game ${id}, attempting to reload from DB.`);
+          const pgClient = await app.pg.connect();
+          try {
+            const gameIdInt = parseInt(id, 10);
+            if (isNaN(gameIdInt)) {
+              socket.send(JSON.stringify({ type: 'error', message: 'Invalid game ID.' }));
+              return;
+            }
+
+            const gameRes = await pgClient.query(
+              "SELECT * FROM games WHERE id = $1 AND (state = 'WAITING' OR type = 'TOURNAMENT')",
+              [gameIdInt]
+            );
+
+            if (gameRes.rows.length > 0) {
+              const dbGame = gameRes.rows[0];
+              const p1Res = await pgClient.query('SELECT name FROM users WHERE id = $1', [dbGame.p1_id]);
+              const p1Name = p1Res.rows[0]?.name;
+
+              if (p1Name) {
+                const game = new Game(p1Name, '__PENDING__', dbGame.p1_id, null, dbGame.type, 'medium', true, gameIdInt);
+                const newSession = { game, clients: new Set() };
+                sessions.set(id, newSession);
+                session = newSession;
+                console.log(`[WS] Session for game ${id} reloaded from DB.`);
+              }
+            }
+          } finally {
+            pgClient.release();
+          }
+        }
+
+        if (session && !session.clients.has(socket)) {
+            session.clients.add(socket);
+            console.log(`[WS] Client belatedly joined game ${id}. Total clients: ${session.clients.size}`);
+        }
+        
+        if (!session) {
+          console.error(`[WS] No session found for game ${id}`);
+          socket.send(JSON.stringify({ type: 'error', message: 'Game session not found or already started.' }));
+          return;
+        }
 
         switch (message.type) {
           case 'game_input': {
@@ -179,26 +225,96 @@ export default async function gamesRoutes (app: FastifyInstance)
           }
           case 'join_pvp_game': {
             const { username } = message.payload;
-            if (!username || session.game.getState().players[1].id !== '__PENDING__') {
-              socket.send(JSON.stringify({ type: 'error', message: 'Game not available for join' }));
+            if (!username) {
+              socket.send(JSON.stringify({ type: 'error', message: 'Username is required to join.' }));
               return;
             }
-            
-            session.game.joinPlayer(username);
+
+            console.log(`[Game] Player '${username}' attempting to join game ${id}.`);
+            let gameState = session.game.getState();
+            console.log('[Game] State before join:', {
+              p1: gameState.players[0].id,
+              p2: gameState.players[1].id,
+              interval: !!session.interval,
+              forfeitTimer: !!session.forfeitTimer,
+            });
+
+            const isTournamentGame = gameState.type === 'TOURNAMENT';
+            const isPlayer1 = gameState.players[0].id === username;
+            const isPlayer2 = gameState.players[1].id === username;
+            const isPending = gameState.players[1].id === '__PENDING__';
+
+            // If the player is not in the game and the game is pending, join them.
+            if (!isPlayer1 && !isPlayer2 && isPending) {
+              const pgClient = await app.pg.connect();
+              try {
+                const userRes = await pgClient.query('SELECT id FROM users WHERE name = $1', [username]);
+                if (userRes.rows.length === 0) {
+                  socket.send(JSON.stringify({ type: 'error', message: 'Joining player not found in database.' }));
+                  return;
+                }
+                const joiningUserDbId = userRes.rows[0].id;
+
+                console.log(`[Game] Player '${username}' (dbId: ${joiningUserDbId}) is joining as P2.`);
+                session.game.joinPlayer(username, joiningUserDbId);
+
+                // The second player has joined, so clear the forfeit timer and start the game.
+                if (session.forfeitTimer) {
+                  console.log(`[Game] Second player joined. Clearing forfeit timer for game ${id}.`);
+                  clearTimeout(session.forfeitTimer);
+                  session.forfeitTimer = undefined;
+                }
+
+                if (!session.interval) {
+                  console.log(`[Game] Both players present. Starting game loop for game ${id}.`);
+                  session.interval = setInterval(async () => {
+                    const pgClient = await app.pg.connect();
+                    try {
+                      await session.game.step(1 / 60, pgClient);
+                      broadcastGameState(id);
+                    } finally {
+                      pgClient.release();
+                    }
+                  }, 1000 / 60);
+                }
+              } finally {
+                pgClient.release();
+              }
+            } else if (isPlayer1 && isPending && isTournamentGame && !session.forfeitTimer && !session.interval) {
+              // This is the first player in a tournament game. Start the forfeit timer.
+              console.log(`[Game] First player '${username}' in tournament game ${id}. Starting 30s forfeit timer.`);
+              socket.send(JSON.stringify({ type: 'forfeit_timer_started', payload: { duration: 30 } }));
+              session.forfeitTimer = setTimeout(async () => {
+                console.log(`[Game] Forfeit timer expired for game ${id}.`);
+                const presentPlayer = session.game.getState().players.find(p => p.id !== '__PENDING__');
+                if (presentPlayer) {
+                  session.game.handleInput(presentPlayer.id, { type: 'forfeit', ts: Date.now() });
+                  const pgClient = await app.pg.connect();
+                  try {
+                    await session.game.step(1 / 60, pgClient); // Process the forfeit
+                    broadcastGameState(id);
+                  } finally {
+                    pgClient.release();
+                  }
+                }
+              }, 30000); // 30 seconds
+            } else if (!isPending) {
+              console.warn(`[Game] Player '${username}' attempted to join game ${id}, but it is already full.`);
+              socket.send(JSON.stringify({ type: 'error', message: 'Game is not available for joining.' }));
+              return;
+            }
+
             const token = genToken(id, username);
             socket.send(JSON.stringify({ type: 'join_success', data: { token, playerId: username } }));
+            
+            gameState = session.game.getState();
+            console.log('[Game] State after join:', {
+              p1: gameState.players[0].id,
+              p2: gameState.players[1].id,
+              interval: !!session.interval,
+              forfeitTimer: !!session.forfeitTimer,
+            });
 
-            if (!session.interval) {
-              session.interval = setInterval(async () => {
-                const pgClient = await app.pg.connect();
-                try {
-                  await session.game.step(1 / 60, pgClient);
-                  broadcastGameState(id);
-                } finally {
-                  pgClient.release();
-                }
-              }, 1000 / 60);
-            }
             break;
           }
         }
@@ -208,6 +324,7 @@ export default async function gamesRoutes (app: FastifyInstance)
     });
 
     socket.on('close', () => {
+      console.log(`[WS] Client disconnected from game ${id}`);
       leaveGame(id, socket);
     });
   });

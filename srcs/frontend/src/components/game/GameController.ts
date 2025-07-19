@@ -1,4 +1,4 @@
-import { drawGame } from './GameCanvas';
+import { drawGame, drawForfeitTimer } from './GameCanvas';
 import { navigate, onRoute } from '../../lib/router';
 import { loginAsGuest } from '../auth/Auth';
 
@@ -59,6 +59,15 @@ let gameId: string | null = null;
 let playerId: string | null = null;
 let authToken: string | null = null;
 let lastInput: 'move_up' | 'move_down' | 'stop' | null = null;
+
+let forfeitTimerId: number | null = null;
+
+function clearForfeitTimer() {
+  if (forfeitTimerId) {
+    clearInterval(forfeitTimerId);
+    forfeitTimerId = null;
+  }
+}
 
 // --- WebSocket Communication ---
 
@@ -134,6 +143,7 @@ function showGameUI(isWaiting = false) {
 }
 
 function hideGameUI() {
+  clearForfeitTimer();
   hero.classList.remove('hidden');
   canvas.classList.add('hidden');
   forfeitBtn.classList.add('hidden');
@@ -231,6 +241,7 @@ export async function joinGame(gameIdToJoin: string) {
     gameSocket.onmessage = (event) => {
       const message = JSON.parse(event.data);
       if (message.type === 'game_state_update') {
+        clearForfeitTimer(); // Game has started, clear any forfeit timer
         const state = message.data;
         if (ctx) {
           drawGame(ctx, state, images);
@@ -243,6 +254,20 @@ export async function joinGame(gameIdToJoin: string) {
         authToken = message.data.token;
         playerId = message.data.playerId;
         console.log(`[WS] Successfully joined game ${gameId}`);
+      } else if (message.type === 'forfeit_timer_started') {
+        const { duration } = message.payload;
+        let remaining = duration;
+        if (ctx) {
+          drawForfeitTimer(ctx, remaining);
+          forfeitTimerId = window.setInterval(() => {
+            remaining--;
+            if (remaining >= 0 && ctx) {
+              drawForfeitTimer(ctx, remaining);
+            } else {
+              clearForfeitTimer();
+            }
+          }, 1000);
+        }
       } else if (message.type === 'error') {
         alert(`Error joining game: ${message.message}`);
         hideGameUI();
@@ -257,6 +282,7 @@ export async function joinGame(gameIdToJoin: string) {
 
     gameSocket.onclose = () => {
       console.log('[WS] Game socket closed.');
+      clearForfeitTimer();
     };
 
     navigate('game', { id: gameId });

@@ -5,6 +5,7 @@ import 'dotenv/config';
 
 import bracketsRoute from './brackets';
 import websocketRoutes from './websocket';
+import gameFlowRoutes from './game_flow';
 
 const server = Fastify();
 
@@ -15,6 +16,7 @@ server.register(fastifyWebsocket);
 // --- Route Registration ---
 server.register(bracketsRoute, { prefix: '/api/tournaments' });
 server.register(websocketRoutes);
+server.register(gameFlowRoutes, { prefix: '/api/tournaments' });
 
 
 // --- Server Start ---

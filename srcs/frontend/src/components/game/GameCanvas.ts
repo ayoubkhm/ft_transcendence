@@ -88,3 +88,18 @@ export function drawGame(ctx: CanvasRenderingContext2D, state: any, images: Reco
   }
 }
 // Additional rendering and help functions can be added here
+
+export function drawForfeitTimer(ctx: CanvasRenderingContext2D, remaining: number) {
+  ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+  const prevAlign = ctx.textAlign;
+  const prevBaseline = ctx.textBaseline;
+  ctx.fillStyle = 'white';
+  ctx.font = '32px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('Waiting for opponent...', GAME_WIDTH / 2, GAME_HEIGHT / 2 - 40);
+  ctx.font = '48px sans-serif';
+  ctx.fillText(`${remaining}`, GAME_WIDTH / 2, GAME_HEIGHT / 2 + 20);
+  ctx.textAlign = prevAlign;
+  ctx.textBaseline = prevBaseline;
+}

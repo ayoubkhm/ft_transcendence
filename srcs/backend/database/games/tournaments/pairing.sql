@@ -1,3 +1,4 @@
+
 CREATE OR REPLACE FUNCTION update_brackets (
 	_id INTEGER
 )

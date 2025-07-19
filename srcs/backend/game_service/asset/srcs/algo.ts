@@ -31,13 +31,16 @@ export class Game
 
     constructor(
         leftId: string,
-        rightId: string /* "AI" for solo */,
+        rightId: string,
+        leftDbId: number | null,
+        rightDbId: number | null,
+        type: 'IA' | 'TOURNAMENT' | 'VS',
         aiDifficulty: AIDifficulty = 'medium',
         customOn: boolean = true,
 		gameId: number,
 
     ) {
-		this.gameId = gameId; 
+		this.gameId = gameId;
         this.aiDifficulty = aiDifficulty;
         this.customOn = customOn;
         // initialize cumulative stats
@@ -50,6 +53,7 @@ export class Game
         this.countdownTicks = 5 * 60;
         this.state =
         {
+            type: type,
 			ball:
 			{
 				x: GAME_WIDTH / 2,
@@ -58,29 +62,31 @@ export class Game
 			},
         players: [
             {
+                id: leftId,
+                dbId: leftDbId,
+                side: 'left',
+                paddle: { y: GAME_HEIGHT / 2 - PADDLE_H / 2, dy: 0, w: PADDLE_W, h: PADDLE_H },
+                score: 0,
                 speedMultiplier: 1,
                 i: 0,
                 power: "",
                 cpttch: 0,
                 cpttime: [],
-                id: leftId,
-                side: 'left',
-                paddle: { y: GAME_HEIGHT / 2 - PADDLE_H / 2, dy: 0, w: PADDLE_W, h: PADDLE_H },
-                score: 0,
                 powerUpsUsed: 0,
                 distanceMoved: 0,
                 streak: 0,
             },
             {
+                id: rightId,
+                dbId: rightDbId,
+                side: 'right',
+                paddle: { y: GAME_HEIGHT / 2 - PADDLE_H / 2, dy: 0, w: PADDLE_W, h: PADDLE_H },
+                score: 0,
                 speedMultiplier: 1,
                 i: 0,
                 power: "",
                 cpttch: 0,
                 cpttime: [],
-                id: rightId,
-                side: 'right',
-                paddle: { y: GAME_HEIGHT / 2 - PADDLE_H / 2, dy: 0, w: PADDLE_W, h: PADDLE_H },
-                score: 0,
                 powerUpsUsed: 0,
                 distanceMoved: 0,
                 streak: 0,
@@ -119,7 +125,7 @@ export class Game
        // Handle forfeit: end game and declare other player as winner
        if (msg.type === 'forfeit') {
            this.state.isGameOver = true;
-           this.state.winner = p.side === 'left' ? 'right' : 'left';
+           this.state.winner = p.side;
            return;
        }
 		if (msg.type === 'move_up')	
@@ -433,7 +439,7 @@ export class Game
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({
 						gameId: this.gameId,
-						winnerId: winner.id,
+						winnerId: winner.dbId,
 						p1_score: left.score,
 						p2_score: right.score,
 					}),
@@ -468,10 +474,11 @@ export class Game
         };
     }
 
-	  public joinPlayer(newId: string) {
+	  public joinPlayer(newId: string, newDbId: number) {
     // Replace the right-side player id to disable AI movement
     const right = this.state.players[1];
     right.id = newId;
+    right.dbId = newDbId;
 	}
 }
 

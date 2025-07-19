@@ -48,6 +48,7 @@ export interface BonusBall extends Ball
 export interface Player
 {
     id:     string;           // identifiant unique
+    dbId:   number | null;    // Database ID
     side:   'left' | 'right';
     paddle: Paddle;
     score:  number;
@@ -67,6 +68,7 @@ export interface Player
 // État complet d’une partie
 export interface GameState
 {
+    type: 'IA' | 'TOURNAMENT' | 'VS';
     phantomBalls?: PhantomBall[];
     bonusBalls?: BonusBall[]; // nouveau champ
     ball:    Ball;

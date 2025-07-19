@@ -4,6 +4,8 @@ import { detachCanvas } from '../game/GameController';
 import { on } from '../../lib/socket';
 import { navigate } from '../../lib/router';
 import { getCurrentUserId } from '../auth/Auth';
+import { joinGame as joinPvPGame } from '../game/GameController'; // Renaming for clarity
+import { detachCanvas } from '../game/GameController';
 
 const tournamentGameModal = document.getElementById('tournament-game-modal') as HTMLElement;
 const tournamentGameTitle = document.getElementById('tournament-game-title') as HTMLElement;
@@ -12,6 +14,12 @@ const tournamentBracketsContainer = document.getElementById('tournament-brackets
 const tournamentGameClose = document.getElementById('tournament-game-close') as HTMLButtonElement;
 
 let currentTournamentId: number | null = null;
+
+function joinTournamentGame(gameId: string) {
+  // This will reuse the PvP join logic, which connects to the game's WebSocket
+  // and handles the state updates. The backend will differentiate based on the message type.
+  joinPvPGame(gameId);
+}
 
 function displayRunningMatches(details: any) {
   console.log('[Game] displayRunningMatches received details:', details);
@@ -60,13 +68,14 @@ function displayRunningMatches(details: any) {
     tournamentMatchesList.appendChild(matchElement);
   }
 
-  // Add event listeners for the new buttons
+  // Re-wire the event listener for the join button
   tournamentMatchesList.querySelectorAll('.join-game-btn').forEach(button => {
-      button.addEventListener('click', async (e) => {
-          // This logic to start a game via fetch is complex and seems to be part of the game_service, not tournament_service.
-          // For now, we will assume it's out of scope of the current WebSocket refactor.
-          // If this also needs to be converted, it would be a separate step.
-          alert("Joining game... (functionality to be confirmed)");
+      button.addEventListener('click', (e) => {
+          const gameId = (e.target as HTMLElement).dataset.gameId;
+          if (gameId) {
+            hideTournamentGame(); // Hide the tournament modal
+            joinTournamentGame(gameId); // Join the specific game
+          }
       });
   });
 }
@@ -78,16 +87,27 @@ export function showTournamentGame(details: any) {
   
   tournamentGameTitle.textContent = details.name;
   
-  on('tournament-update', (updatedDetails) => {
-    if (updatedDetails.data.id !== currentTournamentId) return;
-    const newDetails = updatedDetails.data;
+  on('tournament-update', (newDetails) => {
+    if (newDetails.id !== currentTournamentId) return;
+    
     // Refresh the view with new data
     displayRunningMatches(newDetails);
     show_brackets(newDetails.id, tournamentBracketsContainer);
     if (newDetails.state === 'OVER' && newDetails.winner_name) {
-      alert(`Tournament Over! Winner: ${newDetails.winner_name}`);
-      hideTournamentGame();
-      navigate('home');
+      const winnerDisplay = document.getElementById('tournament-winner-display') as HTMLElement;
+      const winnerNameSpan = document.getElementById('tournament-winner-name') as HTMLElement;
+      const winnerCloseBtn = document.getElementById('tournament-winner-close-btn') as HTMLButtonElement;
+
+      if (winnerDisplay && winnerNameSpan && winnerCloseBtn) {
+        winnerNameSpan.textContent = newDetails.winner_name;
+        winnerDisplay.classList.remove('hidden');
+
+        winnerCloseBtn.onclick = () => {
+          winnerDisplay.classList.add('hidden');
+          hideTournamentGame();
+          navigate('home');
+        };
+      }
     }
   });
 

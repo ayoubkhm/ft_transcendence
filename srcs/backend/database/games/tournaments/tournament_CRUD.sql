@@ -25,6 +25,8 @@ BEGIN
 	INSERT INTO tournaments (name, owner_id)
 	VALUES (_name, _owner_id)
 	RETURNING id INTO _id;
+
+	PERFORM join_tournament(_owner_id, _name);
 	
 	RETURN QUERY SELECT TRUE, 'Tournament created successfully', _id;
 

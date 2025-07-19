@@ -59,6 +59,23 @@ async function renderTournamentList(tournaments: any[]) {
 
 
 
+async function handleJoin(tournamentId: number, userId: number, tournamentName: string) {
+  // Define a one-time listener for the success message
+  const unregister = on('join_tournament_success', async (data) => {
+    if (data.tournament_id === tournamentId) {
+      // Once we get confirmation, unregister the listener and show the lobby
+      unregister();
+      const { showTournamentLobby } = await import('./TournamentLobby');
+      const tournamentModal = document.getElementById('tournament-modal') as HTMLElement | null;
+      if (tournamentModal) tournamentModal.classList.add('hidden');
+      showTournamentLobby(tournamentId, tournamentName);
+    }
+  });
+
+  // Send the join request
+  joinTournament(tournamentId, userId);
+}
+
 export function setupTournamentDashboard() {
   const tournamentModal = document.getElementById('tournament-modal') as HTMLElement | null;
   const tournamentModalClose = document.getElementById('tournament-modal-close') as HTMLButtonElement | null;
@@ -96,9 +113,13 @@ export function setupTournamentDashboard() {
   // Listen for the specific "created" event to navigate the creator to the lobby
   on('tournament-created', async (data) => {
     if (data && data.id && data.name) {
-      const { showTournamentLobby } = await import('./TournamentLobby');
-      if (tournamentModal) tournamentModal.classList.add('hidden');
-      showTournamentLobby(data.id, data.name);
+      // The creator is auto-joined, so we can go straight to the lobby.
+      // A small delay might still be wise just in case of server-side race conditions.
+      setTimeout(async () => {
+        const { showTournamentLobby } = await import('./TournamentLobby');
+        if (tournamentModal) tournamentModal.classList.add('hidden');
+        showTournamentLobby(data.id, data.name);
+      }, 3000); // A minimal 3000ms delay for safety
     }
   });
 
@@ -115,7 +136,6 @@ export function setupTournamentDashboard() {
 
       // Handle JOIN button clicks
       if (target.classList.contains('join-btn')) {
-        const { showTournamentLobby } = await import('./TournamentLobby');
         const userId = await getCurrentUserId();
         if (!userId) {
             console.error("Could not get user ID. Prompting guest login.");
@@ -125,12 +145,11 @@ export function setupTournamentDashboard() {
                 alert("Failed to login as guest. Cannot join tournament.");
                 return;
             }
-            joinTournament(tournamentId, newUserId);
+            // After guest login, proceed with the join logic
+            handleJoin(tournamentId, newUserId, tournament.name);
         } else {
-            joinTournament(tournamentId, userId);
+            handleJoin(tournamentId, userId, tournament.name);
         }
-        if (tournamentModal) tournamentModal.classList.add('hidden');
-        showTournamentLobby(tournamentId, tournament.name);
       }
 
       // Handle SPECTATE button clicks
