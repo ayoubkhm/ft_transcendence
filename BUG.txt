@@ -1,0 +1,9 @@
+Voici la liste des erreurs sous forme de points simples :
+
+    Impossible de modifier l’email, le nom, etc.
+    Manque les stats : score, win, loss
+    Impossible de quitter un tournoi (lobby)
+    La croix pour quitter le tournoi (lobby) ne fonctionne pas
+    jarrive pas a me co avec google. --> A corriger quand on sera à l'école
+    peut pas faire 2fa --> 
+    

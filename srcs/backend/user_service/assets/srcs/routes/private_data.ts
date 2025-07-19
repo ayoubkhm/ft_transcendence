@@ -272,21 +272,25 @@ export default async function private_userRoutes(server: FastifyInstance, option
   }
   });
   
-    interface passwordUpdateBody
+    interface editUpdateBody
     {
         password: string,
         credential: string,
+        flag?: string, // Optional flag for special cases
+        email?: string, // Optional email for update
+        name?: string, // Optional name for update
     }
 
-    interface passwordUpdateParams
+    interface editUpdateParams
     {
         email: string,
     }
 
-  server.put<{Body: passwordUpdateBody, Params: passwordUpdateParams}>('/password/:email', async (request, reply) => {
+  server.put<{Body: editUpdateBody, Params: editUpdateParams}>('/edit/:email', async (request, reply) => {
     try {
       // Security: JWT validation and authorization
       const token = (request.cookies as any)?.jwt_transcendence;
+      const flag = request.body?.flag;
       if (!token) {
         return reply.status(401).send({ error: 'Unauthorized' });
       }
@@ -302,20 +306,58 @@ export default async function private_userRoutes(server: FastifyInstance, option
         return reply.status(403).send({ error: 'Forbidden' });
       }
 
-      const newPassword = request.body?.password;
-      const email = request.params.email;
-      if (!newPassword) {
-        return reply.status(400).send({ error: 'Password cannot be empty' });
-      }
-      
-      const result = await server.pg.query('SELECT * FROM update_user_password($1, $2)', [email, newPassword]);
-      const row = result.rows[0];
+      if (flag && flag === "password") {
+        const newPassword = request.body?.password;
+        const email = request.params.email;
+        if (!newPassword) {
+          return reply.status(400).send({ error: 'Password cannot be empty' });
+        }
+        
+        const result = await server.pg.query('SELECT * FROM update_user_password($1, $2)', [email, newPassword]);
+        const row = result.rows[0];
 
       if (!row || !row.success) {
         return reply.status(404).send({ error: row.msg || "Password update failed" });
       }
-      
-      reply.status(200).send({ message: "user_password_updated" });
+        return reply.status(200).send({ message: "user_password_updated" });
+      }
+      else if (flag && flag === "email") {
+        const newEmail = request.body?.email;
+        const email = tokenPayload.email;
+        if (!newEmail || !email) {
+          return reply.status(400).send({ error: 'Email and name cannot be empty' });
+        }
+        const result = await server.pg.query('SELECT * FROM update_user_email($1, $2)', [email, newEmail]);
+        const row = result.rows[0];
+        if (!row || !row.success) {
+          return reply.status(404).send({ error: row.msg || "Email update failed" });
+        }
+        return reply.status(200).send({ message: "user_email_updated" });
+      }
+      else if (flag && flag === "name") {
+        const newName = request.body?.name;
+        const email = tokenPayload.email;
+        const user = await server.pg.query('SELECT * FROM users WHERE name = $1', [newName]);
+        const userData = user.rows[0];
+        if (userData.success) {
+          return reply.status(409).send({ error: 'Name already exists' });
+        }
+        if (newName === tokenPayload.name) {
+          return reply.status(400).send({ error: 'Name cannot be the same as current name' });
+        }
+        if (!newName || !email) {
+          return reply.status(400).send({ error: 'Email and name cannot be empty' });
+        }
+        const result = await server.pg.query('SELECT * FROM update_user_name($1, $2)', [email, newName]);
+        const row = result.rows[0];
+        if (!row || !row.success) {
+          return reply.status(404).send({ error: row.msg || "Name update failed" });
+        }
+        return reply.status(200).send({ message: "user_name_updated" });
+      } else {
+        return reply.status(400).send({ error: 'Invalid flag' });
+      }
+      //reply.status(200).send({ message: "user_password_updated" });
     } catch (error) {
       console.error('Update password error:', error);
       return reply.status(500).send({ error: 'Internal server error' });

@@ -54,10 +54,10 @@ export default function changePasswordRoutes(app: FastifyInstance, options: any,
       // Hash the new password
       const hashed = await bcrypt.hash(newPassword, 12);
       // Call user service to update the password
-      const updateRes = await fetch(`http://user_service:3000/api/user/password/${email}`, {
+      const updateRes = await fetch(`http://user_service:3000/api/user/edit/${email}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ credential: process.env.API_CREDENTIAL, password: hashed }),
+        body: JSON.stringify({ credential: process.env.API_CREDENTIAL,flag: "password", password: hashed }),
       });
       const updateData = await updateRes.json();
       if (!updateRes.ok) {

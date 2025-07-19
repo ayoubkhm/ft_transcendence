@@ -50,29 +50,77 @@ export default function public_userRoutes (server: FastifyInstance, options: any
     });
 
 
-    
 
+interface PrivateDataParams {
+      id: string;
+    }
 
+    interface PrivateDataBody {
+      credential?: string;
+    }
 
+  server.post<{ Params: PrivateDataParams, Body: PrivateDataBody }>('/lookup/stats/:id', async (request, reply) => {
+  // Authentication: allow if valid API credential or JWT for self/admin
+  const apiCred = request.body?.credential;
+  const token = (request.cookies as any)?.jwt_transcendence;
+  if (!apiCred && !token) {
+    return reply.status(401).send({ error: 'Unauthorized' });
+  }
+  if (apiCred) {
+    if (apiCred !== process.env.API_CREDENTIAL) {
+      return reply.status(403).send({ error: 'Forbidden' });
+    }
+  }
+  if (token) {
+    let tokData;
+    try {
+      tokData = getTokenData(token);
+    } catch {
+      return reply.status(403).send({ error: 'Forbidden' });
+    }
+    const identifier = request.params.id;
+    const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier);
+    const isID = /^\d+$/.test(identifier);
+    if (isEmail) {
+      if (tokData.email !== identifier && !tokData.admin) {
+        return reply.status(403).send({ error: 'Forbidden' });
+      }
+    } else if (isID) {
+      if (tokData.id !== Number(identifier) && !tokData.admin) {
+        return reply.status(403).send({ error: 'Forbidden' });
+      }
+    } else {
+      if (tokData.name !== identifier && !tokData.admin) {
+        return reply.status(403).send({ error: 'Forbidden' });
+      }
+    }
+  }
+  const value = request.params.id;
 
+  // Robust identifier checking
+  const isID = /^\d+$/.test(value);
+  const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+//QUERY a changer pour stats game.
+  try {
+    let result;
+    if (isID) {
+      result = await server.pg.query(`SELECT * FROM users WHERE id = $1`, [Number(value)]);
+    } else if (isEmail) {
+      result = await server.pg.query(`SELECT * FROM users WHERE email = $1`, [value]);
+    } else {
+      result = await server.pg.query(`SELECT * FROM users WHERE name = $1`, [value]);
+    }
 
+    if (!result || result.rows.length === 0) {
+      return reply.status(404).send({ error: 'User not found' });
+    }
+    return reply.send(result.rows[0]);
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+  } catch (error) {
+    console.error('Raw query error:', error);
+    return reply.status(500).send({ error: 'Internal server error' });
+  }
+});
 
     // DELETE user par le mail si il nest pas admin
     interface deleteUserParams {email: string}
