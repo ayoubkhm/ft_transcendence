@@ -13,11 +13,11 @@ DECLARE
 BEGIN
 	IF is_2fa THEN
 		INSERT INTO users (name, type, email, password, avatar, online, twofa_secret, twofa_validated, active)
-		VALUES (_name, _type, _email, _password, _avatar, _online, NULL, FALSE, FALSE)
+		VALUES (_name, _type, _email, _password, COALESCE(_avatar, '/default_avatar.jpg'), _online, NULL, FALSE, FALSE)
 		RETURNING id INTO _new_user_id;
 	ELSE
 		INSERT INTO users (name, type, email, password, online, avatar)
-		VALUES (_name, _type, _email, _password, _online, _avatar)
+		VALUES (_name, _type, _email, _password, _online, COALESCE(_avatar, '/default_avatar.jpg'))
 		RETURNING id INTO _new_user_id;
 	END IF;
 	
