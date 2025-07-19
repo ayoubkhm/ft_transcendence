@@ -5,7 +5,7 @@ DECLARE
 BEGIN
 	IF _id IS NULL THEN
 		RETURN QUERY SELECT FALSE, 'User not found (id is null)';
-		
+		RETURN ;
 	END IF;
 	UPDATE users
 	SET online = TRUE
@@ -14,7 +14,7 @@ BEGIN
 
 	IF user_found THEN
 		RETURN QUERY SELECT TRUE, 'User put online';
-		
+		RETURN ;
 	END IF;
 	RETURN QUERY SELECT FALSE, 'No user found with that id % (set_online fail)';
 	
@@ -33,7 +33,7 @@ DECLARE
 BEGIN
 	IF _id IS NULL THEN
 		RETURN QUERY SELECT FALSE, 'User not found (id is null)';
-		
+		RETURN ;
 	END IF;
 	UPDATE users
 	SET online = TRUE
@@ -42,7 +42,7 @@ BEGIN
 
 	IF user_found THEN
 		RETURN QUERY SELECT TRUE, 'User put online';
-		
+		RETURN ;
 	END IF;
 	RETURN QUERY SELECT FALSE, 'No user found with that id % (set_online fail)';
 	
@@ -61,7 +61,7 @@ DECLARE
 BEGIN
 	IF _id IS NULL THEN
 		RETURN QUERY SELECT FALSE, 'User not found (id is null)';
-		
+		RETURN ;
 	END IF;
 	UPDATE users
 	SET online = FALSE
@@ -70,7 +70,7 @@ BEGIN
 
 	IF user_found THEN
 		RETURN QUERY SELECT TRUE, 'User put online';
-		
+		RETURN ;
 	END IF;
 	RETURN QUERY SELECT FALSE, 'No user found with that id % (set_offline fail)';
 	
@@ -89,7 +89,7 @@ DECLARE
 BEGIN
 	IF _id IS NULL THEN
 		RETURN QUERY SELECT FALSE, 'User not found (id is null)';
-		
+		RETURN ;
 	END IF;
 	UPDATE users
 	SET online = FALSE
@@ -98,7 +98,7 @@ BEGIN
 
 	IF user_found THEN
 		RETURN QUERY SELECT TRUE, 'User put online';
-		
+		RETURN ;
 	END IF;
 	RETURN QUERY SELECT FALSE, 'No user found with that id % (set_offline fail)';
 	

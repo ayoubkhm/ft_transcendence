@@ -11,7 +11,7 @@ BEGIN
     WHERE id = _id1;
     IF (_type = 'guest') THEN
         RETURN QUERY SELECT FALSE, 'Guest can''t have friends (user 1 is guest)';
-        
+        RETURN ;
     END IF;
 
     SELECT type INTO _type
@@ -19,7 +19,7 @@ BEGIN
     WHERE id = _id2;
     IF (_type = 'guest') THEN
         RETURN QUERY SELECT FALSE, 'Guest can''t have friends (user 2 is guest)';
-        
+        RETURN ;
     END IF;
 
 	IF EXISTS(
@@ -28,7 +28,7 @@ BEGIN
             OR ((user1_id = _id2) AND (user2_id = _id1))
     ) THEN
         RETURN QUERY SELECT FALSE, 'Already friends';
-        
+        RETURN ;
     END IF;
     
     INSERT INTO friends (user1_id, user2_id)
@@ -58,7 +58,7 @@ BEGIN
     WHERE email = _email1;
     IF (_type = 'guest') THEN
         RETURN QUERY SELECT FALSE, 'Guest can''t have friends (user 1 is guest)';
-        
+        RETURN ;
     END IF;
 
     SELECT type, id INTO _type, _id2
@@ -66,7 +66,7 @@ BEGIN
     WHERE email = _email2;
     IF (_type = 'guest') THEN
         RETURN QUERY SELECT FALSE, 'Guest can''t have friends (user 2 is guest)';
-        
+        RETURN ;
     END IF;
 
 	IF EXISTS(
@@ -75,7 +75,7 @@ BEGIN
             OR ((user1_id = _id2) AND (user2_id = _id1))
     ) THEN
         RETURN QUERY SELECT FALSE, 'Already friends';
-        
+        RETURN ;
     END IF;
     
     INSERT INTO friends (user1_id, user2_id)
@@ -105,7 +105,7 @@ BEGIN
     WHERE id = _id1;
     IF (_type = 'guest') THEN
         RETURN QUERY SELECT FALSE, 'Guest can''t have friends (user 1 is guest)';
-        
+        RETURN ;
     END IF;
 
     SELECT type, id INTO _type, _id2
@@ -113,7 +113,7 @@ BEGIN
     WHERE email = _email2;
     IF (_type = 'guest') THEN
         RETURN QUERY SELECT FALSE, 'Guest can''t have friends (user 2 is guest)';
-        
+        RETURN ;
     END IF;
 
 	IF EXISTS(
@@ -122,7 +122,7 @@ BEGIN
             OR ((user1_id = _id2) AND (user2_id = _id1))
     ) THEN
         RETURN QUERY SELECT FALSE, 'Already friends';
-        
+        RETURN ;
     END IF;
     
     INSERT INTO friends (user1_id, user2_id)
@@ -152,7 +152,7 @@ BEGIN
     WHERE email = _email1;
     IF (_type = 'guest') THEN
         RETURN QUERY SELECT FALSE, 'Guest can''t have friends (user 1 is guest)';
-        
+        RETURN ;
     END IF;
 
     SELECT type INTO _type
@@ -160,7 +160,7 @@ BEGIN
     WHERE id = _id2;
     IF (_type = 'guest') THEN
         RETURN QUERY SELECT FALSE, 'Guest can''t have friends (user 2 is guest)';
-        
+        RETURN ;
     END IF;
 
 	IF EXISTS(
@@ -169,7 +169,7 @@ BEGIN
             OR ((user1_id = _id2) AND (user2_id = _id1))
     ) THEN
         RETURN QUERY SELECT FALSE, 'Already friends';
-        
+        RETURN ;
     END IF;
     
     INSERT INTO friends (user1_id, user2_id)
@@ -198,7 +198,7 @@ BEGIN
 	
     IF friends_deleted THEN
 		RETURN QUERY SELECT TRUE, 'Friends deleted successfully';
-        
+        RETURN ;
 	END IF;
 	
     RETURN QUERY SELECT FALSE, 'Friends not found (delete fail)';
@@ -225,7 +225,7 @@ BEGIN
 	
     IF friends_deleted THEN
 		RETURN QUERY SELECT TRUE, 'Friends deleted successfully';
-        
+        RETURN ;
 	END IF;
 	
     RETURN QUERY SELECT FALSE, 'Friends not found (delete fail)';
@@ -252,7 +252,7 @@ BEGIN
 	
     IF friends_deleted THEN
 		RETURN QUERY SELECT TRUE, 'Friends deleted successfully';
-        
+        RETURN ;
 	END IF;
 	
     RETURN QUERY SELECT FALSE, 'Friends not found (delete fail)';
@@ -277,7 +277,7 @@ BEGIN
 	
     IF friends_deleted THEN
 		RETURN QUERY SELECT TRUE, 'Friends deleted successfully';
-        
+        RETURN ;
 	END IF;
 	
     RETURN QUERY SELECT FALSE, 'Friends not found (delete fail)';
