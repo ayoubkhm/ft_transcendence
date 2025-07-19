@@ -139,6 +139,9 @@ const websocketHandler: WebsocketHandler = (connection, req) => {
               throw new Error(creationResult.msg || 'Tournament creation failed in database.');
             }
 
+            // Add the creator to the tournament's group so they receive updates
+            joinGroup(conn, creationResult.tid);
+
             // Send a specific confirmation to the creator with the new ID and original name
             safeSend(conn, {
               type: 'tournament-created',

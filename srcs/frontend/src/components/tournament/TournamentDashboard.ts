@@ -113,13 +113,10 @@ export function setupTournamentDashboard() {
   // Listen for the specific "created" event to navigate the creator to the lobby
   on('tournament-created', async (data) => {
     if (data && data.id && data.name) {
-      // The creator is auto-joined, so we can go straight to the lobby.
-      // A small delay might still be wise just in case of server-side race conditions.
-      setTimeout(async () => {
-        const { showTournamentLobby } = await import('./TournamentLobby');
-        if (tournamentModal) tournamentModal.classList.add('hidden');
-        showTournamentLobby(data.id, data.name);
-      }, 3000); // A minimal 3000ms delay for safety
+      // The creator is now properly joined on the backend, so we can show the lobby immediately.
+      const { showTournamentLobby } = await import('./TournamentLobby');
+      if (tournamentModal) tournamentModal.classList.add('hidden');
+      showTournamentLobby(data.id, data.name);
     }
   });
 
