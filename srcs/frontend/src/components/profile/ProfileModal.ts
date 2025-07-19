@@ -134,29 +134,59 @@ export function setupProfileModal(): void {
     previewImg.style.maxWidth = '150px';
     previewImg.style.marginTop = '10px';
     previewImg.style.borderRadius = '8px';
-    previewImg.style.display = 'block';
+    previewImg.style.display = 'none'; // Initially hidden
     uploadBtn.parentElement?.appendChild(previewImg);
+
+    const confirmBtn = document.createElement('button');
+    confirmBtn.textContent = 'Confirm';
+    confirmBtn.className = 'px-4 py-2 bg-green-700 rounded text-white mt-2';
+    confirmBtn.style.display = 'none'; // Initially hidden
+    uploadBtn.parentElement?.appendChild(confirmBtn);
+
     uploadBtn.addEventListener('click', () => fileInput.click());
-    fileInput.addEventListener('change', async (e) => {
+
+    let selectedFile: File | null = null;
+
+    fileInput.addEventListener('change', (e) => {
       const target = e.target as HTMLInputElement;
       if (target.files && target.files[0]) {
-        const file = target.files[0];
+        selectedFile = target.files[0];
         const reader = new FileReader();
         reader.onload = ev => {
-          if (ev.target?.result) previewImg.src = ev.target.result as string;
+          if (ev.target?.result) {
+            previewImg.src = ev.target.result as string;
+            previewImg.style.display = 'block';
+            confirmBtn.style.display = 'block';
+          }
         };
-        reader.readAsDataURL(file);
-        try {
-          const formData = new FormData(); formData.append('avatar', file);
-          const res = await fetch('/api/user/upload_avatar', { method: 'POST', credentials: 'include', body: formData });
-          let data: any;
-          try { data = await res.json(); } catch {}
-          if (res.ok && data.avatar) { previewImg.src = data.avatar; alert('Avatar uploaded successfully'); }
-          else { alert((data && (data.error || data.msg)) || 'Upload failed'); }
-        } catch (err) {
-          console.error('Avatar upload error:', err);
-          alert('Error uploading avatar');
+        reader.readAsDataURL(selectedFile);
+      }
+    });
+
+    confirmBtn.addEventListener('click', async () => {
+      if (!selectedFile) return;
+
+      try {
+        const formData = new FormData();
+        formData.append('avatar', selectedFile);
+        const res = await fetch('/api/user/upload_avatar', { method: 'POST', credentials: 'include', body: formData });
+        const data = await res.json();
+
+        if (res.ok && data.avatar) {
+          if (profileAvatar) {
+            profileAvatar.src = data.avatar;
+            profileAvatar.classList.remove('hidden');
+          }
+          alert('Avatar uploaded successfully');
+          previewImg.style.display = 'none';
+          confirmBtn.style.display = 'none';
+          selectedFile = null;
+        } else {
+          alert(data.error || 'Upload failed');
         }
+      } catch (err) {
+        console.error('Avatar upload error:', err);
+        alert('Error uploading avatar');
       }
     });
   }
