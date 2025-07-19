@@ -54,6 +54,9 @@
       <button id="play-pvp-btn" class="px-4 py-2 bg-green-500 rounded">
         Play&nbsp;vs&nbsp;Player
       </button>
+      <button id="play-local-pvp-btn" class="px-4 py-2 bg-green-500 rounded">
+        Play&nbsp;Local
+      </button>
       <div class="relative inline-block">
         <button id="play-ai-btn" class="px-4 py-2 bg-green-500 rounded">
           Play vs IA
@@ -94,6 +97,12 @@
     <!-- Canvas: wrapped to center the scaled canvas -->
     <div id="canvas-wrapper" class="flex-1 flex justify-center items-center relative">
       <div id="player-left-name" class="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-bold text-white hidden"></div>
+      <div id="player-left-controls" class="absolute left-4 top-1/2 mt-8 text-lg text-white hidden">
+        <kbd class="key">W</kbd>: Up, <kbd class="key">S</kbd>: Down
+      </div>
+      <div id="player-ai-controls" class="absolute left-4 top-1/2 mt-8 text-lg text-white hidden">
+        <kbd class="key">↑</kbd>: Up, <kbd class="key">↓</kbd>: Down
+      </div>
       <!-- Shareable Game ID for PvP mode -->
       <div id="share-id" class="absolute left-4 top-4 bg-black bg-opacity-50 p-2 rounded hidden">
         <label for="game-id-input" class="text-white text-sm mr-2">Game ID:</label>
@@ -105,6 +114,9 @@
               class="border border-white hidden"
               tabindex="0"></canvas>
       <div id="player-right-name" class="absolute right-4 top-1/2 -translate-y-1/2 text-2xl font-bold text-white hidden"></div>
+      <div id="player-right-controls" class="absolute right-4 top-1/2 mt-8 text-lg text-white hidden">
+        <kbd class="key">↑</kbd>: Up, <kbd class="key">↓</kbd>: Down
+      </div>
     </div>
 
     <!-- Résultat -->

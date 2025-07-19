@@ -1,3 +1,15 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+.key {
+  display: inline-block;
+  padding: 0.3em 0.6em;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background-color: #f7f7f7;
+  color: #333;
+  font-family: monospace;
+  box-shadow: 0 2px 0 #ccc;
+  transform: translateY(-2px);
+}
