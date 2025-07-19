@@ -22,38 +22,44 @@ function joinTournamentGame(gameId: string) {
 }
 
 function displayRunningMatches(details: any) {
-  console.log('[Game] displayRunningMatches received details:', details);
+  console.log('[DisplayMatches] Received details:', details);
   if (!tournamentMatchesList) return;
 
-  // 1. Robustly check for bracket data.
   if (!details.brackets || !Array.isArray(details.brackets)) {
-    console.log('[Game] No brackets found in details object.');
+    console.log('[DisplayMatches] No brackets found in details object.');
     tournamentMatchesList.innerHTML = '<p class="text-white text-center">No bracket data available.</p>';
     return;
   }
 
-  // 2. Safely flatten all matches from all rounds into a single array.
   const allMatches = details.brackets.flatMap((round: any) => (round && round.matchs ? round.matchs : []));
-  console.log('[Game] Flattened allMatches:', allMatches);
+  console.log('[DisplayMatches] Flattened allMatches:', JSON.stringify(allMatches, null, 2));
 
-  // 3. Filter for only the matches that are currently active using the correct properties.
   const runningMatches = allMatches.filter((match: any) => match && match.state !== 'OVER' && match.p1_id && match.p2_id);
-  console.log('[Game] Filtered runningMatches:', runningMatches);
+  console.log('[DisplayMatches] Filtered for PLAYABLE runningMatches:', JSON.stringify(runningMatches, null, 2));
 
   tournamentMatchesList.innerHTML = ''; // Clear previous matches
 
   if (runningMatches.length === 0) {
-    console.log('[Game] No running matches found. Displaying message.');
-    tournamentMatchesList.innerHTML = '<p class="text-white text-center">No matches are currently running.</p>';
+    console.log('[DisplayMatches] No playable matches found. Checking for pending matches...');
+    const pendingMatches = allMatches.filter((match: any) => match && match.state !== 'OVER');
+    console.log('[DisplayMatches] Filtered for ANY PENDING matches:', JSON.stringify(pendingMatches, null, 2));
+
+    if (pendingMatches.length > 0) {
+      console.log('[DisplayMatches] Pending matches found. Displaying "Waiting..." message.');
+      tournamentMatchesList.innerHTML = '<p class="text-white text-center">Waiting for other matches to finish...</p>';
+    } else {
+      console.log('[DisplayMatches] No pending matches found. Displaying "No matches running." message.');
+      tournamentMatchesList.innerHTML = '<p class="text-white text-center">No matches are currently running.</p>';
+    }
     return;
   }
 
+  console.log(`[DisplayMatches] Found ${runningMatches.length} playable matches. Rendering them now.`);
   const currentUserId = getCurrentUserId();
   for (const match of runningMatches) {
     const matchElement = document.createElement('div');
     matchElement.className = 'bg-gray-700 p-4 rounded-lg flex justify-between items-center';
     
-    // Use the correct properties for checking player and rendering
     const isPlayer = currentUserId && (match.p1_id === currentUserId || match.p2_id === currentUserId);
     const buttonHtml = isPlayer
       ? `<button class="bg-green-500 text-white px-3 py-1 rounded join-game-btn" data-game-id="${match.id}" data-p1-id="${match.p1_id}" data-p2-id="${match.p2_id}">Join Game</button>`
@@ -93,6 +99,7 @@ export function showTournamentGame(details: any) {
     // Refresh the view with new data
     displayRunningMatches(newDetails);
     show_brackets(newDetails.id, tournamentBracketsContainer);
+    
     if (newDetails.state === 'OVER' && newDetails.winner_name) {
       const winnerDisplay = document.getElementById('tournament-winner-display') as HTMLElement;
       const winnerNameSpan = document.getElementById('tournament-winner-name') as HTMLElement;

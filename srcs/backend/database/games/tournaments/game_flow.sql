@@ -27,6 +27,9 @@ BEGIN
         RETURN;
     END IF;
 
+    -- Immediately try to advance winners, as this might complete a waiting match
+    PERFORM advance_winners(_tournament_id);
+
     -- Check if this was the final round
     SELECT total_rounds INTO _total_rounds FROM tournaments WHERE id = _tournament_id;
     _is_final_round := _tournament_round = _total_rounds;
@@ -49,6 +52,8 @@ BEGIN
         UPDATE tournaments SET round = round + 1 WHERE id = _tournament_id;
         -- This should call the function that creates the next round's games
         PERFORM next_round(_tournament_id);
+        -- Immediately advance the winners to the new games
+        PERFORM advance_winners(_tournament_id);
         RETURN QUERY SELECT TRUE, 'Round finished. Next round created.', _tournament_id;
     ELSE
         RETURN QUERY SELECT TRUE, 'Game ended. Waiting for other games in the round to finish.', _tournament_id;
