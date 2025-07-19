@@ -62,7 +62,7 @@ services:
       - PGPASSWORD=${DB_PASS}
       - PGDATABASE=${DB_NAME}
       - PGPORT=5432
-      - NODE_ENV=dev
+      - NODE_ENV=production
       # Ensure Fastify listens on 3001 to match Dockerfile
       - DATABASE_URL=postgresql://${DB_USER}:${DB_PASS}@database:${DB_PORT}/${DB_NAME}
       - PORT=3001
@@ -70,7 +70,7 @@ services:
       context: ./srcs/backend/game_service
       dockerfile: Dockerfile
       args:
-        - NODE_ENV=dev
+        - NODE_ENV=production
     networks:
       - router
 

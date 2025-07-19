@@ -34,10 +34,13 @@ RUN chmod +x entrypoint.sh
 # ────────────────────────────────────────────────
 # Runtime environment
 # ────────────────────────────────────────────────
-ARG NODE_ENV=dev
+ARG NODE_ENV=production
 ENV NODE_ENV=${NODE_ENV}
 ENV PORT=3001
 EXPOSE 3001
+
+# Give the appuser ownership of the app directory
+RUN chown -R appuser:appuser /usr/src/game_service
 
 # Switch to the non-root user
 USER appuser

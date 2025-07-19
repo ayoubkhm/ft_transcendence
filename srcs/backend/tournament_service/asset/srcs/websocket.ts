@@ -78,8 +78,6 @@ export async function broadcastTournamentUpdate(server: FastifyInstance, tournam
       const ownerName = ownerRes.rows.length > 0 ? ownerRes.rows[0].name : 'Unknown';
       const brackets = bracketsRes.rows.length > 0 && bracketsRes.rows[0].success ? bracketsRes.rows[0].brackets : [];
   
-      console.log(`[WS] Broadcasting update for tournament ${tournamentId} with brackets:`, JSON.stringify(brackets, null, 2));
-
       const fullState = {
         type: 'tournament-update',
         data: { ...tournament, owner_name: ownerName, players: playersRes.rows, brackets: brackets },
@@ -228,9 +226,7 @@ const websocketHandler: WebsocketHandler = (connection, req) => {
             await client.query('SELECT * FROM start_tournament($1::TEXT)', [name]);
             
             // Immediately generate the first round of matches
-            console.log(`[WS] Generating first round for tournament ${tournamentId}...`);
             await client.query('SELECT * FROM next_round($1::INTEGER)', [tournamentId]);
-            console.log(`[WS] First round generated.`);
 
             // Now broadcast the update, which will include the newly created matches
             await broadcastTournamentUpdate(req.server, tournamentId, client);

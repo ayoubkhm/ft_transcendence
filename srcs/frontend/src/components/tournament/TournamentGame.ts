@@ -1,6 +1,6 @@
 // TournamentGame.ts
 import show_brackets from '../../brackets/show_brackets';
-import { pollGame, detachCanvas } from '../game/GameController';
+import { detachCanvas } from '../game/GameController';
 import { on } from '../../lib/socket';
 import { navigate } from '../../lib/router';
 import { getCurrentUserId } from '../auth/Auth';
