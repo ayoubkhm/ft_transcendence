@@ -133,7 +133,6 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: name,
-          email: `${name}@guest.com`,
           type: 'guest',
           credential: process.env.API_CREDENTIAL,
         }),
@@ -160,7 +159,7 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
         httpOnly: true,
         sameSite: 'lax',
         secure: process.env.NODE_ENV === 'prod'
-      }).send({ id: user.id, name: user.name, email: user.email }));
+      }).send({ id: user.id, name: user.name}));
     } catch (err) {
       return (res.status(500).send({ error: "Internal server error" }));
     }
