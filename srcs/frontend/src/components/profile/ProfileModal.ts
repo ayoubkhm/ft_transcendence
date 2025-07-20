@@ -1,5 +1,7 @@
 // ProfileModal: handles user profile viewing and settings modal
 import { navigate, onRoute } from '../../lib/router';
+import show_stats from '../../stats/show_stats';
+import { getCurrentUserId } from '../auth/Auth';
 
 async function loadProfileData() {
   const profileUsername = document.getElementById('profile-username') as HTMLElement | null;
@@ -60,17 +62,8 @@ export function setupProfileModal(): void {
   // Elements
   const profileBtn = document.getElementById('profile-btn') as HTMLButtonElement | null;
   const profileModal = document.getElementById('profile-modal') as HTMLElement | null;
-  const profileModalCloseBtn = document.getElementById('profile-modal-close') as HTMLButtonElement | null;
-  const profileChangePasswordBtn = document.getElementById('profile-change-password-btn') as HTMLButtonElement | null;
-  const profileDeleteBtn = document.createElement('button');
-  profileDeleteBtn.id = 'profile-delete-btn';
-  profileDeleteBtn.className = 'px-4 py-2 bg-red-700 rounded text-white mt-4';
-  profileDeleteBtn.textContent = 'Delete Profile';
-  if(profileChangePasswordBtn) {
-    profileChangePasswordBtn.parentElement?.appendChild(profileDeleteBtn);
-  }
 
-  if (!profileBtn || !profileModal || !profileModalCloseBtn || !profileChangePasswordBtn) {
+  if (!profileBtn || !profileModal) {
     console.error('Missing profile modal elements');
     return;
   }
@@ -92,8 +85,85 @@ export function setupProfileModal(): void {
     navigate('profile');
   });
 
+  // Use event delegation for all buttons within the modal
+  profileModal.addEventListener('click', async (e) => {
+    const target = e.target as HTMLElement;
+    const button = target.closest('button');
+    if (!button) return;
+
+    switch (button.id) {
+      case 'profile-modal-close':
+        e.preventDefault();
+        navigate('home');
+        break;
+      
+      case 'profile-show-stats-btn':
+        const userId = getCurrentUserId();
+        if (userId) {
+          show_stats(userId);
+        }
+        break;
+
+      case 'profile-change-password-btn':
+        e.preventDefault();
+        profileModal.classList.add('hidden');
+        navigate('change-password');
+        break;
+
+      case 'profile-setup-2fa-btn':
+        e.preventDefault();
+        profileModal.classList.add('hidden');
+        navigate('setup-2fa');
+        break;
+
+      case 'profile-disable-2fa-btn':
+        e.preventDefault();
+        try {
+          const res = await fetch('/api/auth/2fa/delete', { method: 'DELETE', credentials: 'include' });
+          const data = await res.json();
+          if (res.ok) {
+            alert(data.message || '2FA disabled. You will now be logged out.');
+            localStorage.clear();
+            window.location.reload();
+          } else {
+            alert(data.error || 'Disable 2FA failed');
+          }
+        } catch (err) {
+          console.error('Disable 2FA error:', err);
+          alert('Error disabling 2FA');
+        }
+        break;
+      
+      case 'profile-delete-btn':
+        const email = localStorage.getItem('userEmail');
+        if (!email) {
+          alert('Cannot delete profile without user email.');
+          return;
+        }
+        if (confirm('Are you sure you want to delete your profile? This action is irreversible.')) {
+          try {
+            const res = await fetch(`/api/user/delete/${encodeURIComponent(email)}`, {
+              method: 'DELETE',
+              credentials: 'include',
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+              alert(data.message || 'Profile deleted successfully. You will be logged out.');
+              localStorage.clear();
+              window.location.reload();
+            } else {
+              alert(data.error || 'Failed to delete profile.');
+            }
+          } catch (err) {
+            console.error('Delete profile error:', err);
+            alert('An error occurred while deleting your profile.');
+          }
+        }
+        break;
+    }
+  });
+
   // Close handlers
-  profileModalCloseBtn.addEventListener('click', e => { e.preventDefault(); navigate('home'); });
   profileModal.addEventListener('click', e => { if (e.target === profileModal) navigate('home'); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && !profileModal.classList.contains('hidden')) navigate('home'); });
 
@@ -110,48 +180,6 @@ export function setupProfileModal(): void {
     }
   });
 
-  // 2FA setup button
-  const profileSetup2FABtn = document.getElementById('profile-setup-2fa-btn') as HTMLButtonElement | null;
-  if (profileSetup2FABtn) {
-    profileSetup2FABtn.addEventListener('click', e => {
-      e.preventDefault();
-      profileModal.classList.add('hidden');
-      navigate('setup-2fa');
-    });
-  }
-
-  // Change Password button
-  profileChangePasswordBtn.addEventListener('click', e => {
-    e.preventDefault();
-    profileModal.classList.add('hidden');
-    navigate('change-password');
-  });
-
-  // Disable 2FA button
-  const profileDisable2FABtn = document.getElementById('profile-disable-2fa-btn') as HTMLButtonElement | null;
-  if (profileDisable2FABtn) {
-    profileDisable2FABtn.addEventListener('click', async e => {
-      e.preventDefault();
-      try {
-        const res = await fetch('/api/auth/2fa/delete', { method: 'DELETE', credentials: 'include' });
-        const data = await res.json();
-        if (res.ok) {
-          alert(data.message || '2FA disabled. You will now be logged out.');
-          // Clear session and refresh
-          localStorage.removeItem('loggedIn');
-          localStorage.removeItem('username');
-          localStorage.removeItem('userEmail');
-          localStorage.removeItem('twofaEnabled');
-          window.location.reload();
-        } else {
-          alert(data.error || 'Disable 2FA failed');
-        }
-      } catch (err) {
-        console.error('Disable 2FA error:', err);
-        alert('Error disabling 2FA');
-      }
-    });
-  }
   // Avatar upload logic
   const uploadBtn = document.getElementById('profile-upload-avatar-btn') as HTMLButtonElement | null;
   const fileInput = document.getElementById('avatar-file-input') as HTMLInputElement | null;
@@ -217,31 +245,4 @@ export function setupProfileModal(): void {
       }
     });
   }
-
-  profileDeleteBtn.addEventListener('click', async () => {
-    const email = localStorage.getItem('userEmail');
-    if (!email) {
-      alert('Cannot delete profile without user email.');
-      return;
-    }
-    if (confirm('Are you sure you want to delete your profile? This action is irreversible.')) {
-      try {
-        const res = await fetch(`/api/user/delete/${encodeURIComponent(email)}`, {
-          method: 'DELETE',
-          credentials: 'include',
-        });
-        const data = await res.json();
-        if (res.ok && data.success) {
-          alert(data.message || 'Profile deleted successfully. You will be logged out.');
-          localStorage.clear();
-          window.location.reload();
-        } else {
-          alert(data.error || 'Failed to delete profile.');
-        }
-      } catch (err) {
-        console.error('Delete profile error:', err);
-        alert('An error occurred while deleting your profile.');
-      }
-    }
-  });
 }

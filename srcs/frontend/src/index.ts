@@ -18,7 +18,6 @@ import { setupEditUsernameModal } from './components/profile/EditUsernameModal';
 import { setupEditEmailModal } from './components/profile/EditEmailModal';
 import setupTournamentBrackets from './brackets/setup';
 import setupUserStats from './stats/setup'
-import show_stats from './stats/show_stats';
 import { showTournamentLobby } from './components/tournament/TournamentLobby';
 import { showTournamentGame } from './components/tournament/TournamentGame';
 
