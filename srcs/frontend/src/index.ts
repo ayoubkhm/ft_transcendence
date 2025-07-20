@@ -15,6 +15,8 @@ import { setupGame } from './components/game/GameController';
 import { setupProfileModal } from './components/profile/ProfileModal';
 import { setupPublicProfileModal } from './components/profile/PublicProfileModal';
 import setupTournamentBrackets from './brackets/setup';
+import setupUserStats from './stats/setup'
+import show_stats from './stats/show_stats';
 
 document.addEventListener('DOMContentLoaded', () => {
     // Set up all UI components and their event listeners first
@@ -30,6 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupProfileModal();
     setupPublicProfileModal();
     setupTournamentBrackets();
+    setupUserStats();
 
     // Establish WebSocket connection only after everything is set up
     connectWebSocket();
@@ -39,8 +42,6 @@ document.addEventListener('DOMContentLoaded', () => {
 setupTwoFASetup();
 const { show2faLogin } = setupTwoFALogin();
 
-
-
-
-
-
+// window.addEventListener("load", () => {
+//     show_stats(1);
+// });
