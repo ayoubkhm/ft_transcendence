@@ -1,6 +1,6 @@
 Voici la liste des erreurs sous forme de points simples :
 
-    Impossible de modifier l’email, le nom, etc.
+    Impossible de modifier l’email, le nom, etc. --> Bugs sur le backend
     Manque les stats : score, win, loss
     Impossible de quitter un tournoi (lobby)
     La croix pour quitter le tournoi (lobby) ne fonctionne pas

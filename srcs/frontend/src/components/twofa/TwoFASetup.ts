@@ -105,20 +105,33 @@ export function setupTwoFALogin() {
   const twofaLoginForm = document.getElementById('2fa-login-form') as HTMLFormElement | null;
   const twofaLoginCodeInput = document.getElementById('2fa-login-code') as HTMLInputElement | null;
   if (!twofaLoginModal || !twofaLoginClose || !twofaLoginForm || !twofaLoginCodeInput) {
-    return { show2faLogin: () => {} };
+    return;
   }
 
-  function show2faLogin() {
-    show(twofaLoginModal);
-  }
+  onRoute('login-2fa', () => {
+    if (twofaLoginModal) {
+      show(twofaLoginModal);
+    }
+  });
 
   twofaLoginClose.addEventListener('click', e => {
     e.preventDefault();
-    hide(twofaLoginModal);
+    navigate('home');
   });
   twofaLoginModal.addEventListener('click', e => {
-    if (e.target === twofaLoginModal) hide(twofaLoginModal);
+    if (e.target === twofaLoginModal) navigate('home');
   });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !twofaLoginModal.classList.contains('hidden')) {
+      navigate('home');
+    }
+  });
+  onRoute('home', () => {
+    if (twofaLoginModal && !twofaLoginModal.classList.contains('hidden')) {
+        hide(twofaLoginModal);
+    }
+  });
+
   twofaLoginForm.addEventListener('submit', async e => {
     e.preventDefault();
     const code = twofaLoginCodeInput.value.trim();
@@ -142,6 +155,4 @@ export function setupTwoFALogin() {
       alert('Error verifying 2FA login');
     }
   });
-
-  return { show2faLogin };
 }

@@ -42,7 +42,7 @@ export function setupFriendsModal() {
         // Click to view friend profile
         li.addEventListener('click', (e) => {
             e.stopPropagation();
-            showPublicProfile(f.id);
+            navigate('publicProfile', { id: f.id });
         });
         friendsList.appendChild(li);
       });
@@ -56,7 +56,7 @@ export function setupFriendsModal() {
         nameSpan.className = 'cursor-pointer';
         nameSpan.addEventListener('click', (e) => {
             e.stopPropagation();
-            showPublicProfile(r.id);
+            navigate('publicProfile', { id: r.id });
         });
         const acceptBtn = document.createElement('button');
         acceptBtn.textContent = 'Accept';
@@ -88,33 +88,24 @@ export function setupFriendsModal() {
         li.append(nameSpan, actionsDiv);
         friendRequestsList.appendChild(li);
       });
-      show(friendsModal);
       // Update badge
       updateFriendsBadge();
     } catch (err) {
       console.error('Error loading friends data', err);
     }
   }
+
   friendsBtn.addEventListener('click', (e) => {
     e.preventDefault();
     navigate('friends');
-    openFriends();
   });
-  // Handle back/forward navigation for friends
-  window.addEventListener('popstate', (e) => {
-    const state = e.state as { view?: string } | null;
-    if (state && state.view === 'friends') {
-      openFriends();
-    } else {
-      if (friendsModal) {
-        hide(friendsModal);
-      }
+
+  onRoute('friends', () => {
+    openFriends();
+    if (friendsModal) {
+      show(friendsModal);
     }
   });
-  // If loaded directly at #friends, open modal
-  if (location.hash === '#friends') {
-    openFriends();
-  }
 
   friendsModalClose.addEventListener('click', (e) => {
     e.preventDefault();

@@ -21,7 +21,7 @@ function joinGroup(connection: SocketStream, groupId: number) {
     socketToGroups.set(connection, new Set());
   }
   socketToGroups.get(connection)!.add(groupId);
-  console.log(`[WS] Connection from user ${connection.userId} joined group ${groupId}.`);
+  console.log(`[WS LOG] User ${connection.userId} successfully joined group ${groupId}.`);
 }
 
 function leaveGroup(connection: SocketStream, groupId: number) {
@@ -60,7 +60,8 @@ export async function broadcastTournamentUpdate(server: FastifyInstance, tournam
       console.log(`[Broadcast] No active connections found for tournamentId: ${tournamentId}. Aborting.`);
       return;
     }
-    console.log(`[Broadcast] Found ${connections.size} connection(s) for tournamentId: ${tournamentId}.`);
+    const recipientUserIds = Array.from(connections).map(conn => conn.userId || 'N/A');
+    console.log(`[Broadcast] Found ${connections.size} connection(s) for tournamentId: ${tournamentId}. Recipients: [${recipientUserIds.join(', ')}]`);
   
     const client = pgClient || await server.pg.connect();
     console.log('[Broadcast] Acquired DB client.');
@@ -198,8 +199,36 @@ const websocketHandler: WebsocketHandler = (connection, req) => {
           if (typeof tournament_id !== 'number') {
             throw new Error('get_tournament_details requires a tournament_id.');
           }
-          // This doesn't broadcast, it just sends the details back to the requester
-          await broadcastTournamentUpdate(req.server, tournament_id);
+          console.log(`[WS LOG] Received get_tournament_details for tournament ${tournament_id}. Subscribing user ${conn.userId} and sending details directly.`);
+          joinGroup(conn, tournament_id);
+          
+          const client = await req.server.pg.connect();
+          try {
+            const [tournamentRes, playersRes, bracketsRes] = await Promise.all([
+              client.query('SELECT id, state, name, nbr_players, min_players, max_players, owner_id FROM tournaments WHERE id = $1', [tournament_id]),
+              client.query('SELECT u.id, u.name, tp.is_ready FROM users u JOIN tournaments_players tp ON u.id = tp.player_id WHERE tp.tournament_id = $1', [tournament_id]),
+              client.query('SELECT * FROM get_brackets($1::INTEGER)', [tournament_id])
+            ]);
+
+            if (tournamentRes.rows.length > 0) {
+              const tournament = tournamentRes.rows[0];
+              const ownerRes = await client.query('SELECT name FROM users WHERE id = $1', [tournament.owner_id]);
+              const ownerName = ownerRes.rows.length > 0 ? ownerRes.rows[0].name : 'Unknown';
+              const brackets = bracketsRes.rows.length > 0 && bracketsRes.rows[0].success ? bracketsRes.rows[0].brackets : [];
+
+              const fullState = {
+                type: 'tournament-update',
+                data: { ...tournament, owner_name: ownerName, players: playersRes.rows, brackets: brackets },
+              };
+              safeSend(conn, fullState);
+            } else {
+              // If no tournament is found, it was likely deleted. Inform the client.
+              console.log(`[WS LOG] Tournament ${tournament_id} not found. Informing client it was deleted.`);
+              safeSend(conn, { type: 'tournament-deleted', data: { tournament_id: tournament_id } });
+            }
+          } finally {
+            client.release();
+          }
           break;
         }
         case 'join_tournament': {
@@ -329,15 +358,19 @@ const websocketHandler: WebsocketHandler = (connection, req) => {
               if (tourRes.rows.length > 0) {
                 const { name, owner_id, state } = tourRes.rows[0];
 
-                // If the disconnected user is the owner AND the tournament is in LOBBY, delete it.
-                if (userId === owner_id && state === 'LOBBY') {
-                  console.log(`[WS] Owner ${userId} abandoned lobby for tournament ${groupId}. Deleting tournament.`);
-                  await client.query('SELECT * FROM delete_tournament($1::TEXT)', [name]);
-                  // The broadcast for deletion will be handled by the update calls below
+                // Only remove players if the tournament is in the LOBBY state
+                if (state === 'LOBBY') {
+                  // If the disconnected user is the owner, delete the tournament.
+                  if (userId === owner_id) {
+                    console.log(`[WS] Owner ${userId} abandoned lobby for tournament ${groupId}. Deleting tournament.`);
+                    await client.query('SELECT * FROM delete_tournament($1::TEXT)', [name]);
+                  } else {
+                    // Otherwise, just make the user leave the tournament.
+                    console.log(`[WS] Grace period expired for user ${userId} in tournament ${groupId}. Removing from tournament.`);
+                    await client.query('SELECT * FROM leave_tournament($1::INTEGER, $2::TEXT)', [userId, name]);
+                  }
                 } else {
-                  // Otherwise, just make the user leave the tournament.
-                  console.log(`[WS] Grace period expired for user ${userId} in tournament ${groupId}. Removing from tournament.`);
-                  await client.query('SELECT * FROM leave_tournament($1::INTEGER, $2::TEXT)', [userId, name]);
+                  console.log(`[WS] User ${userId} disconnected from a running/over tournament ${groupId}. No action taken.`);
                 }
 
                 // Clean up the timer from the activity map

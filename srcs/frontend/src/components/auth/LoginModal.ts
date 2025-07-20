@@ -24,7 +24,6 @@ export function setupLoginModal() {
 
   loginBtn.addEventListener('click', (e) => {
     e.preventDefault();
-    show(loginModal);
     navigate('login');
   });
 
@@ -42,6 +41,12 @@ export function setupLoginModal() {
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && loginModal && !loginModal.classList.contains('hidden')) {
       closeModal();
+    }
+  });
+
+  onRoute('login', () => {
+    if (loginModal) {
+      show(loginModal);
     }
   });
 

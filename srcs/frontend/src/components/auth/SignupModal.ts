@@ -30,7 +30,6 @@ export function setupSignupModal() {
 
   signupBtn.addEventListener('click', (e) => {
     e.preventDefault();
-    show(signupModal);
     navigate('signup');
   });
 
@@ -53,6 +52,12 @@ export function setupSignupModal() {
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && signupModal && !signupModal.classList.contains('hidden')) {
       closeModal();
+    }
+  });
+
+  onRoute('signup', () => {
+    if (signupModal) {
+      show(signupModal);
     }
   });
 

@@ -231,21 +231,25 @@ export default async function gamesRoutes (app: FastifyInstance)
             }
 
             console.log(`[Game] Player '${username}' attempting to join game ${id}.`);
-            let gameState = session.game.getState();
-            console.log('[Game] State before join:', {
-              p1: gameState.players[0].id,
-              p2: gameState.players[1].id,
-              interval: !!session.interval,
-              forfeitTimer: !!session.forfeitTimer,
-            });
+            const gameState = session.game.getState();
+            const gameType = gameState.type;
 
-            const isTournamentGame = gameState.type === 'TOURNAMENT';
             const isPlayer1 = gameState.players[0].id === username;
             const isPlayer2 = gameState.players[1].id === username;
             const isPending = gameState.players[1].id === '__PENDING__';
 
-            // If the player is not in the game and the game is pending, join them.
-            if (!isPlayer1 && !isPlayer2 && isPending) {
+            // Scenario 1: Player is already in the game (reconnecting)
+            if (isPlayer1 || isPlayer2) {
+              console.log(`[Game] Player '${username}' is reconnecting to game ${id}.`);
+              // If it's player 1 reconnecting and a forfeit timer is running, clear it.
+              if (isPlayer1 && session.forfeitTimer) {
+                console.log(`[Game] Player 1 reconnected. Clearing forfeit timer for game ${id}.`);
+                clearTimeout(session.forfeitTimer);
+                session.forfeitTimer = undefined;
+              }
+            }
+            // Scenario 2: Player 2 is joining a pending game
+            else if (isPending) {
               const pgClient = await app.pg.connect();
               try {
                 const userRes = await pgClient.query('SELECT id FROM users WHERE name = $1', [username]);
@@ -280,10 +284,25 @@ export default async function gamesRoutes (app: FastifyInstance)
               } finally {
                 pgClient.release();
               }
-            } else if (isPlayer1 && isPending && isTournamentGame && !session.forfeitTimer && !session.interval) {
-              // This is the first player in a tournament game. Start the forfeit timer.
-              console.log(`[Game] First player '${username}' in tournament game ${id}. Starting 30s forfeit timer.`);
+            }
+            // Scenario 3: Game is full
+            else {
+              console.warn(`[Game] Player '${username}' attempted to join game ${id}, but it is already full.`);
+              socket.send(JSON.stringify({ type: 'error', message: 'Game is not available for joining.' }));
+              return;
+            }
+
+            // After handling join/reconnect, check if a forfeit timer needs to be started.
+            // This applies to the first player who is alone in a competitive match.
+            const updatedGameState = session.game.getState();
+            if (
+              (gameType === 'VS' || gameType === 'TOURNAMENT') &&
+              updatedGameState.players[1].id === '__PENDING__' && // P2 hasn't joined yet
+              !session.forfeitTimer && !session.interval // Timer/game not already running
+            ) {
+              console.log(`[Game] First player '${username}' in a competitive game (${id}). Starting 30s forfeit timer.`);
               socket.send(JSON.stringify({ type: 'forfeit_timer_started', payload: { duration: 30 } }));
+              
               session.forfeitTimer = setTimeout(async () => {
                 console.log(`[Game] Forfeit timer expired for game ${id}.`);
                 const presentPlayer = session.game.getState().players.find(p => p.id !== '__PENDING__');
@@ -298,23 +317,11 @@ export default async function gamesRoutes (app: FastifyInstance)
                   }
                 }
               }, 30000); // 30 seconds
-            } else if (!isPending) {
-              console.warn(`[Game] Player '${username}' attempted to join game ${id}, but it is already full.`);
-              socket.send(JSON.stringify({ type: 'error', message: 'Game is not available for joining.' }));
-              return;
             }
 
             const token = genToken(id, username);
             socket.send(JSON.stringify({ type: 'join_success', data: { token, playerId: username } }));
-            
-            gameState = session.game.getState();
-            console.log('[Game] State after join:', {
-              p1: gameState.players[0].id,
-              p2: gameState.players[1].id,
-              interval: !!session.interval,
-              forfeitTimer: !!session.forfeitTimer,
-            });
-
+            broadcastGameState(id); // Send the latest state to all clients
             break;
           }
         }
