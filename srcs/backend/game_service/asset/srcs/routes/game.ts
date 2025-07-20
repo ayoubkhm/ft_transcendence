@@ -328,4 +328,46 @@ export default async function gamesRoutes (app: FastifyInstance)
       leaveGame(id, socket);
     });
   });
+
+ app.post<{
+    Body: { id: number;
+							playerisLeft: boolean;
+							bonus: string; }
+  }>('/applyBonus', async (request, reply) =>
+  {
+    const pgClient = await app.pg.connect();
+    try
+    {
+      const userRes = await pgClient.query('SELECT id FROM apply_bonus($1, $2)', [request.body.id, request.body.playerisLeft]);
+      if (userRes.rows && userRes[0])
+        console.log(userRes.rows[0].msg);
+      else
+        console.log("[ApplyBonus] Error no rows");
+    }
+    catch (err)
+    {
+        console.error('[ApplyBonus] Error query:', err);
+    }
+  });
+
+  app.post<{
+    Body: { id: number;
+							playerisLeft: boolean;
+          }
+  }>('/block', async (request, reply) =>
+  {
+    const pgClient = await app.pg.connect();
+    try
+    {
+      const userRes = await pgClient.query('SELECT id FROM successfull_block($1, $2)', [request.body.id, request.body.playerisLeft]);
+      if (userRes.rows && userRes[0])
+        console.log(userRes.rows[0].msg);
+      else
+        console.log("[Block] Error no rows");
+    }
+    catch (err)
+    {
+        console.error('[Block] Error query:', err);
+    }
+  });
 }
