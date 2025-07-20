@@ -16,7 +16,7 @@ export default function public_userRoutes (server: FastifyInstance, options: any
         const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
         const isID = /^\d+$/.test(value);
         if (!isEmail && !isID) {
-            return reply.status(400).send({ error: 'Invalid user identifier' });
+            return reply.status(400).send({ error: 'Invalid user request.params.id' });
         }
         // Fetch public profile, unwrapping composite to JSON via correct overload
         let sql: string;
@@ -59,7 +59,7 @@ interface PrivateDataParams {
       credential?: string;
     }
 
-  server.post<{ Params: PrivateDataParams, Body: PrivateDataBody }>('/lookup/stats/:id', async (request, reply) => {
+  server.get<{ Params: PrivateDataParams, Body: PrivateDataBody }>('/lookup/stats/:id', async (request, reply) => {
   // Authentication: allow if valid API credential or JWT for self/admin
   const apiCred = request.body?.credential;
   const token = (request.cookies as any)?.jwt_transcendence;
@@ -71,6 +71,9 @@ interface PrivateDataParams {
       return reply.status(403).send({ error: 'Forbidden' });
     }
   }
+  
+  const isID = /^\d+$/.test(request.params.id);
+  const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(request.params.id);
   if (token) {
     let tokData;
     try {
@@ -78,37 +81,30 @@ interface PrivateDataParams {
     } catch {
       return reply.status(403).send({ error: 'Forbidden' });
     }
-    const identifier = request.params.id;
-    const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier);
-    const isID = /^\d+$/.test(identifier);
     if (isEmail) {
-      if (tokData.email !== identifier && !tokData.admin) {
+      if (tokData.email !== request.params.id && !tokData.admin) {
         return reply.status(403).send({ error: 'Forbidden' });
       }
     } else if (isID) {
-      if (tokData.id !== Number(identifier) && !tokData.admin) {
+      if (tokData.id !== Number(request.params.id) && !tokData.admin) {
         return reply.status(403).send({ error: 'Forbidden' });
       }
     } else {
-      if (tokData.name !== identifier && !tokData.admin) {
+      if (tokData.name !== request.params.id && !tokData.admin) {
         return reply.status(403).send({ error: 'Forbidden' });
       }
     }
   }
-  const value = request.params.id;
 
-  // Robust identifier checking
-  const isID = /^\d+$/.test(value);
-  const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-//QUERY a changer pour stats game.
   try {
     let result;
     if (isID) {
-      result = await server.pg.query(`SELECT * FROM users WHERE id = $1`, [Number(value)]);
+      result = await server.pg.query(`SELECT * FROM get_stats($1)`, [Number(request.params.id)]);
     } else if (isEmail) {
-      result = await server.pg.query(`SELECT * FROM users WHERE email = $1`, [value]);
+      result = await server.pg.query(`SELECT * FROM get_stats($1)`, [request.params.id]);
     } else {
-      result = await server.pg.query(`SELECT * FROM users WHERE name = $1`, [value]);
+      console.error("Lookup stats: bad input: ", request.params.id);
+      return reply.status(404).send({ error: 'User not found (bad input)'});
     }
 
     if (!result || result.rows.length === 0) {
