@@ -62,7 +62,7 @@ export function setupEditEmailModal(): void {
     }
 
     try {
-      const email = localStorage.getItem('email');
+      const email = localStorage.getItem('userEmail');
       const res = await fetch(`/api/user/edit/${email}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -72,6 +72,9 @@ export function setupEditEmailModal(): void {
       const data = await res.json();
       if (res.ok) {
         alert('Email changed successfully');
+        localStorage.setItem('userEmail', newEmail);
+        console.log('New token:', data.token);
+        document.dispatchEvent(new CustomEvent('profileUpdated'));
         closeModal();
       } else {
         alert(data.error || 'Failed to change email');

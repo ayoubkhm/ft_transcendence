@@ -5,6 +5,7 @@ import fs from 'fs';
 import path from 'path';
 import { pipeline } from 'stream';
 import { promisify } from 'util';
+import jwt from 'jsonwebtoken';
 
 export default async function private_userRoutes(server: FastifyInstance, options: any, done: any) {
 
@@ -244,25 +245,19 @@ export default async function private_userRoutes(server: FastifyInstance, option
 
   server.put<{Body: editUpdateBody, Params: editUpdateParams}>('/edit/:email', async (request, reply) => {
     try {
-      // Security: JWT validation and authorization
       const token = (request.cookies as any)?.jwt_transcendence;
+      const apiCred = request.body?.credential;
       const flag = request.body?.flag;
-      if (!token) {
-        return reply.status(401).send({ error: 'Unauthorized' });
-      }
-      let tokenPayload;
-      try {
-        tokenPayload = getTokenData(token);
-      } catch {
-        return reply.status(401).send({ error: 'Invalid token' });
-      }
 
-      // Security check: allow if admin or self
-      if (!tokenPayload.admin && tokenPayload.email !== request.params.email) {
-        return reply.status(403).send({ error: 'Forbidden' });
-      }
-
-      if (flag && flag === "password") {
+      // Path 1: Service-to-service call for password update
+      if (apiCred) {
+        if (apiCred !== process.env.API_CREDENTIAL) {
+          return reply.status(403).send({ error: 'Forbidden' });
+        }
+        if (flag !== 'password') {
+          return reply.status(403).send({ error: 'API credential can only be used for password updates' });
+        }
+        
         const newPassword = request.body?.password;
         const email = request.params.email;
         if (!newPassword) {
@@ -272,49 +267,89 @@ export default async function private_userRoutes(server: FastifyInstance, option
         const result = await server.pg.query('SELECT * FROM update_user_password($1, $2)', [email, newPassword]);
         const row = result.rows[0];
 
-      if (!row || !row.success) {
-        return reply.status(404).send({ error: row.msg || "Password update failed" });
-      }
+        if (!row || !row.success) {
+          return reply.status(404).send({ error: row.msg || "Password update failed" });
+        }
         return reply.status(200).send({ message: "user_password_updated" });
       }
-      else if (flag && flag === "email") {
-        const newEmail = request.body?.email;
-        const email = tokenPayload.email;
-        if (!newEmail || !email) {
-          return reply.status(400).send({ error: 'Email and name cannot be empty' });
+
+      // Path 2: User-initiated call (email, name, or password change)
+      if (token) {
+        let tokenPayload;
+        try {
+          tokenPayload = getTokenData(token);
+        } catch {
+          return reply.status(401).send({ error: 'Invalid token' });
         }
-        const result = await server.pg.query('SELECT * FROM update_user_email($1, $2)', [email, newEmail]);
-        const row = result.rows[0];
-        if (!row || !row.success) {
-          return reply.status(404).send({ error: row.msg || "Email update failed" });
+
+        if (!tokenPayload.admin && tokenPayload.email !== request.params.email) {
+          return reply.status(403).send({ error: 'Forbidden' });
         }
-        return reply.status(200).send({ message: "user_email_updated" });
+
+        if (flag === "email") {
+          const newEmail = request.body?.email;
+          const email = tokenPayload.email;
+          if (!newEmail || !email) {
+            return reply.status(400).send({ error: 'Email and name cannot be empty' });
+          }
+          const result = await server.pg.query('SELECT * FROM update_user_email($1, $2)', [email, newEmail]);
+          const row = result.rows[0];
+          if (!row || !row.success) {
+            return reply.status(404).send({ error: row.msg || "Email update failed" });
+          }
+
+          // Re-fetch user to get all data for token
+          const userRes = await server.pg.query('SELECT * FROM users WHERE email = $1', [newEmail]);
+          const user = userRes.rows[0];
+
+          const newToken = jwt.sign({
+            data: {
+              id: user.id,
+              email: user.email,
+              name: user.name,
+              admin: user.admin,
+              twoFactorSecret: user.twofa_secret,
+              dfa: tokenPayload.dfa // Preserve 2FA status
+            }
+          }, process.env.JWT_SECRET as string, { expiresIn: '24h' });
+          
+          reply.setCookie('jwt_transcendence', newToken, {
+            path: '/',
+            httpOnly: true,
+            sameSite: 'lax',
+            secure: process.env.NODE_ENV === 'prod'
+          });
+
+          return reply.status(200).send({ message: "user_email_updated", token: newToken });
+        }
+        else if (flag === "name") {
+          const newName = request.body?.name;
+          const email = tokenPayload.email;
+          const user = await server.pg.query('SELECT * FROM users WHERE name = $1', [newName]);
+          if (user.rows.length > 0) {
+            return reply.status(409).send({ error: 'Name already exists' });
+          }
+          if (newName === tokenPayload.name) {
+            return reply.status(400).send({ error: 'Name cannot be the same as current name' });
+          }
+          if (!newName || !email) {
+            return reply.status(400).send({ error: 'Email and name cannot be empty' });
+          }
+          const result = await server.pg.query('SELECT * FROM update_user_name($1, $2)', [email, newName]);
+          const row = result.rows[0];
+          if (!row || !row.success) {
+            return reply.status(404).send({ error: row.msg || "Name update failed" });
+          }
+          return reply.status(200).send({ message: "user_name_updated" });
+        } else {
+           return reply.status(400).send({ error: 'Invalid flag for user-initiated edit' });
+        }
       }
-      else if (flag && flag === "name") {
-        const newName = request.body?.name;
-        const email = tokenPayload.email;
-        const user = await server.pg.query('SELECT * FROM users WHERE name = $1', [newName]);
-        const userData = user.rows[0];
-        if (userData.success) {
-          return reply.status(409).send({ error: 'Name already exists' });
-        }
-        if (newName === tokenPayload.name) {
-          return reply.status(400).send({ error: 'Name cannot be the same as current name' });
-        }
-        if (!newName || !email) {
-          return reply.status(400).send({ error: 'Email and name cannot be empty' });
-        }
-        const result = await server.pg.query('SELECT * FROM update_user_name($1, $2)', [email, newName]);
-        const row = result.rows[0];
-        if (!row || !row.success) {
-          return reply.status(404).send({ error: row.msg || "Name update failed" });
-        }
-        return reply.status(200).send({ message: "user_name_updated" });
-      } else {
-        return reply.status(400).send({ error: 'Invalid flag' });
-      }
+      
+      return reply.status(401).send({ error: 'Unauthorized' });
+
     } catch (error) {
-      console.error('Update password error:', error);
+      console.error('Update error:', error);
       return reply.status(500).send({ error: 'Internal server error' });
     }
   });

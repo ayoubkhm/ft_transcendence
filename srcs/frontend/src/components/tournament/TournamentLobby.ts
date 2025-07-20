@@ -37,27 +37,15 @@ export async function leaveTournamentLobby() {
     alert('You must be logged in to perform this action.');
     return;
   }
-  localStorage.removeItem('activeTournamentSession');
 
-  // If the user is the owner, confirm deletion. Otherwise, confirm leaving.
   if (currentTournamentDetails && userId === currentTournamentDetails.owner_id) {
     if (confirm(`As the owner, leaving will delete the tournament. Are you sure you want to delete "${currentTournamentName}"?`)) {
       deleteTournament(currentTournamentName!, userId);
-      // The tournament-deleted message will handle closing the modal
     }
   } else {
-    if (confirm('Leaving the lobby will remove you from the tournament. Are you sure?')) {
+    if (confirm('Are you sure you want to leave the tournament?')) {
       if (!currentTournamentId || !currentTournamentName) return;
       leaveTournament(currentTournamentId, userId, currentTournamentName);
-      
-      // Hide the modal immediately for a responsive feel
-      tournamentLobbyModal.classList.add('hidden');
-      
-      // Give the WebSocket message a moment to be sent before navigating
-      setTimeout(() => {
-        closeSocket();
-        navigate('tournaments');
-      }, 100);
     }
   }
 }
@@ -70,21 +58,24 @@ function initializeLobbyEventListeners() {
   if (tournamentLobbyClose) {
     tournamentLobbyClose.addEventListener('click', (e) => {
       e.preventDefault();
-      leaveTournamentLobby();
+      tournamentLobbyModal.classList.add('hidden');
+      navigate('tournaments');
     });
   }
 
   if (tournamentLobbyModal) {
     tournamentLobbyModal.addEventListener('click', (e) => {
       if (e.target === tournamentLobbyModal) {
-        leaveTournamentLobby();
+        tournamentLobbyModal.classList.add('hidden');
+        navigate('tournaments');
       }
     });
   }
 
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && tournamentLobbyModal && !tournamentLobbyModal.classList.contains('hidden')) {
-      leaveTournamentLobby();
+      tournamentLobbyModal.classList.add('hidden');
+      navigate('tournaments');
     }
   });
 
@@ -131,6 +122,16 @@ function initializeLobbyEventListeners() {
       currentTournamentId = null; // Clear the current tournament ID
       localStorage.removeItem('activeTournamentSession');
       navigate('home');
+    }
+  });
+
+  on('left-tournament', (data) => {
+    if (data.userId === getCurrentUserId()) {
+      closeSocket();
+      tournamentLobbyModal.classList.add('hidden');
+      currentTournamentId = null;
+      localStorage.removeItem('activeTournamentSession');
+      navigate('tournaments');
     }
   });
 

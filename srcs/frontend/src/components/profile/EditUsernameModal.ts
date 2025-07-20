@@ -62,7 +62,7 @@ export function setupEditUsernameModal(): void {
     }
 
     try {
-      const email = localStorage.getItem('email');
+      const email = localStorage.getItem('userEmail');
       const res = await fetch(`/api/user/edit/${email}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -71,6 +71,8 @@ export function setupEditUsernameModal(): void {
       const data = await res.json();
       if (res.ok) {
         alert('Username changed successfully');
+        localStorage.setItem('username', newUsername);
+        document.dispatchEvent(new CustomEvent('profileUpdated'));
         closeModal();
       } else {
         alert(data.error || 'Failed to change username');

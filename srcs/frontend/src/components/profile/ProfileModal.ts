@@ -1,11 +1,7 @@
 // ProfileModal: handles user profile viewing and settings modal
 import { navigate, onRoute } from '../../lib/router';
 
-export function setupProfileModal(): void {
-  // Elements
-  const profileBtn = document.getElementById('profile-btn') as HTMLButtonElement | null;
-  const profileModal = document.getElementById('profile-modal') as HTMLElement | null;
-  const profileModalCloseBtn = document.getElementById('profile-modal-close') as HTMLButtonElement | null;
+async function loadProfileData() {
   const profileUsername = document.getElementById('profile-username') as HTMLElement | null;
   const profileEmail = document.getElementById('profile-email') as HTMLElement | null;
   const profileAvatar = document.getElementById('profile-avatar') as HTMLImageElement | null;
@@ -15,6 +11,56 @@ export function setupProfileModal(): void {
   const profileSetup2FABtn = document.getElementById('profile-setup-2fa-btn') as HTMLButtonElement | null;
   const profileDisable2FABtn = document.getElementById('profile-disable-2fa-btn') as HTMLButtonElement | null;
   const profileNa2FABtn = document.getElementById('profile-na-2fa-btn') as HTMLButtonElement | null;
+
+  if (!profileUsername || !profileEmail || !profileAvatar || !profileId || !profileOnlineStatus || !profile2FAStatus || !profileSetup2FABtn || !profileDisable2FABtn || !profileNa2FABtn) {
+    console.error('Missing profile modal elements for data loading');
+    return;
+  }
+
+  const email = localStorage.getItem('userEmail');
+  if (!email) {
+    alert('Could not find user email. Please log in again.');
+    return;
+  }
+  try {
+    const res = await fetch(`/api/user/lookup/${encodeURIComponent(email)}`, {
+      method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const user = await res.json() as any;
+    profileUsername.textContent = user.name;
+    profileEmail.textContent = user.email;
+    profileId.textContent = user.id.toString();
+    profileOnlineStatus.textContent = user.online ? 'true' : 'false';
+    if (user.twofa_secret && user.twofa_validated) {
+      profile2FAStatus.textContent = 'true';
+      profileSetup2FABtn.classList.add('hidden');
+      profileDisable2FABtn.classList.remove('hidden');
+    } else {
+      profile2FAStatus.textContent = 'false';
+      profileSetup2FABtn.classList.remove('hidden');
+      profileDisable2FABtn.classList.add('hidden');
+    }
+    profileNa2FABtn.classList.add('hidden');
+    // Display avatar if present
+    if (profileAvatar) {
+      if (user.avatar) {
+        profileAvatar.src = user.avatar;
+        profileAvatar.classList.remove('hidden');
+      } else {
+        profileAvatar.classList.add('hidden');
+      }
+    }
+  } catch (err) {
+    console.error('Profile lookup error:', err);
+  }
+}
+
+export function setupProfileModal(): void {
+  // Elements
+  const profileBtn = document.getElementById('profile-btn') as HTMLButtonElement | null;
+  const profileModal = document.getElementById('profile-modal') as HTMLElement | null;
+  const profileModalCloseBtn = document.getElementById('profile-modal-close') as HTMLButtonElement | null;
   const profileChangePasswordBtn = document.getElementById('profile-change-password-btn') as HTMLButtonElement | null;
   const profileDeleteBtn = document.createElement('button');
   profileDeleteBtn.id = 'profile-delete-btn';
@@ -24,10 +70,15 @@ export function setupProfileModal(): void {
     profileChangePasswordBtn.parentElement?.appendChild(profileDeleteBtn);
   }
 
-  if (!profileBtn || !profileModal || !profileModalCloseBtn || !profileUsername || !profileEmail || !profileAvatar || !profileId || !profileOnlineStatus || !profile2FAStatus || !profileSetup2FABtn || !profileDisable2FABtn || !profileNa2FABtn || !profileChangePasswordBtn) {
+  if (!profileBtn || !profileModal || !profileModalCloseBtn || !profileChangePasswordBtn) {
     console.error('Missing profile modal elements');
     return;
   }
+
+  // Listen for profile updates
+  document.addEventListener('profileUpdated', () => {
+    loadProfileData();
+  });
 
   // Open Profile modal and load data
   profileBtn.addEventListener('click', async (e) => {
@@ -37,44 +88,8 @@ export function setupProfileModal(): void {
         window.location.hash = '#login';
         return;
     }
-    const email = localStorage.getItem('userEmail');
-    if (!email) {
-        alert('Could not find user email. Please log in again.');
-        return;
-    }
-    try {
-      const res = await fetch(`/api/user/lookup/${encodeURIComponent(email)}`, {
-        method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      const user = await res.json() as any;
-      profileUsername.textContent = user.name;
-      profileEmail.textContent = user.email;
-      profileId.textContent = user.id.toString();
-      profileOnlineStatus.textContent = user.online ? 'true' : 'false';
-      if (user.twofa_secret && user.twofa_validated) {
-        profile2FAStatus.textContent = 'true';
-        profileSetup2FABtn.classList.add('hidden');
-        profileDisable2FABtn.classList.remove('hidden');
-      } else {
-        profile2FAStatus.textContent = 'false';
-        profileSetup2FABtn.classList.remove('hidden');
-        profileDisable2FABtn.classList.add('hidden');
-      }
-      profileNa2FABtn.classList.add('hidden');
-      // Display avatar if present
-      if (profileAvatar) {
-        if (user.avatar) {
-          profileAvatar.src = user.avatar;
-          profileAvatar.classList.remove('hidden');
-        } else {
-          profileAvatar.classList.add('hidden');
-        }
-      }
-      navigate('profile');
-    } catch (err) {
-      console.error('Profile lookup error:', err);
-    }
+    await loadProfileData();
+    navigate('profile');
   });
 
   // Close handlers
@@ -96,11 +111,14 @@ export function setupProfileModal(): void {
   });
 
   // 2FA setup button
-  profileSetup2FABtn.addEventListener('click', e => {
-    e.preventDefault();
-    profileModal.classList.add('hidden');
-    navigate('setup-2fa');
-  });
+  const profileSetup2FABtn = document.getElementById('profile-setup-2fa-btn') as HTMLButtonElement | null;
+  if (profileSetup2FABtn) {
+    profileSetup2FABtn.addEventListener('click', e => {
+      e.preventDefault();
+      profileModal.classList.add('hidden');
+      navigate('setup-2fa');
+    });
+  }
 
   // Change Password button
   profileChangePasswordBtn.addEventListener('click', e => {
@@ -110,27 +128,30 @@ export function setupProfileModal(): void {
   });
 
   // Disable 2FA button
-  profileDisable2FABtn.addEventListener('click', async e => {
-    e.preventDefault();
-    try {
-      const res = await fetch('/api/auth/2fa/delete', { method: 'DELETE', credentials: 'include' });
-      const data = await res.json();
-      if (res.ok) {
-        alert(data.message || '2FA disabled. You will now be logged out.');
-        // Clear session and refresh
-        localStorage.removeItem('loggedIn');
-        localStorage.removeItem('username');
-        localStorage.removeItem('userEmail');
-        localStorage.removeItem('twofaEnabled');
-        window.location.reload();
-      } else {
-        alert(data.error || 'Disable 2FA failed');
+  const profileDisable2FABtn = document.getElementById('profile-disable-2fa-btn') as HTMLButtonElement | null;
+  if (profileDisable2FABtn) {
+    profileDisable2FABtn.addEventListener('click', async e => {
+      e.preventDefault();
+      try {
+        const res = await fetch('/api/auth/2fa/delete', { method: 'DELETE', credentials: 'include' });
+        const data = await res.json();
+        if (res.ok) {
+          alert(data.message || '2FA disabled. You will now be logged out.');
+          // Clear session and refresh
+          localStorage.removeItem('loggedIn');
+          localStorage.removeItem('username');
+          localStorage.removeItem('userEmail');
+          localStorage.removeItem('twofaEnabled');
+          window.location.reload();
+        } else {
+          alert(data.error || 'Disable 2FA failed');
+        }
+      } catch (err) {
+        console.error('Disable 2FA error:', err);
+        alert('Error disabling 2FA');
       }
-    } catch (err) {
-      console.error('Disable 2FA error:', err);
-      alert('Error disabling 2FA');
-    }
-  });
+    });
+  }
   // Avatar upload logic
   const uploadBtn = document.getElementById('profile-upload-avatar-btn') as HTMLButtonElement | null;
   const fileInput = document.getElementById('avatar-file-input') as HTMLInputElement | null;
@@ -178,6 +199,7 @@ export function setupProfileModal(): void {
         const data = await res.json();
 
         if (res.ok && data.avatar) {
+          const profileAvatar = document.getElementById('profile-avatar') as HTMLImageElement | null;
           if (profileAvatar) {
             profileAvatar.src = data.avatar;
             profileAvatar.classList.remove('hidden');

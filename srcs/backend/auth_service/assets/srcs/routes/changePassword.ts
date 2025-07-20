@@ -47,6 +47,9 @@ export default function changePasswordRoutes(app: FastifyInstance, options: any,
       }
       // Verify current password
       const storedHash = lookupData.password;
+      if (!storedHash) {
+        return reply.status(403).send({ error: 'You have not set a password. Please use the "Forgot Password" option.' });
+      }
       const match = await bcrypt.compare(currentPassword, storedHash);
       if (!match) {
         return reply.status(403).send({ error: 'Current password is incorrect' });
