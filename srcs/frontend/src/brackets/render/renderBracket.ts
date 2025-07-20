@@ -20,6 +20,10 @@ export default function renderBrackets(tname: string, tstate: string, twinner: {
 			tournamentStateColor = "bg-green-500";
 		else
 			tournamentStateColor = "bg-red-500";
+
+		const oldState = document.getElementById("brackets-tournament-state");
+		if (oldState)
+			infoWrapper.removeChild(oldState);
   
 		const span = document.createElement("span");
 		span.id = "brackets-tournament-state";
@@ -29,9 +33,14 @@ export default function renderBrackets(tname: string, tstate: string, twinner: {
 
 		if (twinner != null)
 		{
+			const oldWinner = document.getElementById("brackets-tournament-state");
+			if (oldWinner)
+				infoWrapper.removeChild(oldWinner);
+
 			const winnerDiv = document.createElement("h2");
 			winnerDiv.textContent = `🏆 Winner : ${twinner.name}#${twinner.tag.toString().padStart(4, '0')}`;
 			winnerDiv.className = "ml-auto mr-10 text-xl font-bold text-yellow-600 bg-yellow-100 px-2 py-1 rounded";
+			winnerDiv.id = "brackets-tournamnet-winner";
 
 			infoWrapper.appendChild(winnerDiv);
 		}

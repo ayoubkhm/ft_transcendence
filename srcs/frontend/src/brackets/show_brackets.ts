@@ -39,13 +39,13 @@ export default async function show_brackets(tournamentId: number, container?: HT
         };
         try
         {
-            bracketsContainer.innerHTML = '';
             data = await res.json();
             const userId = localStorage.getItem('userId');
+            bracketsContainer.innerHTML = '';
             bracketsContainer.appendChild(renderBrackets(
                 data.tname,
                 data.tstate,
-                (data.twinner != null) ? ({name : data.twinner_name!, tag : data.twinner_tag!}) : null,
+                ((data.twinner != null) || (data.twinner_name != null)) ? ({name : data.twinner_name!, tag : data.twinner_tag!}) : null,
                 data.brackets,
                 userId ? parseInt(userId, 10) : null
             ));
