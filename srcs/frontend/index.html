@@ -347,6 +347,76 @@
     </div>
   </div>
 
+  
+  <!-- User stats -->
+  <div id="stats-popup" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-zinc-800 pt-4 pr-6 pb-6 pl-6 shadow-xl z-[9999] flex flex-col gap-4 rounded-lg">
+
+    <div class="w-full flex items-center justify-between">
+      <div id="stats-info-wrapper"  class="flex w-full items-center gap-10 pl-6">  
+        <h2 id="stats-name" class="text-white text-xl font-semibold">
+          Stats
+        </h2>
+      </div>
+
+      <button id="stats-close" class="text-white hover:text-red-400 text-base px-2 py-0.5 rounded-md bg-zinc-700 hover:bg-red-500 transition">✕
+      </button>
+
+    </div>
+
+    <div id="stats-container" class="p-6 bg-zinc-900 rounded-lg shadow-xl overflow-auto max-w-[90vw] max-h-[90vh] w-full">
+      <div class="flex justify-around items-center gap-6 p-6 bg-zinc-700 rounded-lg" id="stats-rates">
+        <!-- Winrate -->
+        <div class="flex flex-col items-center">
+          <svg class="w-24 h-24">
+            <circle cx="48" cy="48" r="40" stroke="#e5e7eb" stroke-width="8" fill="none"/>
+            <circle class="transition-all duration-500 ease-in-out"
+              style="transition-property: stroke-dasharray; z-index: 10" 
+              transform="rotate(-90, 48, 48)"
+              cx="48" cy="48" r="40"
+              stroke="#3b82f6" stroke-width="8" fill="none"
+              stroke-dasharray="0 251.2" stroke-linecap="round"
+              id="stats-winrate"
+            />
+            <text id="stats-winrate-text" x="50%" y="50%" text-anchor="middle" dy=".3em" font-size="14" font-weight="bold" fill="#f8fafc">
+              N/A
+            </text>
+          </svg>
+          <div class="text-sm font-semibold mt-2 text-zinc-100">Winrate</div>
+        </div>
+
+        <!-- Blockrate -->
+        <div class="flex flex-col items-center">
+          <svg class="w-24 h-24">
+            <circle cx="48" cy="48" r="40" stroke="#e5e7eb" stroke-width="8" fill="none"/>
+            <circle class="transition-all duration-500 ease-in-out"
+              style="transition-property: stroke-dasharray; z-index: 10" 
+              transform="rotate(-90, 48, 48)"
+              cx="48" cy="48" r="40"
+              stroke="#facc15" stroke-width="8" fill="none"
+              stroke-dasharray="0 251.2" stroke-linecap="round"
+              id="stats-blockrate"
+            />
+            <text id="stats-blockrate-text" x="50%" y="50%" text-anchor="middle" dy=".3em" font-size="14" font-weight="bold" fill="#f8fafc">
+              N/A
+            </text>
+          </svg>
+          <div class="text-sm font-semibold mt-2 text-zinc-100">Blockrate</div>
+        </div>
+
+       
+      </div>
+
+      <div class="flex flex-col max-h-[300px] overflow-y-auto gap-2 mt-4" id="stats-matchs">
+      </div>
+    </div>
+
+    
+  </div>
+
+  
+
+
+
 
   <!-- Public Profile Modal -->
   <div id="public-profile-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">

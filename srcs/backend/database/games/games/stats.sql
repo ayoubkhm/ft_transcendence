@@ -132,8 +132,10 @@ BEGIN
 						'p2_bot', g.p2_bot,
 						'p1_name', u1.name,
 						'p1_tag', u1.tag,
+						'p1_id', g.p1_id,
 						'p2_name', u2.name,
 						'p2_tag', u2.tag,
+						'p2_id', g.p2_id,
 						'p1_score', g.p1_score,
 						'p2_score', g.p2_score,
 						'winner', CASE

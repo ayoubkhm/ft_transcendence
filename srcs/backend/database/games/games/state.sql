@@ -204,12 +204,12 @@ BEGIN
 	WHERE id = _id;
 
 	IF NOT FOUND THEN
-		RETURN QUERY SELECT FALSE, 'Game with id % not found', NULL::INTEGER AS tid;
+		RETURN QUERY SELECT FALSE, FORMAT('Game with id %s not found', _id), NULL::INTEGER AS tid;
 		RETURN ;
 	END IF;
 
 	IF _state = 'OVER' THEN
-        RETURN QUERY SELECT 'Can''t win game that is already over', NULL::INTEGER AS tid;
+        RETURN QUERY SELECT FALSE, 'Can''t win game that is already over', NULL::INTEGER AS tid;
         RETURN ;
     END IF;
 
