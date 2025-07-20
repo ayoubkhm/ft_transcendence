@@ -34,24 +34,37 @@ async function main() {
             await connectWebSocket();
             console.log('[Tournament Redirection] WebSocket connection established.');
 
-            // Set up a one-time listener for the tournament details
-            const unregister = on('tournament-update', (details) => {
-                unregister(); // Remove the listener after it's been called once
-                console.log('[Tournament Redirection] Received tournament-update from server:', details);
+            // Set up one-time listeners for the server's response
+        const unregisterUpdate = on('tournament-update', (details) => {
+            unregisterUpdate();
+            unregisterDeleted();
+            console.log('[Tournament Redirection] Received tournament-update from server:', details);
 
-                if (details && details.id === id && details.state === 'RUNNING') {
-                    console.log('[Tournament Redirection] Verification successful. Tournament is RUNNING. Showing game view.');
-                    showTournamentGame(details);
-                } else {
-                    console.log('[Tournament Redirection] Verification failed. Tournament is not running or invalid. Clearing flag and loading normally.');
-                    localStorage.removeItem('activeTournamentGame');
-                    initializeApp();
-                }
-            });
+            if (details && details.id === id && details.state === 'RUNNING') {
+                console.log('[Tournament Redirection] Verification successful. Tournament is RUNNING. Showing game view.');
+                showTournamentGame(details);
+            } else {
+                console.log('[Tournament Redirection] Verification failed. Tournament is not running or invalid. Clearing flag and loading normally.');
+                localStorage.removeItem('activeTournamentGame');
+                initializeApp();
+            }
+        });
 
-            // Request the tournament details to verify the state
-            console.log(`[Tournament Redirection] Sending get_tournament_details request for ID: ${id}`);
-            getTournamentDetails(id);
+        const unregisterDeleted = on('tournament-deleted', (data) => {
+            unregisterUpdate();
+            unregisterDeleted();
+            console.log('[Tournament Redirection] Received tournament-deleted from server:', data);
+
+            if (data && data.tournament_id === id) {
+                console.log('[Tournament Redirection] Stale tournament ID confirmed. Clearing flag and loading normally.');
+                localStorage.removeItem('activeTournamentGame');
+                initializeApp();
+            }
+        });
+
+        // Request the tournament details to verify the state
+        console.log(`[Tournament Redirection] Sending get_tournament_details request for ID: ${id}`);
+        getTournamentDetails(id);
 
         } catch (error) {
             console.error('[Tournament Redirection] WebSocket connection failed. Clearing flag and loading normally.', error);

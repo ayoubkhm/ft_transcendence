@@ -221,6 +221,10 @@ const websocketHandler: WebsocketHandler = (connection, req) => {
                 data: { ...tournament, owner_name: ownerName, players: playersRes.rows, brackets: brackets },
               };
               safeSend(conn, fullState);
+            } else {
+              // If no tournament is found, it was likely deleted. Inform the client.
+              console.log(`[WS LOG] Tournament ${tournament_id} not found. Informing client it was deleted.`);
+              safeSend(conn, { type: 'tournament-deleted', data: { tournament_id: tournament_id } });
             }
           } finally {
             client.release();
