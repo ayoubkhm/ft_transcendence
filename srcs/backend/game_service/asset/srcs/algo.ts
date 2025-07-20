@@ -137,7 +137,8 @@ export class Game
        // Handle forfeit: end game and declare other player as winner
        if (msg.type === 'forfeit') {
            this.state.isGameOver = true;
-           this.state.winner = p.side;
+           this.state.winner = p.side === 'left' ? 'right' : 'left';
+           this.endGame();
            return;
        }
 		if (msg.type === 'move_up')	
@@ -496,21 +497,23 @@ export class Game
 		{
 			this.state.isGameOver = true;
 			this.state.winner = left.score > right.score ? 'left' : 'right';
-			const winner: boolean = (this.state.winner === 'left');
-			
-			// If this is a tournament game, notify the tournament_service
-			if (this.gameId) {
-				fetch('http://tournament_service:3000/api/tournaments/game/end', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						gameId: this.gameId,
-						winnerSide: winner
-					}),
-				}).catch(err => console.error('Failed to notify tournament_service:', err));
-			}
+			this.endGame();
 		}
 	}
+
+    private endGame() {
+        if (this.state.type === 'TOURNAMENT' && this.gameId) {
+            const winnerIsLeft = this.state.winner === 'left';
+            fetch('http://tournament_service:3000/api/tournaments/game/end', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    gameId: this.gameId,
+                    winnerSide: winnerIsLeft,
+                }),
+            }).catch(err => console.error('Failed to notify tournament_service:', err));
+        }
+    }
     /**
      * Return current game state, augmented with per-player stats
      */
