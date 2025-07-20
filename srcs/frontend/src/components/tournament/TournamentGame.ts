@@ -119,14 +119,14 @@ export function showTournamentGame(details: any) {
     displayRunningMatches(newDetails);
     show_brackets(newDetails.id, tournamentBracketsContainer);
     
-    if (newDetails.state === 'OVER' && newDetails.winner_name) {
+    if (newDetails.state === 'OVER') {
+      console.log(`[DEBUG activeTournamentGame] TournamentGame.ts: 'tournament-update' listener - Tournament state is OVER for ID: ${newDetails.id}. Removing activeTournamentGame flag.`);
       localStorage.removeItem('activeTournamentGame');
+      console.log(`[DEBUG activeTournamentGame] TournamentGame.ts: 'tournament-update' listener - activeTournamentGame flag REMOVED.`);
       const winnerDisplay = document.getElementById('tournament-winner-display') as HTMLElement;
-      const winnerNameSpan = document.getElementById('tournament-winner-name') as HTMLElement;
       const winnerCloseBtn = document.getElementById('tournament-winner-close-btn') as HTMLButtonElement;
 
-      if (winnerDisplay && winnerNameSpan && winnerCloseBtn) {
-        winnerNameSpan.textContent = newDetails.winner_name;
+      if (winnerDisplay && winnerCloseBtn) {
         winnerDisplay.classList.remove('hidden');
 
         winnerCloseBtn.onclick = () => {

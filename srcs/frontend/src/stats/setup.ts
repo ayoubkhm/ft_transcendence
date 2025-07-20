@@ -1,3 +1,5 @@
+import { navigate } from "../lib/router";
+
 export function close_stats()
 {
 	const statsContainer = document.getElementById("stats-container") as HTMLButtonElement | null;
@@ -11,7 +13,24 @@ export function close_stats()
 
 export default function setupUserStats(): void
 {
+    const statsPopup = document.getElementById('stats-popup');
     const closeButton = document.getElementById('stats-close');
-    if (closeButton)
-        closeButton.addEventListener('click', close_stats);
+
+    if (closeButton && statsPopup) {
+        closeButton.addEventListener('click', () => navigate('profile'));
+
+        // Close modal on click outside
+        statsPopup.addEventListener('click', (e) => {
+            if (e.target === statsPopup) {
+                navigate('profile');
+            }
+        });
+    }
+
+    // Close modal on Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && statsPopup && !statsPopup.classList.contains('hidden')) {
+            navigate('profile');
+        }
+    });
 }

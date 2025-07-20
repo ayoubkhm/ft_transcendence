@@ -101,6 +101,7 @@ export function setupProfileModal(): void {
         const userId = getCurrentUserId();
         if (userId) {
           show_stats(userId);
+          navigate('stats');
         }
         break;
 

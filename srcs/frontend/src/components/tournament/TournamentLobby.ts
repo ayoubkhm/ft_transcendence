@@ -18,36 +18,40 @@ const readyBtn = document.getElementById('tournament-lobby-ready-btn') as HTMLBu
 let currentTournamentId: number | null = null;
 let currentTournamentName: string | null = null;
 let currentTournamentDetails: any | null = null; // Cache for tournament data
-let tournamentSocket: WebSocket | null = null;
 
 export function isTournamentLobbyActive() {
   return tournamentLobbyModal && !tournamentLobbyModal.classList.contains('hidden');
 }
 
-function closeSocket() {
-  if (tournamentSocket) {
-    tournamentSocket.close();
-    tournamentSocket = null;
-  }
-}
-
-export async function leaveTournamentLobby() {
+// This function is for the dedicated "Leave/Delete" button and includes a confirmation.
+// It is also called by the router's popstate handler.
+export function leaveTournamentLobby() {
   const userId = getCurrentUserId();
   if (!userId) {
     alert('You must be logged in to perform this action.');
-    return;
+    return false; // Indicate failure
   }
 
+  let didLeave = false;
   if (currentTournamentDetails && userId === currentTournamentDetails.owner_id) {
     if (confirm(`As the owner, leaving will delete the tournament. Are you sure you want to delete "${currentTournamentName}"?`)) {
       deleteTournament(currentTournamentName!, userId);
+      didLeave = true;
     }
   } else {
     if (confirm('Are you sure you want to leave the tournament?')) {
-      if (!currentTournamentId || !currentTournamentName) return;
+      if (!currentTournamentId || !currentTournamentName) return false;
       leaveTournament(currentTournamentId, userId, currentTournamentName);
+      didLeave = true;
     }
   }
+
+  if (didLeave) {
+    console.log("[DEBUG activeTournamentSession] leaveTournamentLobby() - User confirmed leave. Removing activeTournamentSession flag.");
+    localStorage.removeItem('activeTournamentSession');
+    console.log("[DEBUG activeTournamentSession] leaveTournamentLobby() - activeTournamentSession flag REMOVED.");
+  }
+  return didLeave; // Return whether the user confirmed the action
 }
 
 let isLobbyInitialized = false;
@@ -55,32 +59,38 @@ let isLobbyInitialized = false;
 function initializeLobbyEventListeners() {
   if (isLobbyInitialized) return;
 
+  // All close actions will now navigate to 'tournaments', which will trigger the popstate listener in the router.
+  const navigateToTournaments = (e: Event) => {
+    e.preventDefault();
+    navigate('tournaments');
+  };
+
   if (tournamentLobbyClose) {
-    tournamentLobbyClose.addEventListener('click', (e) => {
-      e.preventDefault();
-      tournamentLobbyModal.classList.add('hidden');
-      navigate('tournaments');
-    });
+    tournamentLobbyClose.addEventListener('click', navigateToTournaments);
   }
 
   if (tournamentLobbyModal) {
     tournamentLobbyModal.addEventListener('click', (e) => {
       if (e.target === tournamentLobbyModal) {
-        tournamentLobbyModal.classList.add('hidden');
-        navigate('tournaments');
+        navigateToTournaments(e);
       }
     });
   }
 
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && tournamentLobbyModal && !tournamentLobbyModal.classList.contains('hidden')) {
-      tournamentLobbyModal.classList.add('hidden');
-      navigate('tournaments');
+    if (e.key === 'Escape' && isTournamentLobbyActive()) {
+      navigateToTournaments(e);
     }
   });
 
+  // The dedicated button still uses the function with the confirmation dialog directly
   if (leaveTournamentBtn) {
-    leaveTournamentBtn.addEventListener('click', leaveTournamentLobby);
+    leaveTournamentBtn.addEventListener('click', () => {
+        if (leaveTournamentLobby()) {
+            tournamentLobbyModal.classList.add('hidden');
+            navigate('tournaments');
+        }
+    });
   }
 
   if (startTournamentBtn) {
@@ -114,23 +124,24 @@ function initializeLobbyEventListeners() {
 
   // This listener will now be active globally after the lobby has been initialized once
   on('tournament-deleted', (data) => {
-    // If the deleted tournament is the one the user is currently viewing, show an alert and navigate
     if (data.tournament_id === currentTournamentId) {
       alert('The tournament has been deleted by the owner.');
-      closeSocket();
       tournamentLobbyModal.classList.add('hidden');
-      currentTournamentId = null; // Clear the current tournament ID
+      console.log("[DEBUG activeTournamentSession] TournamentLobby.ts: 'tournament-deleted' listener - Removing activeTournamentSession flag.");
       localStorage.removeItem('activeTournamentSession');
+      console.log("[DEBUG activeTournamentSession] TournamentLobby.ts: 'tournament-deleted' listener - activeTournamentSession flag REMOVED.");
+      currentTournamentId = null;
       navigate('home');
     }
   });
 
   on('left-tournament', (data) => {
     if (data.userId === getCurrentUserId()) {
-      closeSocket();
       tournamentLobbyModal.classList.add('hidden');
-      currentTournamentId = null;
+      console.log("[DEBUG activeTournamentSession] TournamentLobby.ts: 'left-tournament' listener - Removing activeTournamentSession flag.");
       localStorage.removeItem('activeTournamentSession');
+      console.log("[DEBUG activeTournamentSession] TournamentLobby.ts: 'left-tournament' listener - activeTournamentSession flag REMOVED.");
+      currentTournamentId = null;
       navigate('tournaments');
     }
   });
@@ -144,22 +155,11 @@ function renderLobby(details: any) {
   const allPlayersReady = details.players.every((p: any) => p.is_ready);
   const canStart = details.nbr_players >= details.min_players && allPlayersReady;
 
-  // --- DEBUG LOG ---
-  console.log({
-    message: "[Lobby Render] Status Check",
-    isOwner,
-    playerCount: details.nbr_players,
-    minPlayers: details.min_players,
-    allPlayersReady,
-    canStart,
-    players: details.players,
-  });
-  // --- END DEBUG LOG ---
+  currentTournamentDetails = details; // Cache details for use in leave functions
 
   tournamentLobbyState.textContent = details.state;
   tournamentLobbyPlayerCount.textContent = `${details.nbr_players}/${details.max_players}`;
 
-  // Update player list
   tournamentLobbyPlayers.innerHTML = '';
   if (details.players.length === 0) {
     const tr = document.createElement('tr');
@@ -184,16 +184,14 @@ function renderLobby(details: any) {
     });
   }
 
-  // Show/hide owner controls and set button text
   if (isOwner) {
     startTournamentBtn.classList.remove('hidden');
     startTournamentBtn.disabled = !canStart;
     leaveTournamentBtn.textContent = 'Delete Tournament';
     leaveTournamentBtn.classList.remove('hidden');
     deleteTournamentBtn.classList.add('hidden');
-    readyBtn.classList.add('hidden'); // Hide ready button for owner
+    readyBtn.classList.add('hidden');
 
-    // Update Start button style based on whether it's enabled
     if (startTournamentBtn.disabled) {
       startTournamentBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
       startTournamentBtn.classList.add('bg-gray-500', 'cursor-not-allowed');
@@ -206,10 +204,9 @@ function renderLobby(details: any) {
     leaveTournamentBtn.textContent = 'Leave Tournament';
     leaveTournamentBtn.classList.remove('hidden');
     deleteTournamentBtn.classList.add('hidden');
-    readyBtn.classList.remove('hidden'); // Show ready button for other players
+    readyBtn.classList.remove('hidden');
   }
 
-  // Update Ready button text
   const currentUser = details.players.find((p: any) => p.id === userId);
   if (currentUser) {
     readyBtn.textContent = currentUser.is_ready ? 'Not Ready' : 'Ready';
@@ -219,35 +216,35 @@ function renderLobby(details: any) {
 }
 
 export async function showTournamentLobby(tournamentId: number, tournamentName: string) {
-  // Ensure event listeners are attached
   initializeLobbyEventListeners();
 
   currentTournamentId = tournamentId;
   currentTournamentName = tournamentName;
-  currentTournamentDetails = null; // Reset cache on new lobby
+  currentTournamentDetails = null;
+  console.log(`[DEBUG activeTournamentSession] TournamentLobby.ts: showTournamentLobby() - Setting activeTournamentSession flag for tournamentId: ${tournamentId}, tournamentName: ${tournamentName}`);
   localStorage.setItem('activeTournamentSession', JSON.stringify({ tournamentId, tournamentName }));
-
+  console.log("[DEBUG activeTournamentSession] TournamentLobby.ts: showTournamentLobby() - activeTournamentSession flag SET.");
 
   tournamentLobbyTitle.textContent = `Lobby for ${tournamentName}`;
   tournamentLobbyPlayers.innerHTML = '<tr><td colspan="2" class="text-center py-4">Loading...</td></tr>';
   tournamentLobbyState.textContent = 'Loading...';
   tournamentLobbyPlayerCount.textContent = 'Loading...';
-  startTournamentBtn.classList.add('hidden'); // Hide by default
-  deleteTournamentBtn.classList.add('hidden'); // Hide by default
-  leaveTournamentBtn.classList.remove('hidden'); // Show by default
+  startTournamentBtn.classList.add('hidden');
+  deleteTournamentBtn.classList.add('hidden');
+  leaveTournamentBtn.classList.remove('hidden');
   tournamentLobbyModal.classList.remove('hidden');
 
-  // Listen for updates for this specific tournament
   on('tournament-update', (details) => {
     if (!details || details.id !== currentTournamentId) return;
     
     currentTournamentDetails = details;
     renderLobby(details);
 
-    // If the tournament has started, hide the lobby and show the game modal
     if (details.state === 'RUNNING' || details.state === 'OVER') {
         if (details.state === 'RUNNING') {
+            console.log(`[DEBUG activeTournamentGame] TournamentLobby.ts: 'tournament-update' listener - Tournament state is RUNNING. Setting activeTournamentGame flag for ID: ${details.id}`);
             localStorage.setItem('activeTournamentGame', JSON.stringify({ id: details.id }));
+            console.log("[DEBUG activeTournamentGame] TournamentLobby.ts: 'tournament-update' listener - activeTournamentGame flag SET.");
         }
         const lobbyModal = document.getElementById('tournament-lobby-modal');
         const gameModal = document.getElementById('tournament-game-modal');
@@ -263,6 +260,5 @@ export async function showTournamentLobby(tournamentId: number, tournamentName: 
     }
   });
 
-  // Request the initial details
   getTournamentDetails(tournamentId);
 }

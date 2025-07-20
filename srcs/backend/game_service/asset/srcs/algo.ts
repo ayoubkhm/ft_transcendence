@@ -4,19 +4,30 @@ import {
   GameState, ClientInput, Ball, BonusBall,
   POWER_UPV, POWER_UPB
 } from './types.js';
-import { aiPaddleMove } from './ai/index.js';
+import { predictBallY, movePaddleToTarget } from './ai/index.js';
 import { PoolClient } from 'pg';
 
 const BALL_XLR = 1.05;
 
 // AI difficulty levels
 type AIDifficulty = 'easy' | 'medium' | 'hard';
+
+// Defines the settings for each AI difficulty level
+const aiDifficultySettings = {
+  easy:   { predictionError: 120, /* reactionTime: 0.3, */  returnToCenter: false },
+  medium: { predictionError: 60,  /* reactionTime: 0.15, */ returnToCenter: false },
+  hard:   { predictionError: 0,   /* reactionTime: 0, */    returnToCenter: true  },
+};
+
 export class Game
 {
     private state: GameState;
     private readonly speed       = 400; // ball speed (px/s)
     private paddleSpeed           = 340; // paddle speed for both human and AI (px/s)
-    private readonly aiDifficulty: AIDifficulty;
+    private readonly aiSettings: typeof aiDifficultySettings[AIDifficulty];
+    // AI state
+    // private aiReactionTimer: number = 0;
+    private aiTargetY: number;
     // Whether custom power-ups/features are enabled
     private readonly customOn: boolean;
     // cumulative stats per player
@@ -41,7 +52,8 @@ export class Game
 
     ) {
 		this.gameId = gameId;
-        this.aiDifficulty = aiDifficulty;
+        this.aiSettings = aiDifficultySettings[aiDifficulty];
+        this.aiTargetY = GAME_HEIGHT / 2 - PADDLE_H / 2; // Initial target
         this.customOn = customOn;
         // initialize cumulative stats
         this.powerUpsUsed = { [leftId]: 0, [rightId]: 0 };
@@ -238,11 +250,28 @@ export class Game
         }
         // 2) AI paddle movement (right side)
         if (right.id === 'AI') {
-            // AI paddle moves at same base speed as human (including speed-up power-ups)
+            // this.aiReactionTimer = Math.max(0, this.aiReactionTimer - dt);
+
+            // Decide on a new target Y when the timer is up
+            // if (this.aiReactionTimer <= 0) {
+                // If ball is coming towards AI, predict its path
+                if (ball.v.x > 0) {
+                    // this.aiReactionTimer = this.aiSettings.reactionTime; // Reset timer
+                    this.aiTargetY = predictBallY(ball, { predictionError: this.aiSettings.predictionError });
+                }
+                // If ball is moving away, decide whether to return to center
+                else {
+                    if (this.aiSettings.returnToCenter) {
+                        this.aiTargetY = GAME_HEIGHT / 2;
+                    }
+                    // Otherwise, the paddle stays put (aiTargetY is not updated)
+                }
+            // }
+
+            // Always move towards the current target Y
             const oldY = right.paddle.y;
             const effectiveSpeed = this.paddleSpeed * right.speedMultiplier;
-            const newY = aiPaddleMove(right.paddle, ball, effectiveSpeed, dt);
-            // Accumulate distance moved by AI paddle
+            const newY = movePaddleToTarget(right.paddle, this.aiTargetY, effectiveSpeed, dt);
             this.distanceMoved[right.id] += Math.abs(newY - oldY);
             right.paddle.y = newY;
         }
@@ -541,4 +570,29 @@ function Randombetween(a: number, b:number) : number
 	while(rand < a || rand > b)
 		rand = Math.random()
 	return(rand)
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Database persistence
+// ──────────────────────────────────────────────────────────────────
+export async function saveGameStats(pgClient: PoolClient, game: Game)
+{
+    const state = game.getState();
+    const [p1, p2] = state.players;
+    const winner = state.winner === 'left' ? p1 : p2;
+    const loser = state.winner === 'left' ? p2 : p1;
+
+    // Only save stats for non-AI players
+    if (winner.id !== 'AI' && winner.dbId) {
+        await pgClient.query(
+            'UPDATE users SET games_won = games_won + 1 WHERE id = $1',
+            [winner.dbId]
+        );
+    }
+    if (loser.id !== 'AI' && loser.dbId) {
+        await pgClient.query(
+            'UPDATE users SET games_lost = games_lost + 1 WHERE id = $1',
+            [loser.dbId]
+        );
+    }
 }

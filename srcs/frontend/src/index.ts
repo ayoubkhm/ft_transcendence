@@ -23,30 +23,32 @@ import { showTournamentGame } from './components/tournament/TournamentGame';
 
 async function main() {
     // First, check for an active tournament game
+    console.log('[DEBUG activeTournamentGame] index.ts: main() - Checking for activeTournamentGame flag.');
     const activeTournamentGame = localStorage.getItem('activeTournamentGame');
-    console.log('[Tournament Redirection] Page loaded. Active game flag:', activeTournamentGame);
+    console.log(`[DEBUG activeTournamentGame] index.ts: main() - Flag value is: ${activeTournamentGame}`);
 
     if (activeTournamentGame) {
         const { id } = JSON.parse(activeTournamentGame);
-        console.log(`[Tournament Redirection] Found active tournament ID: ${id}. Verifying with server...`);
+        console.log(`[DEBUG activeTournamentGame] index.ts: main() - Found active tournament ID: ${id}. Verifying with server...`);
         
         try {
             // Establish WebSocket connection and wait for it to be open
             await connectWebSocket();
-            console.log('[Tournament Redirection] WebSocket connection established.');
+            console.log('[DEBUG activeTournamentGame] index.ts: main() - WebSocket connection established.');
 
             // Set up one-time listeners for the server's response
         const unregisterUpdate = on('tournament-update', (details) => {
             unregisterUpdate();
             unregisterDeleted();
-            console.log('[Tournament Redirection] Received tournament-update from server:', details);
+            console.log('[DEBUG activeTournamentGame] index.ts: main() - Received tournament-update from server:', details);
 
             if (details && details.id === id && details.state === 'RUNNING') {
-                console.log('[Tournament Redirection] Verification successful. Tournament is RUNNING. Showing game view.');
+                console.log('[DEBUG activeTournamentGame] index.ts: main() - Verification successful. Tournament is RUNNING. Showing game view.');
                 showTournamentGame(details);
             } else {
-                console.log('[Tournament Redirection] Verification failed. Tournament is not running or invalid. Clearing flag and loading normally.');
+                console.log('[DEBUG activeTournamentGame] index.ts: main() - Verification failed. Tournament is not running or invalid. Clearing flag.');
                 localStorage.removeItem('activeTournamentGame');
+                console.log('[DEBUG activeTournamentGame] index.ts: main() - activeTournamentGame flag REMOVED.');
                 initializeApp();
             }
         });
@@ -54,27 +56,29 @@ async function main() {
         const unregisterDeleted = on('tournament-deleted', (data) => {
             unregisterUpdate();
             unregisterDeleted();
-            console.log('[Tournament Redirection] Received tournament-deleted from server:', data);
+            console.log('[DEBUG activeTournamentGame] index.ts: main() - Received tournament-deleted from server:', data);
 
             if (data && data.tournament_id === id) {
-                console.log('[Tournament Redirection] Stale tournament ID confirmed. Clearing flag and loading normally.');
+                console.log('[DEBUG activeTournamentGame] index.ts: main() - Stale tournament ID confirmed. Clearing flag.');
                 localStorage.removeItem('activeTournamentGame');
+                console.log('[DEBUG activeTournamentGame] index.ts: main() - activeTournamentGame flag REMOVED.');
                 initializeApp();
             }
         });
 
         // Request the tournament details to verify the state
-        console.log(`[Tournament Redirection] Sending get_tournament_details request for ID: ${id}`);
+        console.log(`[DEBUG activeTournamentGame] index.ts: main() - Sending get_tournament_details request for ID: ${id}`);
         getTournamentDetails(id);
 
         } catch (error) {
-            console.error('[Tournament Redirection] WebSocket connection failed. Clearing flag and loading normally.', error);
+            console.error('[DEBUG activeTournamentGame] index.ts: main() - WebSocket connection failed. Clearing flag.', error);
             localStorage.removeItem('activeTournamentGame');
+            console.log('[DEBUG activeTournamentGame] index.ts: main() - activeTournamentGame flag REMOVED due to WebSocket error.');
             initializeApp();
         }
     } else {
         // If there's no active tournament game, initialize the app normally
-        console.log('[Tournament Redirection] No active game flag found. Initializing app normally.');
+        console.log('[DEBUG activeTournamentGame] index.ts: main() - No active game flag found. Initializing app normally.');
         initializeApp();
     }
 }

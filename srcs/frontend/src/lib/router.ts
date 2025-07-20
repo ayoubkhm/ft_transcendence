@@ -1,7 +1,7 @@
 // Simple SPA router based on history API and hash
 import { isTournamentActive } from '../components/tournament/TournamentGame.js';
 import { isTournamentLobbyActive, leaveTournamentLobby } from '../components/tournament/TournamentLobby.js';
-export type View = '*' | 'home' | 'login' | 'game' | 'tournament' | 'friends' | 'profile' | 'play-ai' | 'play-pvp' | 'change-password' | 'publicProfile' | 'signup' | 'setup-2fa' | 'local-game' | 'login-2fa' | 'edit-username' | 'edit-email';
+export type View = '*' | 'home' | 'login' | 'game' | 'tournament' | 'friends' | 'profile' | 'play-ai' | 'play-pvp' | 'change-password' | 'publicProfile' | 'signup' | 'setup-2fa' | 'local-game' | 'login-2fa' | 'edit-username' | 'edit-email' | 'stats';
 
 type RouteHandler = (params?: any) => void;
 
@@ -23,6 +23,7 @@ const routes: Record<View, RouteHandler[]> = {
   'login-2fa': [],
   'edit-username': [],
   'edit-email': [],
+  stats: [],
 };
 
 export function getCurrentRoute(): View {
@@ -56,6 +57,26 @@ onRoute('home', () => {
     if (publicProfileModal) publicProfileModal.classList.add('hidden');
     const tournamentModal = document.getElementById('tournament-modal');
     if (tournamentModal) tournamentModal.classList.add('hidden');
+    const statsPopup = document.getElementById('stats-popup');
+    if (statsPopup) statsPopup.classList.add('hidden');
+});
+
+onRoute('stats', () => {
+    const statsPopup = document.getElementById('stats-popup');
+    if (statsPopup) statsPopup.classList.remove('hidden');
+    const profileModal = document.getElementById('profile-modal');
+    if (profileModal) profileModal.classList.add('hidden');
+});
+
+onRoute('profile', () => {
+  const profileModal = document.getElementById('profile-modal');
+  if (profileModal) {
+    profileModal.classList.remove('hidden');
+  }
+  const statsPopup = document.getElementById('stats-popup');
+  if (statsPopup) {
+    statsPopup.classList.add('hidden');
+  }
 });
 
 export function onRoute(view: View, handler: RouteHandler) {
@@ -84,12 +105,13 @@ window.addEventListener('popstate', (e) => {
     return;
   }
   if (isTournamentLobbyActive()) {
-    const userWantsToLeave = confirm("Are you sure you want to leave the tournament lobby?");
-    if (userWantsToLeave) {
-      leaveTournamentLobby();
+    // The leaveTournamentLobby function now contains the confirm dialog.
+    // It returns true if the user confirms, false otherwise.
+    if (leaveTournamentLobby()) {
       const state = e.state as { view: View; params?: any } | null;
       if (state) dispatch(state.view, state.params);
     } else {
+      // If the user clicks "Cancel", prevent navigation.
       history.forward();
     }
     return;
