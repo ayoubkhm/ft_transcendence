@@ -188,7 +188,7 @@ export class Game
 		switch (type)
 		{
 			case 'speedUp':
-				player.speedMultiplier = POWER_UPV;
+				player.speedMultiplier *= POWER_UPV;
 				player.power += "v";
 				break;
 			case 'shield':
@@ -355,8 +355,8 @@ export class Game
 
 		for (const pball of this.state.phantomBalls || [])
 		{
-			pball.x += pball.v.x * dt;
-			pball.y += pball.v.y * dt;
+			pball.x += pball.v.x * dt * this.ballspeedM;
+			pball.y += pball.v.y * dt * this.ballspeedM;
 
 			// Collision haut/bas avec correction de position
 			if (pball.y - BALL_R <= 0) {
