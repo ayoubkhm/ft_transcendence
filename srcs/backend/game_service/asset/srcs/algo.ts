@@ -460,8 +460,6 @@ export class Game
 		// 4) Score et fin de manche
         if (ball.x < 0) {
             // Right player scores
-			await this.addScore(pgClient, false);
-            right.score++;
             // Update scoring streaks
             const scorer = right.id;
             const other = left.id;
@@ -472,14 +470,15 @@ export class Game
                 this.streaks[other] = 0;
             }
             this.lastScorerId = scorer;
+            right.score++;
             resetBall(ball, -this.speed);
 			this.ballspeedM = 1;
+			void this.addScore(pgClient, false);
+
         }
         if (ball.x > GAME_WIDTH) {
             // Left player scores
-            left.score++;
             // Update scoring streaks
-			await this.addScore(pgClient, true);
             const scorer = left.id;
             const other = right.id;
             if (this.lastScorerId === scorer) {
@@ -489,8 +488,11 @@ export class Game
                 this.streaks[other] = 0;
             }
             this.lastScorerId = scorer;
+            left.score++;
             resetBall(ball, this.speed);
 			this.ballspeedM = 1;
+			await this.addScore(pgClient, true);
+
         }
 		// 5) Fin de partie ?
 		if (left.score >= 7 || right.score >= 7)
