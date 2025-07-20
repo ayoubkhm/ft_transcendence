@@ -153,6 +153,7 @@ function showGameUI(isWaiting = false, isLocal = false, isAI = false) {
     playerAIControls.classList.remove('hidden');
   }
   canvas.focus();
+  attachGameListeners();
 
   if (isWaiting && ctx) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -164,6 +165,7 @@ function showGameUI(isWaiting = false, isLocal = false, isAI = false) {
 }
 
 function hideGameUI() {
+  detachGameListeners();
   clearForfeitTimer();
   hero.classList.remove('hidden');
   canvas.classList.add('hidden');
@@ -387,6 +389,16 @@ function onKeyUp(e: KeyboardEvent) {
   }
 }
 
+export function attachGameListeners() {
+  window.addEventListener('keydown', onKeyDown);
+  window.addEventListener('keyup', onKeyUp);
+}
+
+export function detachGameListeners() {
+  window.removeEventListener('keydown', onKeyDown);
+  window.removeEventListener('keyup', onKeyUp);
+}
+
 export function setupGame() {
   // No longer check for active game session here, the router will handle it.
 
@@ -452,10 +464,6 @@ export function setupGame() {
     navigate('home');
     startLocalPvPGame();
   });
-
-  window.addEventListener('keydown', onKeyDown);
-  window.addEventListener('keyup', onKeyUp);
-
 
   // Handle navigating away from the game
   onRoute('game', (params) => {

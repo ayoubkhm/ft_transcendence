@@ -1,11 +1,10 @@
 // TournamentGame.ts
 import show_brackets from '../../brackets/show_brackets';
-import { detachCanvas } from '../game/GameController';
+import { detachCanvas, attachGameListeners, detachGameListeners } from '../game/GameController';
 import { on } from '../../lib/socket';
 import { navigate } from '../../lib/router';
 import { getCurrentUserId } from '../auth/Auth';
 import { joinGame as joinPvPGame } from '../game/GameController'; // Renaming for clarity
-import { detachCanvas } from '../game/GameController';
 
 const tournamentGameModal = document.getElementById('tournament-game-modal') as HTMLElement;
 const tournamentGameTitle = document.getElementById('tournament-game-title') as HTMLElement;
@@ -105,6 +104,7 @@ export function showTournamentGame(details: any) {
   if (tournamentGameModal) {
     tournamentGameModal.classList.remove('hidden');
   }
+  attachGameListeners();
 
   currentTournamentId = details.id;
   
@@ -145,6 +145,7 @@ export function showTournamentGame(details: any) {
 
 export function hideTournamentGame() {
   if (tournamentGameModal) {
+    detachGameListeners();
     detachCanvas(); // Detach canvas FIRST
     tournamentGameModal.classList.add('hidden'); // Then hide the modal
     currentTournamentId = null;
