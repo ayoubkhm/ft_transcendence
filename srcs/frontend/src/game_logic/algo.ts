@@ -116,7 +116,7 @@ export class Game
        // Handle forfeit: end game and declare other player as winner
        if (msg.type === 'forfeit') {
            this.state.isGameOver = true;
-           this.state.winner = p.side;
+           this.state.winner = p.side === 'left' ? 'right' : 'left';
            return;
        }
 		if (msg.type === 'move_up')	
