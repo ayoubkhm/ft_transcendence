@@ -19,6 +19,7 @@ export default async function bracketsRoute(server: FastifyInstance)
 				msg: row.msg,
 				tname: row.tname,
 				tstate: row.tstate,
+				twinner: row.twinner,
 				twinner_name: row.twinner_name,
 				twinner_tag: row.twinner_tag,
 				brackets: row.brackets
@@ -32,6 +33,7 @@ export default async function bracketsRoute(server: FastifyInstance)
 				// @ts-ignore
                 msg: 'Internal server error (query failed): ' + (err?.message || err),
                 brackets: [],
+				twinner: null,
 				tname: null,
 				tstate: null,
 				twinner_name: null,
