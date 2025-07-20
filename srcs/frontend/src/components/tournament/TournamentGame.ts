@@ -76,7 +76,7 @@ function displayRunningMatches(details: any) {
     const isPlayer = currentUserId && (match.p1_id === currentUserId || match.p2_id === currentUserId);
     const buttonHtml = isPlayer
       ? `<button class="bg-green-500 text-white px-3 py-1 rounded join-game-btn" data-game-id="${match.id}" data-p1-id="${match.p1_id}" data-p2-id="${match.p2_id}">Join Game</button>`
-      : `<button class="bg-blue-500 text-white px-3 py-1 rounded spectate-btn" data-game-id="${match.id}">Spectate</button>`;
+      : ''; // If not a player, show no button
 
     matchElement.innerHTML = `
       <div class="text-white">

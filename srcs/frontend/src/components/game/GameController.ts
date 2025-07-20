@@ -284,6 +284,7 @@ export async function startGame(mode: 'ai' | 'pvp', isCustomOn: boolean, difficu
 
 export async function joinGame(gameIdToJoin: string, onGameOver?: (state: any) => void) {
   try {
+    await loadImages(); // Preload all game images
     let username = localStorage.getItem('username');
     if (!username) {
       await loginAsGuest();
