@@ -119,7 +119,3 @@ setupTwoFASetup();
 const { show2faLogin } = setupTwoFALogin();
 
 setupTwoFALogin();
-
-// window.addEventListener("load", () => {
-//     show_stats(1);
-// });
