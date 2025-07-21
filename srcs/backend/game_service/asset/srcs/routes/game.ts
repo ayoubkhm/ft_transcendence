@@ -345,15 +345,17 @@ export default async function gamesRoutes (app: FastifyInstance)
     const pgClient = await app.pg.connect();
     try
     {
-      const userRes = await pgClient.query('SELECT id FROM apply_bonus($1, $2)', [request.body.id, request.body.playerisLeft]);
+      const userRes = await pgClient.query('SELECT * FROM apply_bonus($1, $2)', [request.body.id, request.body.playerisLeft]);
       if (userRes.rows && userRes[0])
         console.log(userRes.rows[0].msg);
       else
         console.log("[ApplyBonus] Error no rows");
+	
+	reply.send({ success :userRes.rows[0].success, msg: userRes.rows[0].msg });
     }
     catch (err)
     {
-        console.error('[ApplyBonus] Error query:', err);
+		reply.send({ success :false, msg: '[ApplyBonus]: internal server error :', err });
     }
   });
 
@@ -366,15 +368,55 @@ export default async function gamesRoutes (app: FastifyInstance)
     const pgClient = await app.pg.connect();
     try
     {
-      const userRes = await pgClient.query('SELECT id FROM successfull_block($1, $2)', [request.body.id, request.body.playerisLeft]);
+      const userRes = await pgClient.query('SELECT * FROM successfull_block($1, $2)', [request.body.id, request.body.playerisLeft]);
       if (userRes.rows && userRes[0])
         console.log(userRes.rows[0].msg);
-      else
+	else
         console.log("[Block] Error no rows");
+	reply.send({ success :userRes.rows[0].success, msg: userRes.rows[0].msg });
     }
     catch (err)
     {
-        console.error('[Block] Error query:', err);
+		reply.send({ success :false, msg: '[Block]: internal server error :', err });
+    }
+  });
+
+  app.post<{
+    Body: {
+      gameId: number;
+      winnerSide: boolean;
+    };
+  }>('/game/end', async (request, reply) => {
+    const { gameId, winnerSide } = request.body;
+    
+    console.log(`[Game End] Received notification for gameId: ${gameId}`);
+    console.log(`[Game End]   Winner ID: ${winnerSide}`);
+    // console.log(`[Game End]   Scores: P1=${p1_score}, P2=${p2_score}`);
+
+    const client = await app.pg.connect();
+    try {
+      console.log(`[Game End] Calling win_game(${gameId}, ${winnerSide}) in DB...`);
+      const res = await client.query(
+        'SELECT * FROM win_game($1::INTEGER, $2::BOOLEAN)',
+        [gameId, winnerSide]
+      );
+
+      const result = res.rows[0];
+      console.log('[Game End] Received from DB:', result);
+
+      if (result.success) {
+        console.log(`[Game End] DB call successful`);
+      } else {
+        console.error(`[Game End] DB call failed for game ${gameId}. Reason: ${result.msg}`);
+      }
+      
+      reply.send({ success: result.success, message: result.msg });
+    } catch (err) {
+      console.error(`[Game End] FATAL: Error processing game result for game ${gameId}:`, err);
+      reply.status(500).send({ success: false, message: 'Internal server error.' });
+    } finally {
+      client.release();
+      console.log(`[Game End] DB client released for game ${gameId}.`);
     }
   });
 }
