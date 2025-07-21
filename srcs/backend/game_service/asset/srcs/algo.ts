@@ -504,7 +504,7 @@ export class Game
 	}
 
     private endGame() {
-        if (this.state.type === 'TOURNAMENT' && this.gameId) {
+        if (this.gameId) {
             const winnerIsLeft = this.state.winner === 'left';
             fetch('http://tournament_service:3000/api/tournaments/game/end', {
                 method: 'POST',
