@@ -4,8 +4,8 @@ set -e
 # 127.0.0.1   DOMAIN_NAME -> IPv4
 # ::1         DOMAIN_NAME -> IPv6
 
-if [ -f ./srcs/.env ]; then
-  . ./srcs/.env
+if [ -f .env ]; then
+  . ./.env
 fi
 
 if [ -z "$DOMAIN_NAME" ]; then
