@@ -41,6 +41,8 @@ export function leaveTournamentLobby() {
   } else {
     if (confirm('Are you sure you want to leave the tournament?')) {
       if (!currentTournamentId || !currentTournamentName) return false;
+      navigate('tournaments');
+      tournamentLobbyModal.classList.add('hidden');
       leaveTournament(currentTournamentId, userId, currentTournamentName);
       didLeave = true;
     }
@@ -142,7 +144,7 @@ function initializeLobbyEventListeners() {
       localStorage.removeItem('activeTournamentSession');
       console.log("[DEBUG activeTournamentSession] TournamentLobby.ts: 'left-tournament' listener - activeTournamentSession flag REMOVED.");
       currentTournamentId = null;
-      navigate('tournaments');
+      
     }
   });
 
