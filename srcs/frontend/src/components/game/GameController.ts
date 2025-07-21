@@ -14,7 +14,7 @@ const imagePaths = {
 
 const images: { [key: string]: HTMLImageElement } = {};
 
-function loadImages(): Promise<void[]> {
+export async function loadImages(): Promise<void[]> {
   const promises = Object.entries(imagePaths).map(([type, src]) => {
     return new Promise<void>((resolve, reject) => {
       const img = new Image();
@@ -138,7 +138,7 @@ function sendInput(type: 'move_up' | 'move_down' | 'stop') {
 
 // --- Game Flow & UI Management ---
 
-function showGameUI(isWaiting = false, isLocal = false, isAI = false) {
+export function showGameUI(isWaiting = false, isLocal = false, isAI = false) {
   hero.classList.add('hidden');
   resultPre.classList.add('hidden');
   canvas.classList.remove('hidden');
@@ -164,7 +164,7 @@ function showGameUI(isWaiting = false, isLocal = false, isAI = false) {
   }
 }
 
-function hideGameUI() {
+export function hideGameUI() {
   detachGameListeners();
   clearForfeitTimer();
   hero.classList.remove('hidden');
@@ -232,6 +232,7 @@ function handleGameOver(state: any) {
   const winner = state.players.find((p: any) => p.side === winnerSide);
   resultPre.textContent = `Game Over — winner: ${winner ? winner.id : 'Unknown'}`;
   hideGameUI();
+  
   // Additional logic for tournament game progression can be added here
 }
 
