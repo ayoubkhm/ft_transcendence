@@ -192,32 +192,14 @@ export default async function private_userRoutes(server: FastifyInstance, option
 
   server.put<{ Body: DfaUpdateBody, Params: DfaUpdateParams }>('/2fa/update/:id', async (request, reply) => {
     try {
-      // Determine if this is a service call (API_CREDENTIAL) or a user call (JWT cookie)
       const apiCred = request.body?.credential;
       const id = parseInt(request.params.id, 10);
       if (apiCred) {
-        // Service-to-service authentication
-        if (apiCred !== process.env.API_CREDENTIAL) {
-          return reply.status(403).send({ error: 'Forbidden' });
-        }
-      } else {
-        // Security: JWT validation and authorization
-        const token = (request.cookies as any)?.jwt_transcendence;
-        if (!token) {
-          return reply.status(401).send({ error: 'Unauthorized' });
-        }
-        let tokenPayload;
-        try {
-          tokenPayload = getTokenData(token);
-        } catch {
-          return reply.status(401).send({ error: 'Invalid token' });
-        }
-        // Security check: allow if admin or self
-        if (!tokenPayload.admin && tokenPayload.id !== id) {
-          return reply.status(403).send({ error: 'Forbidden' });
-        }
-      }
-
+        if (apiCred !== process.env.API_CREDENTIAL)
+          return reply.status(403).send({ error: 'Forbidden' });}
+      if (!id || isNaN(id))
+        return reply.status(400).send({ error: 'Invalid user ID' });
+    
       const twoFactorSecret = request.body?.twoFactorSecret;
       const twoFactorSecretTemp = request.body?.twoFactorSecretTemp;
       
