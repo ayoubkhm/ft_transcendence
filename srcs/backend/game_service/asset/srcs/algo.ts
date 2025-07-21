@@ -336,7 +336,7 @@ export class Game
 					this.applyBonus(player.side, b.type);
 
 					// dont await, db can wait, game cant
-					fetch('http://localhost:3001/api/games/applyBonus', {
+					fetch('http://game_service:3001/api/games/applyBonus', {
 						method: 'POST',
 						headers: {
 							'Content-Type': 'application/json',
@@ -383,7 +383,7 @@ export class Game
 		{
 			left.cpttch++;
 			// dont await, db can wait, game cant
-			fetch('http://localhost:3001/api/games/block', {
+			fetch('http://game_service:3001/api/games/block', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
@@ -422,7 +422,7 @@ export class Game
 		{
 			right.cpttch++;
 			// dont await, db can wait, game cant
-			fetch('http://localhost:3001/api/games/block', {
+			fetch('http://game_service:3001/api/games/block', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
