@@ -314,6 +314,12 @@ export default async function private_userRoutes(server: FastifyInstance, option
         else if (flag === "name") {
           const newName = request.body?.name;
           const email = tokenPayload.email;
+          if (!newName || newName.length > 20 || !newName.match(/^[a-zA-Z0-9_]+$/)) {
+            return reply.status(400).send({ error: 'Invalid name length : Must be between 1-20 characters' });
+          }
+          if (!newName.match(/^[a-zA-Z0-9_]+$/)) {
+            return reply.status(400).send({ error: 'Invalid name format : only alphanumeric characters are allowed' });
+          }
           const user = await server.pg.query('SELECT * FROM users WHERE name = $1', [newName]);
           if (user.rows.length > 0) {
             return reply.status(409).send({ error: 'Name already exists' });
@@ -321,8 +327,8 @@ export default async function private_userRoutes(server: FastifyInstance, option
           if (newName === tokenPayload.name) {
             return reply.status(400).send({ error: 'Name cannot be the same as current name' });
           }
-          if (!newName || !email) {
-            return reply.status(400).send({ error: 'Email and name cannot be empty' });
+          if (!email) {
+            return reply.status(400).send({ error: 'Email cannot be empty' });
           }
           const result = await server.pg.query('SELECT * FROM update_user_name($1, $2)', [email, newName]);
           const row = result.rows[0];
