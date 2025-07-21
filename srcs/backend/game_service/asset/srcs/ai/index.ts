@@ -31,8 +31,7 @@ export function predictBallY(
   const targetCenter = reflectY + BALL_R;
 
   // Add prediction error based on difficulty
-  const error = (Math.random() - 0.5) * options.predictionError;
-  return targetCenter + error;
+  return targetCenter;
 }
 
 /**
