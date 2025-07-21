@@ -41,8 +41,8 @@ export class Game
 	ballspeedM: number;
 
     constructor(
-        leftId: string,
-        rightId: string,
+        leftName: string,
+        rightName: string,
         leftDbId: number | null,
         rightDbId: number | null,
         type: 'IA' | 'TOURNAMENT' | 'VS',
@@ -56,10 +56,10 @@ export class Game
         this.aiTargetY = GAME_HEIGHT / 2 - PADDLE_H / 2; // Initial target
         this.customOn = customOn;
         // initialize cumulative stats
-        this.powerUpsUsed = { [leftId]: 0, [rightId]: 0 };
-        this.distanceMoved = { [leftId]: 0, [rightId]: 0 };
+        this.powerUpsUsed = { [leftName]: 0, [rightName]: 0 };
+        this.distanceMoved = { [leftName]: 0, [rightName]: 0 };
         this.lastScorerId = null;
-        this.streaks = { [leftId]: 0, [rightId]: 0 };
+        this.streaks = { [leftName]: 0, [rightName]: 0 };
 		this.ballspeedM = 1;
         // Set initial countdown: 5 seconds at 60 ticks/s
         this.countdownTicks = 5 * 60;
@@ -74,7 +74,7 @@ export class Game
 			},
         players: [
             {
-                id: leftId,
+                id: leftName,
                 dbId: leftDbId,
                 side: 'left',
                 paddle: { y: GAME_HEIGHT / 2 - PADDLE_H / 2, dy: 0, w: PADDLE_W, h: PADDLE_H },
@@ -89,7 +89,7 @@ export class Game
                 streak: 0,
             },
             {
-                id: rightId,
+                id: rightName,
                 dbId: rightDbId,
                 side: 'right',
                 paddle: { y: GAME_HEIGHT / 2 - PADDLE_H / 2, dy: 0, w: PADDLE_W, h: PADDLE_H },
