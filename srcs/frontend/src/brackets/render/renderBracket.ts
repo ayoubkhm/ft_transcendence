@@ -33,7 +33,7 @@ export default function renderBrackets(tname: string, tstate: string, twinner: {
 
 		if (twinner != null)
 		{
-			const oldWinner = document.getElementById("brackets-tournament-state");
+			const oldWinner = document.getElementById("brackets-tournament-winner");
 			if (oldWinner)
 				infoWrapper.removeChild(oldWinner);
 
