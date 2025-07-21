@@ -574,28 +574,3 @@ function Randombetween(a: number, b:number) : number
 		rand = Math.random()
 	return(rand)
 }
-
-// ──────────────────────────────────────────────────────────────────
-// Database persistence
-// ──────────────────────────────────────────────────────────────────
-export async function saveGameStats(pgClient: PoolClient, game: Game)
-{
-    const state = game.getState();
-    const [p1, p2] = state.players;
-    const winner = state.winner === 'left' ? p1 : p2;
-    const loser = state.winner === 'left' ? p2 : p1;
-
-    // Only save stats for non-AI players
-    if (winner.id !== 'AI' && winner.dbId) {
-        await pgClient.query(
-            'UPDATE users SET games_won = games_won + 1 WHERE id = $1',
-            [winner.dbId]
-        );
-    }
-    if (loser.id !== 'AI' && loser.dbId) {
-        await pgClient.query(
-            'UPDATE users SET games_lost = games_lost + 1 WHERE id = $1',
-            [loser.dbId]
-        );
-    }
-}
