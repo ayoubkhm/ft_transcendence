@@ -138,6 +138,7 @@ BEGIN
 						'p2_id', g.p2_id,
 						'p1_score', g.p1_score,
 						'p2_score', g.p2_score,
+						'date', g.created_at,
 						'winner', CASE
 							WHEN g.winner IS NULL THEN NULL
 							WHEN g.winner = TRUE AND g.p1_id = _id THEN TRUE

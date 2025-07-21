@@ -92,7 +92,7 @@
     </section>
 
     <!-- Canvas: wrapped to center the scaled canvas -->
-    <div id="canvas-wrapper" class="flex-1 flex justify-center items-center relative">
+    <div id="canvas-wrapper" class="flex-1 flex justify-center items-center relative hidden">
       <div id="player-left-name" class="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-bold text-white hidden"></div>
       <div id="player-left-controls" class="absolute left-4 top-1/2 mt-8 text-lg text-white hidden">
         <kbd class="key">W</kbd>: Up, <kbd class="key">S</kbd>: Down
@@ -106,10 +106,7 @@
         <input id="game-id-input" type="text" readonly
                class="bg-transparent border-none text-white text-sm w-36" />
       </div>
-      <canvas id="game-canvas"
-              width="800" height="450"
-              class="border border-white hidden"
-              tabindex="0"></canvas>
+      <canvas id="game-canvas" width="800" height="450" class="border border-white" tabindex="0"></canvas>
       <div id="player-right-name" class="absolute right-4 top-1/2 -translate-y-1/2 text-2xl font-bold text-white hidden"></div>
       <div id="player-right-controls" class="absolute right-4 top-1/2 mt-8 text-lg text-white hidden">
         <kbd class="key">↑</kbd>: Up, <kbd class="key">↓</kbd>: Down

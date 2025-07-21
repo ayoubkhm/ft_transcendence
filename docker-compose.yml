@@ -97,6 +97,8 @@ services:
         - NODE_ENV=dev
     networks:
       - router
+    volumes:
+      - ./avatar_data:/usr/src/avatar
   # ──────────────────────────────────────────────────────────
   tournament_service:
     container_name: tournament_service
@@ -186,6 +188,7 @@ services:
 # ──────────────────────────────────────────────────────────────
 volumes:
   database:
+  avatar_data:
 
 networks:
   router:

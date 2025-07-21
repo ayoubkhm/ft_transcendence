@@ -11,6 +11,7 @@ export type MatchStats = {
     p1_score: number;
     p2_score: number;
     winner: boolean | null;
+    date?: string; //MODIFIED: Par mehdi pour afficher la date
 };
 
 export type UserStats = {

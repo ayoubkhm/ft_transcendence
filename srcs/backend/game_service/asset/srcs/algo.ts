@@ -299,6 +299,9 @@ export class Game
 			this.state.bonusBalls.push(newBall);
 		}
 		this.state.timer++;
+		// Sauvegarde de l'ancienne position de la balle avant déplacement
+		const oldBallX = ball.x;
+    	const oldBallY = ball.y;
 		// 3) Déplacement de la balle
 		ball.x += ball.v.x * dt * this.ballspeedM;
 		ball.y += ball.v.y * dt * this.ballspeedM;
@@ -378,8 +381,12 @@ export class Game
 		this.state.bonusBalls = (this.state.bonusBalls || []).filter(b => b.active);
 		// Paddle collision with angle based on hit position
 		const maxBounceAngle = Math.PI / 4; // 45 degrees
+		// DÉTECTION CONTINUE DES COLLISIONS AVEC LES RAQUETTES
+		const leftPaddleEdge = PADDLE_W + BALL_R;
+    	const rightPaddleEdge = GAME_WIDTH - PADDLE_W - BALL_R;
 		// Left paddle
-		if (ball.x - BALL_R <= PADDLE_W)
+		if ((oldBallX > leftPaddleEdge && ball.x <= leftPaddleEdge) || 
+        (oldBallX < leftPaddleEdge && ball.x >= leftPaddleEdge))
 		{
 			left.cpttch++;
 			// dont await, db can wait, game cant
@@ -393,32 +400,40 @@ export class Game
 			// 		playerisLeft: (true)
 			// 	}),
 			// });
-
+			const t = (leftPaddleEdge - oldBallX) / (ball.x - oldBallX);
+			const collisionY = oldBallY + t * (ball.y - oldBallY);
+			
 			const py = left.paddle.y;
-			if (ball.y >= py && ball.y <= py + left.paddle.h)
-			{
+			if (collisionY >= py && collisionY <= py + left.paddle.h) {
 				// Compute normalized intersection [-1..1]
 				const paddleCenter = py + left.paddle.h / 2;
-				const relativeY = (ball.y - paddleCenter) / (left.paddle.h / 2);
+				const relativeY = (collisionY - paddleCenter) / (left.paddle.h / 2);
 
 				const clamped = Math.max(-1, Math.min(relativeY, 1));
 				const bounceAngle = clamped * maxBounceAngle;
 				// Preserve speed magnitude
 				const speedMag = Math.hypot(ball.v.x, ball.v.y);
-				ball.v.x =	speedMag * Math.cos(bounceAngle);
-				ball.v.y =	speedMag * Math.sin(bounceAngle);
+				ball.v.x =  speedMag * Math.cos(bounceAngle);
+				ball.v.y =  speedMag * Math.sin(bounceAngle);
 				this.ballspeedM *= BALL_XLR;
+				
+				// Repositionner précisément
+				ball.x = leftPaddleEdge;
+				ball.y = collisionY;
 			}
-			else if (left.power.includes("s"))
-			{
+			else if (left.power.includes("s")) {
 				const speedMag = Math.hypot(ball.v.x, ball.v.y);
 				ball.v.x = speedMag;
 				ball.v.y = 0;
-				left.power = left.power.replace(/s/g, ""); // supprime tous les shields
+				left.power = left.power.replace(/s/g, "");
+				
+				// Repositionner précisément
+				ball.x = leftPaddleEdge;
 			}
-		}
+    	}
 		// Right paddle
-		if (ball.x + BALL_R >= GAME_WIDTH - PADDLE_W)
+		if ((oldBallX < rightPaddleEdge && ball.x >= rightPaddleEdge) || 
+        (oldBallX > rightPaddleEdge && ball.x <= rightPaddleEdge))
 		{
 			right.cpttch++;
 			// dont await, db can wait, game cant
@@ -434,27 +449,35 @@ export class Game
 			// });
 			
 
+			const t = (rightPaddleEdge - oldBallX) / (ball.x - oldBallX);
+        	const collisionY = oldBallY + t * (ball.y - oldBallY);
+        
 			const py = right.paddle.y;
-			if (ball.y >= py && ball.y <= py + right.paddle.h)
-			{
+			if (collisionY >= py && collisionY <= py + right.paddle.h) {
 				// Compute normalized intersection [-1..1]
 				const paddleCenter = py + right.paddle.h / 2;
-				const relativeY = (ball.y - paddleCenter) / (right.paddle.h / 2);
+				const relativeY = (collisionY - paddleCenter) / (right.paddle.h / 2);
 
 				const clamped = Math.max(-1, Math.min(relativeY, 1));
 				const bounceAngle = clamped * maxBounceAngle;
 				// Preserve speed magnitude
 				const speedMag = Math.hypot(ball.v.x, ball.v.y);
 				ball.v.x = -speedMag * Math.cos(bounceAngle);
-				ball.v.y =	speedMag * Math.sin(bounceAngle);
+				ball.v.y =  speedMag * Math.sin(bounceAngle);
 				this.ballspeedM *= BALL_XLR;
+				
+				// Repositionner précisément
+				ball.x = rightPaddleEdge;
+				ball.y = collisionY;
 			}
-			else if (right.power.includes("s"))
-			{
+			else if (right.power.includes("s")) {
 				const speedMag = Math.hypot(ball.v.x, ball.v.y);
 				ball.v.x = -speedMag;
 				ball.v.y = 0;
-				right.power = right.power.replace(/s/g, ""); // supprime tous les shields
+				right.power = right.power.replace(/s/g, "");
+				
+				// Repositionner précisément
+				ball.x = rightPaddleEdge;
 			}
 		}
 		// 4) Score et fin de manche
