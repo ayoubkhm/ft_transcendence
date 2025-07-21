@@ -74,25 +74,32 @@ interface PrivateDataParams {
   
   const isID = /^\d+$/.test(request.params.id);
   const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(request.params.id);
+  // if (token) {
+  //   let tokData;
+  //   try {
+  //     tokData = getTokenData(token);
+  //   } catch {
+  //     return reply.status(403).send({ error: 'Forbidden' });
+  //   }
+  //   if (isEmail) {
+  //     if (tokData.email !== request.params.id && !tokData.admin) {
+  //       return reply.status(403).send({ error: 'Forbidden' });
+  //     }
+  //   } else if (isID) {
+  //     if (tokData.id !== Number(request.params.id) && !tokData.admin) {
+  //       return reply.status(403).send({ error: 'Forbidden' });
+  //     }
+  //   } else {
+  //     if (tokData.name !== request.params.id && !tokData.admin) {
+  //       return reply.status(403).send({ error: 'Forbidden' });
+  //     }
+  //   }
+  // }
   if (token) {
-    let tokData;
     try {
-      tokData = getTokenData(token);
+      getTokenData(token); // juste pour valider le token
     } catch {
       return reply.status(403).send({ error: 'Forbidden' });
-    }
-    if (isEmail) {
-      if (tokData.email !== request.params.id && !tokData.admin) {
-        return reply.status(403).send({ error: 'Forbidden' });
-      }
-    } else if (isID) {
-      if (tokData.id !== Number(request.params.id) && !tokData.admin) {
-        return reply.status(403).send({ error: 'Forbidden' });
-      }
-    } else {
-      if (tokData.name !== request.params.id && !tokData.admin) {
-        return reply.status(403).send({ error: 'Forbidden' });
-      }
     }
   }
 
