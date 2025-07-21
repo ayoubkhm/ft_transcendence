@@ -9,7 +9,6 @@ const WS_OPEN = 1;
 // --- WebSocket Connection Management ---
 const socketsGroups = new Map<number, Set<SocketStream>>(); // groupId -> Set<SocketStream>
 const socketToGroups = new Map<SocketStream, Set<number>>(); // SocketStream -> Set<groupId>
-const lobbyActivity = new Map<number, Map<number, NodeJS.Timeout>>(); // tournamentId -> userId -> timeoutId
 
 function joinGroup(connection: SocketStream, groupId: number) {
   if (!socketsGroups.has(groupId)) {
@@ -237,14 +236,6 @@ const websocketHandler: WebsocketHandler = (connection, req) => {
           }
           conn.userId = user_id; // Associate user with this connection
 
-          // If user is rejoining, cancel their leave timer
-          const userTimers = lobbyActivity.get(tournament_id);
-          if (userTimers && userTimers.has(user_id)) {
-            console.log(`[WS] User ${user_id} reconnected to tournament ${tournament_id}. Cancelling leave timer.`);
-            clearTimeout(userTimers.get(user_id)!);
-            userTimers.delete(user_id);
-          }
-
           const client = await req.server.pg.connect();
           try {
             const tourRes = await client.query('SELECT name FROM tournaments WHERE id = $1', [tournament_id]);
@@ -346,55 +337,6 @@ const websocketHandler: WebsocketHandler = (connection, req) => {
       const groupsCopy = new Set(groups);
       for (const groupId of groupsCopy) {
         leaveGroup(conn, groupId);
-
-        if (groupId > 0 && conn.userId) {
-          const userId = conn.userId;
-          console.log(`[WS] User ${userId} disconnected from tournament ${groupId}. Starting 15s grace period timer.`);
-
-          const timeoutId = setTimeout(async () => {
-            const client = await server.pg.connect();
-            try {
-              const tourRes = await client.query('SELECT name, owner_id, state FROM tournaments WHERE id = $1', [groupId]);
-              if (tourRes.rows.length > 0) {
-                const { name, owner_id, state } = tourRes.rows[0];
-
-                // Only remove players if the tournament is in the LOBBY state
-                if (state === 'LOBBY') {
-                  // If the disconnected user is the owner, delete the tournament.
-                  if (userId === owner_id) {
-                    console.log(`[WS] Owner ${userId} abandoned lobby for tournament ${groupId}. Deleting tournament.`);
-                    await client.query('SELECT * FROM delete_tournament($1::TEXT)', [name]);
-                  } else {
-                    // Otherwise, just make the user leave the tournament.
-                    console.log(`[WS] Grace period expired for user ${userId} in tournament ${groupId}. Removing from tournament.`);
-                    await client.query('SELECT * FROM leave_tournament($1::INTEGER, $2::TEXT)', [userId, name]);
-                  }
-                } else {
-                  console.log(`[WS] User ${userId} disconnected from a running/over tournament ${groupId}. No action taken.`);
-                }
-
-                // Clean up the timer from the activity map
-                const userTimers = lobbyActivity.get(groupId);
-                if (userTimers) {
-                  userTimers.delete(userId);
-                }
-                
-                // Broadcast updates to all relevant parties
-                await broadcastDashboardUpdate(server, client);
-                await broadcastTournamentUpdate(server, groupId, client);
-              }
-            } catch (err) {
-              console.error(`[WS] Error in timed leave/delete for user ${userId} from tournament ${groupId}:`, err);
-            } finally {
-              client.release();
-            }
-          }, 15000); // 15-second grace period
-
-          if (!lobbyActivity.has(groupId)) {
-            lobbyActivity.set(groupId, new Map());
-          }
-          lobbyActivity.get(groupId)!.set(userId, timeoutId);
-        }
       }
     }
   });
