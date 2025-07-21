@@ -2,6 +2,8 @@ import { drawGame, drawForfeitTimer } from './GameCanvas';
 import { navigate, onRoute } from '../../lib/router';
 import { loginAsGuest } from '../auth/Auth';
 import { Game } from '../../game_logic/algo.js';
+import { fetchApi } from '../../lib/api';
+import { drawEndScreen } from './end_screen';
 
 
 // --- Image Preloading ---
@@ -35,6 +37,7 @@ function loadImages(): Promise<void[]> {
 
 // --- DOM Elements ---
 const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
+const canvasWrapper = document.getElementById('canvas-wrapper') as HTMLElement;
 const ctx = canvas?.getContext('2d');
 const hero = document.getElementById('hero') as HTMLElement;
 const resultPre = document.getElementById('game-result') as HTMLPreElement;
@@ -141,7 +144,10 @@ function sendInput(type: 'move_up' | 'move_down' | 'stop') {
 function showGameUI(isWaiting = false, isLocal = false, isAI = false) {
   hero.classList.add('hidden');
   resultPre.classList.add('hidden');
+  canvasWrapper.classList.remove('hidden');
   canvas.classList.remove('hidden');
+  // Set canvas to default centered position for gameplay
+  canvasWrapper.style.transform = 'translateY(0)';
   forfeitBtn.classList.remove('hidden');
   playAIBtn.disabled = true;
   playPVPBtn.disabled = true;
@@ -164,13 +170,18 @@ function showGameUI(isWaiting = false, isLocal = false, isAI = false) {
   }
 }
 
-function hideGameUI() {
+function hideGameUI(gameOver = false) {
   detachGameListeners();
   clearForfeitTimer();
   hero.classList.remove('hidden');
-  canvas.classList.add('hidden');
+  if (!gameOver) {
+    canvas.classList.add('hidden');
+    canvasWrapper.classList.add('hidden');
+  }
+  // Reset canvas position when UI is hidden
+  canvasWrapper.style.transform = 'translateY(0)';
   forfeitBtn.classList.add('hidden');
-  resultPre.classList.remove('hidden');
+  resultPre.classList.add('hidden');
   playAIBtn.disabled = false;
   playPVPBtn.disabled = false;
   shareDiv.classList.add('hidden'); // Hide the share div
@@ -228,10 +239,12 @@ async function startLocalPvPGame() {
 
 
 function handleGameOver(state: any) {
-  const winnerSide = state.winner;
-  const winner = state.players.find((p: any) => p.side === winnerSide);
-  resultPre.textContent = `Game Over — winner: ${winner ? winner.id : 'Unknown'}`;
-  hideGameUI();
+  // Move canvas up for the end screen
+  canvasWrapper.style.transform = 'translateY(-100px)';
+  if (ctx) {
+    drawEndScreen(ctx, state);
+  }
+  hideGameUI(true);
   // Additional logic for tournament game progression can be added here
 }
 
