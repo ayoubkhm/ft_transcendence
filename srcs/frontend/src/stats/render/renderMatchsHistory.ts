@@ -58,6 +58,11 @@ export default function renderMatchHistory(userId: number, matches: MatchStats[]
 		score.className = "w-20 font-mono";
 		score.textContent = `${match.p1_score} - ${match.p2_score}`;
 
+		const dateDiv = document.createElement("div"); //MODIFIED: Par mehdi pour afficher la date
+    	dateDiv.className = "w-32 text-xs text-gray-300"; //MODIFIED: Par mehdi pour afficher la date
+    	dateDiv.textContent = match.date ? new Date(match.date).toLocaleString() : "Date inconnue"; //MODIFIED: Par mehdi pour afficher la date
+
+		matchDiv.appendChild(dateDiv); //MODIFIED: Par mehdi pour afficher la date
 		matchDiv.appendChild(typeCol);
 		matchDiv.appendChild(stateDot);
 		matchDiv.appendChild(p1);
