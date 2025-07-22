@@ -24,10 +24,25 @@ export function getCurrentUserId(): number | null {
 export function updateAuthView() {
     if (!authUser || !authGuest || !userGreeting) return;
     const loggedIn = localStorage.getItem('loggedIn') === 'true';
+    const username = localStorage.getItem('username');
+    const email = localStorage.getItem('userEmail');
+    // Vérifie si c'est un vrai guest (pas d'email)
+    const isGuest = !email || email === 'null' || email === 'undefined' || email === '';
     if (loggedIn) {
         authUser.classList.remove('hidden');
         authGuest.classList.add('hidden');
-        userGreeting.textContent = localStorage.getItem('username') || 'Player';
+        userGreeting.textContent = username || 'Player';
+
+        // Si c'est un vrai guest, cache les boutons profile et friends
+        const profileBtn = document.getElementById('profile-btn') as HTMLButtonElement | null;
+        const friendsBtn = document.getElementById('friends-btn') as HTMLButtonElement | null;
+        if (isGuest) {
+            if (profileBtn) profileBtn.classList.add('hidden');
+            if (friendsBtn) friendsBtn.classList.add('hidden');
+        } else {
+            if (profileBtn) profileBtn.classList.remove('hidden');
+            if (friendsBtn) friendsBtn.classList.remove('hidden');
+        }
     } else {
         authUser.classList.add('hidden');
         authGuest.classList.remove('hidden');
