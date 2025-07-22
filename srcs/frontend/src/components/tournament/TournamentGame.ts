@@ -14,6 +14,7 @@ const tournamentGameClose = document.getElementById('tournament-game-close') as 
 
 let currentTournamentId: number | null = null;
 let isPlayingGame = false;
+let offTournamentUpdate: (() => void) | null = null; // To hold the unsubscribe function
 
 function joinTournamentGame(gameId: string) {
   isPlayingGame = true;
@@ -33,7 +34,12 @@ function joinTournamentGame(gameId: string) {
 
     detachCanvas();
     tournamentGameModal.classList.remove('hidden');
-    isPlayingGame = false;
+    
+    // The game is over, but we wait a moment before allowing UI updates
+    // to prevent jarring transitions.
+    setTimeout(() => {
+      isPlayingGame = false;
+    }, 500);
   });
 }
 
@@ -111,6 +117,10 @@ function displayRunningMatches(details: any) {
 }
 
 export function showTournamentGame(details: any) {
+  if (isPlayingGame) {
+    console.log('[showTournamentGame] A game is in progress. Aborting showTournamentGame to prevent UI disruption.');
+    return;
+  }
   console.log('[Tournament Redirection] showTournamentGame called with details:', details);
   if (tournamentGameModal) {
     tournamentGameModal.classList.remove('hidden');
@@ -122,8 +132,13 @@ export function showTournamentGame(details: any) {
   console.log('Populating tournament game modal with details:', details);
   
   tournamentGameTitle.textContent = details.name;
+
+  // Clean up the old listener before creating a new one
+  if (offTournamentUpdate) {
+    offTournamentUpdate();
+  }
   
-  on('tournament-update', (newDetails) => {
+  offTournamentUpdate = on('tournament-update', (newDetails) => {
     if (isPlayingGame) {
       console.log('Tournament update received, but a game is in progress. Ignoring.');
       return;
@@ -166,6 +181,12 @@ export function hideTournamentGame() {
     tournamentGameModal.classList.add('hidden'); // Then hide the modal
     currentTournamentId = null;
     localStorage.removeItem('activeTournamentSession');
+
+    // Clean up the listener when the tournament is hidden
+    if (offTournamentUpdate) {
+      offTournamentUpdate();
+      offTournamentUpdate = null;
+    }
   }
 }
 
