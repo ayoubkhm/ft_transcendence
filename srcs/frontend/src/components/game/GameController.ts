@@ -168,6 +168,11 @@ export function showGameUI(isWaiting = false, isLocal = false, isAI = false) {
     ctx.textAlign = 'center';
     ctx.fillText('Waiting for opponent...', canvas.width / 2, canvas.height / 2);
   }
+  document.getElementById('profile-btn')?.setAttribute('disabled', 'true');
+  document.getElementById('friends-btn')?.setAttribute('disabled', 'true');
+  document.getElementById('logout-btn')?.setAttribute('disabled', 'true');
+  document.getElementById('play-tourn-btn')?.setAttribute('disabled', 'true');
+  document.getElementById('search-user')?.setAttribute('disabled', 'true');
 }
 
 export function hideGameUI(gameOver = false) {
@@ -204,6 +209,12 @@ export function hideGameUI(gameOver = false) {
   authToken = null;
   lastInput = null;
   localGame = null;
+  
+  document.getElementById('profile-btn')?.removeAttribute('disabled');
+  document.getElementById('logout-btn')?.removeAttribute('disabled');
+  document.getElementById('friends-btn')?.removeAttribute('disabled');
+  document.getElementById('play-tourn-btn')?.removeAttribute('disabled');
+  document.getElementById('search-user')?.removeAttribute('disabled');
 }
 
 function localGameLoop() {
