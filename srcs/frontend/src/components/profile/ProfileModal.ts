@@ -124,8 +124,7 @@ export function setupProfileModal(): void {
           const data = await res.json();
           if (res.ok) {
             alert(data.message || '2FA disabled. You will now be logged out.');
-            localStorage.clear();
-            window.location.reload();
+            window.location.replace('/login');
           } else {
             alert(data.error || 'Disable 2FA failed');
           }

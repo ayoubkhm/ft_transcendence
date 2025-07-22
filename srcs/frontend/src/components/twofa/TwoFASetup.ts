@@ -55,6 +55,7 @@ export function setupTwoFASetup() {
   }
 
   onRoute('setup-2fa', open2faSetupModal);
+  onRoute('profile', closeTwoFASetup);
 
   setup2faCloseBtn.addEventListener('click', e => {
     e.preventDefault();
@@ -91,16 +92,7 @@ export function setupTwoFASetup() {
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
         alert('2FA has been successfully enabled. You will now be logged out. Please log in again to continue.');
-        hide(setup2faModal);
-        if (setup2faTestCodeDiv) {
-          hide(setup2faTestCodeDiv);
-        }
-        // Clear session and refresh
-        localStorage.removeItem('loggedIn');
-        localStorage.removeItem('username');
-        localStorage.removeItem('userEmail');
-        localStorage.removeItem('twofaEnabled');
-        window.location.reload();
+        window.location.replace('/login');
       } else {
         alert((data as any).error || '2FA setup verification failed');
       }
@@ -109,7 +101,6 @@ export function setupTwoFASetup() {
       alert('Error verifying 2FA code');
     }
   });
-  onRoute('profile', closeTwoFASetup);
 }
 
 /**
