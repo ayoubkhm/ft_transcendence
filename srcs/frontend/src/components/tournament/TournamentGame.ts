@@ -13,8 +13,10 @@ const tournamentBracketsContainer = document.getElementById('tournament-brackets
 const tournamentGameClose = document.getElementById('tournament-game-close') as HTMLButtonElement;
 
 let currentTournamentId: number | null = null;
+let isPlayingGame = false;
 
 function joinTournamentGame(gameId: string) {
+  isPlayingGame = true;
   // This will reuse the PvP join logic, which connects to the game's WebSocket
   // and handles the state updates. The backend will differentiate based on the message type.
   joinPvPGame(gameId, (state) => {
@@ -31,6 +33,7 @@ function joinTournamentGame(gameId: string) {
 
     detachCanvas();
     tournamentGameModal.classList.remove('hidden');
+    isPlayingGame = false;
   });
 }
 
@@ -121,6 +124,11 @@ export function showTournamentGame(details: any) {
   tournamentGameTitle.textContent = details.name;
   
   on('tournament-update', (newDetails) => {
+    if (isPlayingGame) {
+      console.log('Tournament update received, but a game is in progress. Ignoring.');
+      return;
+    }
+
     if (newDetails.id !== currentTournamentId) return;
     
     // Refresh the view with new data
