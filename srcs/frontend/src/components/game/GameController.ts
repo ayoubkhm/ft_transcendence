@@ -474,6 +474,15 @@ export function setupGame() {
       alert('Please enter a Game ID to join.');
     }
   });
+
+  pvpModalJoinInput.addEventListener('input', () => {
+    const value = parseInt(pvpModalJoinInput.value, 10);
+    const max = 2147483647;
+    if (value > max) {
+      pvpModalJoinInput.value = max.toString();
+    }
+  });
+
   pvpModalLocalBtn.addEventListener('click', () => {
     navigate('home');
     startLocalPvPGame();
