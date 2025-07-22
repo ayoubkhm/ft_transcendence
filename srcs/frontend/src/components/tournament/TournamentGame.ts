@@ -41,7 +41,8 @@ type TournamentDetails = {
 
 let currentTournamentId: number | null = null;
 let isPlayingGame = false;
-let offTournamentUpdate: (() => void) | null = null; // To hold the unsubscribe function
+let updateHandler: ((d: TournamentDetails) => void) | null = null;
+let pendingDetails: TournamentDetails | null = null;
 
 // ─── Utils ────────────────────────────────────────────────
 function isModalHidden() {
@@ -127,12 +128,9 @@ function joinTournamentGame(gameId: string) {
 
     detachCanvas();
     tournamentGameModal.classList.remove('hidden');
-    
-    // The game is over, but we wait a moment before allowing UI updates
-    // to prevent jarring transitions.
-    setTimeout(() => {
-      isPlayingGame = false;
-    }, 500);
+
+    isPlayingGame = false;
+    flushPendingIfAny(); // On rerend si des updates étaient en attente
   });
 }
 
@@ -212,12 +210,10 @@ if (tournamentMatchesList) {
   });
 }
 
-export function showTournamentGame(details: any) {
-  if (isPlayingGame) {
-    console.log('[showTournamentGame] A game is in progress. Aborting showTournamentGame to prevent UI disruption.');
-    return;
-  }
-  console.log('[Tournament Redirection] showTournamentGame called with details:', details);
+// ─── Public API ───────────────────────────────────────────
+export function showTournamentGame(details: TournamentDetails) {
+  console.log('[Tournament] showTournamentGame', details);
+
   if (tournamentGameModal) {
     tournamentGameModal.classList.remove('hidden');
   }
@@ -226,17 +222,6 @@ export function showTournamentGame(details: any) {
   currentTournamentId = details.id;
   tournamentGameTitle.textContent = details.name;
 
-  // Clean up the old listener before creating a new one
-  if (offTournamentUpdate) {
-    offTournamentUpdate();
-  }
-  
-  offTournamentUpdate = on('tournament-update', (newDetails) => {
-    if (isPlayingGame) {
-      console.log('Tournament update received, but a game is in progress. Ignoring.');
-      return;
-    }
-
   subscribeTournamentUpdates(details.id);
 
   // Initial render
@@ -244,18 +229,20 @@ export function showTournamentGame(details: any) {
 }
 
 export function hideTournamentGame() {
-  if (tournamentGameModal) {
-    detachGameListeners();
-    detachCanvas(); // Detach canvas FIRST
-    tournamentGameModal.classList.add('hidden'); // Then hide the modal
-    currentTournamentId = null;
-    localStorage.removeItem('activeTournamentSession');
+  if (!tournamentGameModal) return;
 
-    // Clean up the listener when the tournament is hidden
-    if (offTournamentUpdate) {
-      offTournamentUpdate();
-      offTournamentUpdate = null;
+  detachGameListeners();
+  detachCanvas();
+  tournamentGameModal.classList.add('hidden');
+
+  // Unsubscribe
+  if (updateHandler) {
+    try {
+      off('tournament-update', updateHandler);
+    } catch {
+      // adapte si besoin
     }
+    updateHandler = null;
   }
 
   currentTournamentId = null;
