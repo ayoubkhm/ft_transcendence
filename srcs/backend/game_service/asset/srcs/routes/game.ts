@@ -229,7 +229,12 @@ export default async function gamesRoutes (app: FastifyInstance)
             const { playerId, type, ts, token } = message.payload;
             const expectedToken = genToken(id, playerId);
             if (!token || token !== expectedToken) return;
-            session.game.handleInput(playerId, { type, ts });
+			const pgClient = await app.pg.connect();
+			try {
+				await session.game.handleInput(playerId, { type, ts }, pgClient);
+			} finally {
+				pgClient.release();
+			}
             break;
           }
           case 'join_pvp_game': {
@@ -319,9 +324,9 @@ export default async function gamesRoutes (app: FastifyInstance)
                 console.log(`[Game] Forfeit timer expired for game ${id}.`);
                 const presentPlayer = session.game.getState().players.find(p => p.id !== '__PENDING__');
                 if (presentPlayer) {
-                  session.game.handleInput(presentPlayer.id, { type: 'forfeit', ts: Date.now() });
                   const pgClient = await app.pg.connect();
                   try {
+					await session.game.handleInput(presentPlayer.id, { type: 'forfeit', ts: Date.now() }, pgClient);
                     await session.game.step(1 / 60, pgClient); // Process the forfeit
                     broadcastGameState(id);
                   } finally {

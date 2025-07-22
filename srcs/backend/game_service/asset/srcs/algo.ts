@@ -131,7 +131,7 @@ export class Game
 	// ────────────────────────────────────────────────────────────────────────
 	// GESTION DES INPUTS JOUEUR HUMAIN
 	// ────────────────────────────────────────────────────────────────────────
-   handleInput(id: string, msg: ClientInput)
+   async handleInput(id: string, msg: ClientInput, pgClient: PoolClient)
    {
        const p = this.state.players.find(pl => pl.id === id);
        if (!p) return;
@@ -147,6 +147,12 @@ export class Game
                right.score = 7;
                left.score = 0;
            }
+			const winnerIsP1 = this.state.winner === 'left';
+			try {
+				await pgClient.query('SELECT * FROM win_game($1::INTEGER, $2::BOOLEAN)', [this.gameId, winnerIsP1]);
+			} catch (err) {
+				console.error('Error calling win_game() for game', this.gameId, err);
+			}
            this.endGame();
            return;
        }
