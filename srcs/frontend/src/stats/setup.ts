@@ -1,4 +1,4 @@
-import { navigate } from "../lib/router";
+import { navigate, onRoute } from "../lib/router";
 import { statsState } from './show_stats'; // si besoin
 
 export function close_stats()
@@ -57,4 +57,6 @@ export default function setupUserStats(): void
 				navigate('profile');
 		}
 	});
+
+	onRoute('publicProfile', close_stats);
 }

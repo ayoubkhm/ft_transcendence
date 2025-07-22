@@ -1,3 +1,5 @@
+import { onRoute } from '../lib/router';
+
 export function close_brackets()
 {
     var bracketsPopup: HTMLDivElement | null = document.getElementById("brackets-popup") as HTMLDivElement | null;
@@ -30,4 +32,7 @@ export default function setupTournamentBrackets(): void
     const closeButton = document.getElementById('close-brackets');
     if (closeButton)
         closeButton.addEventListener('click', close_brackets);
+    
+    onRoute('*', close_brackets);
 }
+
