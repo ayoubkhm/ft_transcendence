@@ -5,7 +5,6 @@ WORKDIR /db
 # https://hub.docker.com/_/postgres : when postgre init db, execute every .sh/.sql in /docker-entrypoint-initdb.d/
 
 COPY games/games/game_CRUD.sql									/app/db-init/game_CRUD.template.sql
-COPY games/games/game_history.sql								/app/db-init/game_history.template.sql
 COPY games/games/games.sql										/app/db-init/games.template.sql
 COPY games/games/state.sql										/app/db-init/game_state.template.sql
 COPY games/games/stats.sql										/app/db-init/game_stats.template.sql
@@ -40,6 +39,6 @@ RUN apt-get update && apt-get install -y gettext && rm -rf /var/lib/apt/lists/* 
 		/app/db-init/tournaments.template.sql /app/db-init/tournament_CRUD.template.sql /app/db-init/pairing.template.sql /app/db-init/tstate.template.sql \
 		/app/db-init/tournaments_players.template.sql /app/db-init/tournaments_players_CRUD.template.sql /app/db-init/tournaments_players_ready.template.sql \
 		/app/db-init/games.template.sql /app/db-init/game_CRUD.template.sql \
-		/app/db-init/game_history.template.sql /app/db-init/game_state.template.sql /app/db-init/game_stats.template.sql \
+		/app/db-init/game_state.template.sql /app/db-init/game_stats.template.sql \
 		> /app/db-init/init-db-all.template.sql && \
 	chmod +x /docker-entrypoint-initdb.d/init-db.sh /app/db-init/init-db-all.template.sql

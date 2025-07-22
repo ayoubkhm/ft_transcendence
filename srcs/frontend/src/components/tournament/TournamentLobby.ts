@@ -148,6 +148,13 @@ function initializeLobbyEventListeners() {
     }
   });
 
+  window.addEventListener('beforeunload', () => {
+    const userId = getCurrentUserId();
+    if (isTournamentLobbyActive() && currentTournamentDetails && userId === currentTournamentDetails.owner_id) {
+      deleteTournament(currentTournamentName!, userId);
+    }
+  });
+
   isLobbyInitialized = true;
 }
 
