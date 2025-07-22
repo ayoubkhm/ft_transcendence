@@ -136,25 +136,41 @@ export class Game
        const p = this.state.players.find(pl => pl.id === id);
        if (!p) return;
        // Handle forfeit: end game and declare other player as winner
-       if (msg.type === 'forfeit') {
-           this.state.isGameOver = true;
-           this.state.winner = p.side === 'left' ? 'right' : 'left';
-           const [left, right] = this.state.players;
-           if (this.state.winner === 'left') {
-               left.score = 7;
-               right.score = 0;
-           } else {
-               right.score = 7;
-               left.score = 0;
-           }
+		if (msg.type === 'forfeit') {
+			// 1. On fige l’état du match
+			this.state.isGameOver = true;
+			this.state.winner = p.side === 'left' ? 'right' : 'left';
+
+			const [left, right] = this.state.players;
+
+			// 2. Détermine qui est P1 côté DB
 			const winnerIsP1 = this.state.winner === 'left';
+
+			// 3. Calcule les scores conformes à la nouvelle règle
+			const p1Score = winnerIsP1 ? 0  : -1;   // le gagnant = 0
+			const p2Score = winnerIsP1 ? -1 : 0;    // le perdant = -1
+
+			// 4. Mets à jour l’état local (utile si tu l’affiches côté front)
+			left.score  = winnerIsP1 ? 0  : -1;
+			right.score = winnerIsP1 ? -1 : 0;
+
+			// 5. Push dans la fonction PL/pgSQL
 			try {
-				await pgClient.query('SELECT * FROM win_game($1::INTEGER, $2::BOOLEAN)', [this.gameId, winnerIsP1]);
+				await pgClient.query(
+					`SELECT * FROM win_game(
+						$1::INTEGER,   -- id du game
+						$2::BOOLEAN,   -- winner_is_p1
+						$3::INTEGER,   -- p1_score
+						$4::INTEGER    -- p2_score
+					)`,
+					[this.gameId, winnerIsP1, p1Score, p2Score]
+				);
 			} catch (err) {
 				console.error('Error calling win_game() for game', this.gameId, err);
 			}
-           this.endGame();
-           return;
+
+			this.endGame();
+			return;
        }
 		if (msg.type === 'move_up')	
 		p.paddle.dy = -this.paddleSpeed * p.speedMultiplier;
