@@ -41,12 +41,7 @@ type TournamentDetails = {
 
 let currentTournamentId: number | null = null;
 let isPlayingGame = false;
-<<<<<<< Updated upstream
 let offTournamentUpdate: (() => void) | null = null; // To hold the unsubscribe function
-=======
-let updateHandler: ((d: TournamentDetails) => void) | null = null;
-let pendingDetails: TournamentDetails | null = null;
->>>>>>> Stashed changes
 
 // ─── Utils ────────────────────────────────────────────────
 function isModalHidden() {
@@ -132,18 +127,12 @@ function joinTournamentGame(gameId: string) {
 
     detachCanvas();
     tournamentGameModal.classList.remove('hidden');
-<<<<<<< Updated upstream
     
     // The game is over, but we wait a moment before allowing UI updates
     // to prevent jarring transitions.
     setTimeout(() => {
       isPlayingGame = false;
     }, 500);
-=======
-
-    isPlayingGame = false;
-    flushPendingIfAny(); // On rerend si des updates étaient en attente
->>>>>>> Stashed changes
   });
 }
 
@@ -223,19 +212,12 @@ if (tournamentMatchesList) {
   });
 }
 
-<<<<<<< Updated upstream
 export function showTournamentGame(details: any) {
   if (isPlayingGame) {
     console.log('[showTournamentGame] A game is in progress. Aborting showTournamentGame to prevent UI disruption.');
     return;
   }
   console.log('[Tournament Redirection] showTournamentGame called with details:', details);
-=======
-// ─── Public API ───────────────────────────────────────────
-export function showTournamentGame(details: TournamentDetails) {
-  console.log('[Tournament] showTournamentGame', details);
-
->>>>>>> Stashed changes
   if (tournamentGameModal) {
     tournamentGameModal.classList.remove('hidden');
   }
@@ -243,7 +225,6 @@ export function showTournamentGame(details: TournamentDetails) {
 
   currentTournamentId = details.id;
   tournamentGameTitle.textContent = details.name;
-<<<<<<< Updated upstream
 
   // Clean up the old listener before creating a new one
   if (offTournamentUpdate) {
@@ -255,8 +236,6 @@ export function showTournamentGame(details: TournamentDetails) {
       console.log('Tournament update received, but a game is in progress. Ignoring.');
       return;
     }
-=======
->>>>>>> Stashed changes
 
   subscribeTournamentUpdates(details.id);
 
@@ -265,7 +244,6 @@ export function showTournamentGame(details: TournamentDetails) {
 }
 
 export function hideTournamentGame() {
-<<<<<<< Updated upstream
   if (tournamentGameModal) {
     detachGameListeners();
     detachCanvas(); // Detach canvas FIRST
@@ -278,22 +256,6 @@ export function hideTournamentGame() {
       offTournamentUpdate();
       offTournamentUpdate = null;
     }
-=======
-  if (!tournamentGameModal) return;
-
-  detachGameListeners();
-  detachCanvas();
-  tournamentGameModal.classList.add('hidden');
-
-  // Unsubscribe
-  if (updateHandler) {
-    try {
-      off('tournament-update', updateHandler);
-    } catch {
-      // adapte si besoin
-    }
-    updateHandler = null;
->>>>>>> Stashed changes
   }
 
   currentTournamentId = null;
