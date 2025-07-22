@@ -282,6 +282,12 @@ export async function startGame(mode: 'ai' | 'pvp', isCustomOn: boolean, difficu
 
     if (!res.ok) {
       const err = await res.json();
+      if (res.status === 409 && err.gameId) {
+        if (confirm('You already have a game in progress. Do you want to rejoin it?')) {
+          navigate('game', { id: err.gameId });
+        }
+        return; // Stop execution since we are redirecting or the user cancelled
+      }
       throw new Error(err.error || 'Failed to create game');
     }
 
@@ -312,6 +318,7 @@ export async function startGame(mode: 'ai' | 'pvp', isCustomOn: boolean, difficu
 
 export async function joinGame(gameIdToJoin: string, onGameOver?: (state: any) => void) {
   try {
+    hideGameUI(); // Reset any existing game state before joining
     await loadImages(); // Preload all game images
     let username = localStorage.getItem('username');
     if (!username) {
@@ -386,8 +393,6 @@ export async function joinGame(gameIdToJoin: string, onGameOver?: (state: any) =
       console.log('[WS] Game socket closed.');
       clearForfeitTimer();
     };
-
-    navigate('game', { id: gameId });
 
   } catch (err) {
     console.error('[joinGame]', err);
@@ -483,8 +488,7 @@ export function setupGame() {
   pvpModalJoinConfirmBtn.addEventListener('click', () => {
     const gameIdToJoin = pvpModalJoinInput.value.trim();
     if (gameIdToJoin) {
-      navigate('home');
-      joinGame(gameIdToJoin);
+      navigate('game', { id: gameIdToJoin });
     } else {
       alert('Please enter a Game ID to join.');
     }
@@ -503,36 +507,18 @@ export function setupGame() {
     startLocalPvPGame();
   });
 
-  // Handle navigating away from the game
+  // Handle navigating to a game URL. This is the single entry point for rendering a game.
   onRoute('game', (params) => {
     const gameIdFromUrl = params?.id;
-    if (!gameIdFromUrl) {
+    if (gameIdFromUrl) {
+      // joinGame is now safe to call because it doesn't navigate, preventing loops.
+      // It will handle all the necessary cleanup and setup.
+      joinGame(gameIdFromUrl);
+    } else {
       // If we somehow navigate to #game without an ID, go home.
+      console.warn('Navigated to #game without a game ID.');
       navigate('home');
-      return;
     }
-
-    const sessionData = localStorage.getItem('activeGameSession');
-    if (sessionData) {
-      const { gameId: storedGameId, playerId: storedPlayerId, authToken: storedAuthToken } = JSON.parse(sessionData);
-      
-      // Only rejoin if the stored game matches the one in the URL
-      if (storedGameId === gameIdFromUrl) {
-        gameId = storedGameId;
-        playerId = storedPlayerId;
-        authToken = storedAuthToken;
-
-        showGameUI();
-        connectToGameSocket();
-        // Send a join message to ensure the server knows we're back
-        gameSocket!.onopen = () => {
-          console.log(`[WS] Reconnected to game ${gameId}`);
-          sendSocketMessage('join_pvp_game', { username: playerId });
-        };
-      }
-    }
-    // If there's no session data, the user might be a spectator or has joined via a link.
-    // The joinGame function will handle creating the session.
   });
 
   onRoute('local-game', () => {
