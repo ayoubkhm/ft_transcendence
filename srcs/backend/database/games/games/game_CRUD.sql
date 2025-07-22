@@ -20,6 +20,22 @@ BEGIN
 		_p2_bot := TRUE;
 	END IF;
 
+	IF EXISTS (
+		SELECT 1
+		FROM games
+		WHERE state != 'OVER'
+		AND (
+			p1_id = _p1_id OR
+			p2_id = _p1_id OR
+			p1_id = p2_id OR
+			p2_id = p2_id
+		)
+	) THEN
+		RETURN QUERY SELECT FALSE, 'Player is already in game', NULL::INTEGER as new_game_id;
+		RETURN ;
+	END IF;
+
+
 	IF (_p1_bot = TRUE OR _p2_bot = TRUE) AND _final_type != 'TOURNAMENT' THEN
 		_final_type := 'IA';
 	END IF;

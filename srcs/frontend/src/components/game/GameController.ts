@@ -497,9 +497,11 @@ export function setupGame() {
   pvpModalJoinInput.addEventListener('input', () => {
     const value = parseInt(pvpModalJoinInput.value, 10);
     const max = 2147483647;
-    if (value > max) {
+    const min = -2147483648;
+    if (value > max)
       pvpModalJoinInput.value = max.toString();
-    }
+    else if(value < min)
+      pvpModalJoinInput.value = min.toString();
   });
 
   pvpModalLocalBtn.addEventListener('click', () => {

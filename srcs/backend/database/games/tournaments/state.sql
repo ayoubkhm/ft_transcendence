@@ -1,6 +1,6 @@
 CREATE OR REPLACE FUNCTION start_tournament(
 	_name TEXT)
-RETURNS TABLE(success BOOLEAN, msg TEXT) AS $$
+RETURNS TABLE(success BOOLEAN, msg TEXT, first_round INTEGER) AS $$
 DECLARE
 	_id INTEGER;
 	_round INTEGER;
@@ -9,24 +9,24 @@ DECLARE
 	_min_players INTEGER;
 BEGIN
 	IF _name IS NULL THEN
-		RETURN QUERY SELECT FALSE, 'Tournament name cant be null';
+		RETURN QUERY SELECT FALSE, 'Tournament name cant be null', NULL::INTEGER as first_round;
 		RETURN ;
 	END IF;
 
 	SELECT id, round, state, min_players, nbr_players INTO _id, _round, _state, _min_players, _nbr_players
 	FROM tournaments WHERE name = _name;
 	IF NOT FOUND THEN
-		RETURN QUERY SELECT FALSE, 'No tournament found to this name';
+		RETURN QUERY SELECT FALSE, 'No tournament found to this name', NULL::INTEGER as first_round;
 		RETURN ;
 	END IF;
 	
 	IF _state != 'LOBBY' THEN
-		RETURN QUERY SELECT FALSE, 'Can''t start tournaments: tournament isn''t in prep phase';
+		RETURN QUERY SELECT FALSE, 'Can''t start tournaments: tournament isn''t in prep phase', NULL::INTEGER as first_round;
 		RETURN ;
 	END IF;
 
 	IF (_nbr_players < _min_players) THEN
-		RETURN QUERY SELECT FALSE, FORMAT('Not enough players to start tournament: %s/%s', _nbr_players, _min_players);
+		RETURN QUERY SELECT FALSE, FORMAT('Not enough players to start tournament: %s/%s', _nbr_players, _min_players), NULL::INTEGER as first_round;
 		RETURN ;
 	END IF;
 
@@ -35,7 +35,7 @@ BEGIN
 		SELECT 1 FROM tournaments_players
 		WHERE tournament_id = _id AND is_ready = FALSE
 	) THEN
-		RETURN QUERY SELECT FALSE, 'Not all players are ready.';
+		RETURN QUERY SELECT FALSE, 'Not all players are ready.', NULL::INTEGER as first_round;
 		RETURN ;
 	END IF;
 
@@ -48,7 +48,7 @@ BEGIN
     WHERE tournament_id = _id
         AND tournament_round = _round;
 
-	RETURN QUERY SELECT TRUE, 'Tournament started !';
+	RETURN QUERY SELECT TRUE, 'Tournament started !', _round as first_round;
 
 EXCEPTION
 	WHEN OTHERS THEN
