@@ -1,26 +1,124 @@
 // TournamentGame.ts
 import show_brackets from '../../brackets/show_brackets';
-import { detachCanvas, attachGameListeners, detachGameListeners } from '../game/GameController';
-import { on } from '../../lib/socket';
+import {
+  detachCanvas,
+  attachGameListeners,
+  detachGameListeners,
+  joinGame as joinPvPGame,
+} from '../game/GameController';
+import { on, off } from '../../lib/socket'; // <-- Assure-toi d’avoir un `off`. Sinon, adapte.
 import { navigate } from '../../lib/router';
 import { getCurrentUserId } from '../auth/Auth';
-import { joinGame as joinPvPGame } from '../game/GameController'; // Renaming for clarity
 
+// ─── DOM refs ──────────────────────────────────────────────
 const tournamentGameModal = document.getElementById('tournament-game-modal') as HTMLElement;
 const tournamentGameTitle = document.getElementById('tournament-game-title') as HTMLElement;
 const tournamentMatchesList = document.getElementById('tournament-matches-list') as HTMLElement;
 const tournamentBracketsContainer = document.getElementById('tournament-brackets-container') as HTMLElement;
 const tournamentGameClose = document.getElementById('tournament-game-close') as HTMLButtonElement;
 
+// ─── Types minimalistes ────────────────────────────────────
+type Match = {
+  id: number;
+  state: 'PENDING' | 'RUNNING' | 'OVER';
+  p1_id?: number;
+  p2_id?: number;
+  p1_name?: string;
+  p2_name?: string;
+};
+
+type Round = {
+  round_nb: number;
+  matchs: Match[];
+};
+
+type TournamentDetails = {
+  id: number;
+  name: string;
+  state: 'RUNNING' | 'OVER' | 'WAITING';
+  brackets: Round[];
+};
+
 let currentTournamentId: number | null = null;
 let isPlayingGame = false;
+<<<<<<< Updated upstream
 let offTournamentUpdate: (() => void) | null = null; // To hold the unsubscribe function
+=======
+let updateHandler: ((d: TournamentDetails) => void) | null = null;
+let pendingDetails: TournamentDetails | null = null;
+>>>>>>> Stashed changes
 
+// ─── Utils ────────────────────────────────────────────────
+function isModalHidden() {
+  return tournamentGameModal?.classList.contains('hidden');
+}
+
+function render(details: TournamentDetails) {
+  displayRunningMatches(details);
+  show_brackets(details.id, tournamentBracketsContainer);
+}
+
+function flushPendingIfAny() {
+  if (pendingDetails && !isPlayingGame && !isModalHidden()) {
+    console.log('[Tournament] Flushing buffered update');
+    render(pendingDetails);
+    pendingDetails = null;
+  }
+}
+
+// ─── Socket subscription management ───────────────────────
+function subscribeTournamentUpdates(tournamentId: number) {
+  // Clean old handler if any
+  if (updateHandler) {
+    try {
+      off('tournament-update', updateHandler);
+    } catch {
+      // Si pas de off dispo, pense à implémenter dans ta lib socket.
+    }
+    updateHandler = null;
+  }
+
+  updateHandler = (newDetails: TournamentDetails) => {
+    if (newDetails.id !== currentTournamentId) return;
+
+    if (isPlayingGame || isModalHidden()) {
+      console.log('[Tournament] Update received but ignored/buffered (playing or hidden).');
+      pendingDetails = newDetails;
+      return;
+    }
+
+    render(newDetails);
+
+    if (newDetails.state === 'OVER') {
+      console.log('[Tournament] OVER → clean & show winner');
+      localStorage.removeItem('activeTournamentGame');
+
+      const winnerDisplay = document.getElementById('tournament-winner-display') as HTMLElement;
+      const winnerCloseBtn = document.getElementById('tournament-winner-close-btn') as HTMLButtonElement;
+
+      if (winnerDisplay && winnerCloseBtn) {
+        winnerDisplay.classList.remove('hidden');
+        winnerCloseBtn.onclick = () => {
+          winnerDisplay.classList.add('hidden');
+          hideTournamentGame();
+          navigate('home');
+        };
+      }
+    }
+  };
+
+  on('tournament-update', updateHandler);
+}
+
+// ─── Game join logic ──────────────────────────────────────
 function joinTournamentGame(gameId: string) {
   isPlayingGame = true;
-  // This will reuse the PvP join logic, which connects to the game's WebSocket
-  // and handles the state updates. The backend will differentiate based on the message type.
-  joinPvPGame(gameId, (state) => {
+
+  // Optionnel : désabonner pour éviter toute fuite
+  // (Sinon on se contente de bufferiser)
+  // if (updateHandler) off('tournament-update', updateHandler);
+
+  joinPvPGame(gameId, (state: any) => {
     const winnerSide = state.winner;
     const winner = state.players.find((p: any) => p.side === winnerSide);
     const resultPre = document.getElementById('game-result') as HTMLPreElement;
@@ -34,104 +132,118 @@ function joinTournamentGame(gameId: string) {
 
     detachCanvas();
     tournamentGameModal.classList.remove('hidden');
+<<<<<<< Updated upstream
     
     // The game is over, but we wait a moment before allowing UI updates
     // to prevent jarring transitions.
     setTimeout(() => {
       isPlayingGame = false;
     }, 500);
+=======
+
+    isPlayingGame = false;
+    flushPendingIfAny(); // On rerend si des updates étaient en attente
+>>>>>>> Stashed changes
   });
 }
 
-function displayRunningMatches(details: any) {
-  console.log('[DisplayMatches] Received details:', details);
+// ─── UI rendering ─────────────────────────────────────────
+function displayRunningMatches(details: TournamentDetails) {
   if (!tournamentMatchesList) return;
 
   if (!details.brackets || !Array.isArray(details.brackets) || details.brackets.length === 0) {
-    console.log('[DisplayMatches] No brackets found in details object.');
     tournamentMatchesList.innerHTML = '<p class="text-white text-center">No bracket data available.</p>';
     return;
   }
 
-  // Find the first round that is not completely over
-  const currentRound = details.brackets.find((round: any) =>
-    round && round.matchs && round.matchs.some((match: any) => match.state !== 'OVER')
+  // First round not fully OVER
+  const currentRound = details.brackets.find(
+    (round) => round?.matchs?.some((m) => m.state !== 'OVER')
   );
 
-  let runningMatches: any[] = [];
+  let runningMatches: Match[] = [];
   if (currentRound) {
-    // Filter for playable matches ONLY within the current round
-    runningMatches = currentRound.matchs.filter((match: any) =>
-      match && match.state !== 'OVER' && match.p1_id && match.p2_id
+    runningMatches = currentRound.matchs.filter(
+      (m) => m && m.state !== 'OVER' && m.p1_id && m.p2_id
     );
-    console.log(`[DisplayMatches] Current round is ${currentRound.round_nb}. Found ${runningMatches.length} playable matches.`);
+    console.log(
+      `[DisplayMatches] Current round is ${currentRound.round_nb}. Found ${runningMatches.length} playable matches.`
+    );
   } else {
     console.log('[DisplayMatches] No current round found. All matches might be over.');
   }
 
-  tournamentMatchesList.innerHTML = ''; // Clear previous matches
+  tournamentMatchesList.innerHTML = '';
 
   if (runningMatches.length === 0) {
     if (!currentRound) {
-      // This means all matches in all rounds are 'OVER'.
-      console.log('[DisplayMatches] No pending matches found. Displaying "No matches running." message.');
       tournamentMatchesList.innerHTML = '<p class="text-white text-center">No matches are currently running.</p>';
     } else {
-      // This means there's a current round, but the matches in it are not ready (e.g., waiting for a player).
-      console.log('[DisplayMatches] Pending matches found in current round. Displaying "Waiting..." message.');
       tournamentMatchesList.innerHTML = '<p class="text-white text-center">Waiting for other matches to finish...</p>';
     }
     return;
   }
 
-  console.log(`[DisplayMatches] Found ${runningMatches.length} playable matches. Rendering them now.`);
   const currentUserId = getCurrentUserId();
+  const frag = document.createDocumentFragment();
+
   for (const match of runningMatches) {
     const matchElement = document.createElement('div');
     matchElement.className = 'bg-gray-700 p-4 rounded-lg flex justify-between items-center';
-    
+
     const isPlayer = currentUserId && (match.p1_id === currentUserId || match.p2_id === currentUserId);
-    const buttonHtml = isPlayer
-      ? `<button class="bg-green-500 text-white px-3 py-1 rounded join-game-btn" data-game-id="${match.id}" data-p1-id="${match.p1_id}" data-p2-id="${match.p2_id}">Join Game</button>`
-      : ''; // If not a player, show no button
+    const btn = isPlayer
+      ? `<button class="bg-green-500 text-white px-3 py-1 rounded join-game-btn" data-game-id="${match.id}">Join Game</button>`
+      : '';
 
     matchElement.innerHTML = `
       <div class="text-white">
         <span class="font-bold">${match.p1_name || 'TBD'}</span> vs <span class="font-bold">${match.p2_name || 'TBD'}</span>
       </div>
-      ${buttonHtml}
+      ${btn}
     `;
-    tournamentMatchesList.appendChild(matchElement);
+    frag.appendChild(matchElement);
   }
 
-  // Re-wire the event listener for the join button
-  tournamentMatchesList.querySelectorAll('.join-game-btn').forEach(button => {
-      button.addEventListener('click', (e) => {
-          const gameId = (e.target as HTMLElement).dataset.gameId;
-          if (gameId) {
-            tournamentGameModal.classList.add('hidden');
-            joinTournamentGame(gameId); // Join the specific game
-          }
-      });
+  tournamentMatchesList.appendChild(frag);
+}
+
+// Event delegation for join buttons
+if (tournamentMatchesList) {
+  tournamentMatchesList.addEventListener('click', (e) => {
+    const target = e.target as HTMLElement;
+    const btn = target.closest('.join-game-btn') as HTMLElement | null;
+    if (!btn) return;
+
+    const gameId = btn.dataset.gameId;
+    if (!gameId) return;
+
+    tournamentGameModal.classList.add('hidden');
+    joinTournamentGame(gameId);
   });
 }
 
+<<<<<<< Updated upstream
 export function showTournamentGame(details: any) {
   if (isPlayingGame) {
     console.log('[showTournamentGame] A game is in progress. Aborting showTournamentGame to prevent UI disruption.');
     return;
   }
   console.log('[Tournament Redirection] showTournamentGame called with details:', details);
+=======
+// ─── Public API ───────────────────────────────────────────
+export function showTournamentGame(details: TournamentDetails) {
+  console.log('[Tournament] showTournamentGame', details);
+
+>>>>>>> Stashed changes
   if (tournamentGameModal) {
     tournamentGameModal.classList.remove('hidden');
   }
   attachGameListeners();
 
   currentTournamentId = details.id;
-  
-  console.log('Populating tournament game modal with details:', details);
-  
   tournamentGameTitle.textContent = details.name;
+<<<<<<< Updated upstream
 
   // Clean up the old listener before creating a new one
   if (offTournamentUpdate) {
@@ -143,38 +255,17 @@ export function showTournamentGame(details: any) {
       console.log('Tournament update received, but a game is in progress. Ignoring.');
       return;
     }
+=======
+>>>>>>> Stashed changes
 
-    if (newDetails.id !== currentTournamentId) return;
-    
-    // Refresh the view with new data
-    displayRunningMatches(newDetails);
-    show_brackets(newDetails.id, tournamentBracketsContainer);
-    
-    if (newDetails.state === 'OVER') {
-      console.log(`[DEBUG activeTournamentGame] TournamentGame.ts: 'tournament-update' listener - Tournament state is OVER for ID: ${newDetails.id}. Removing activeTournamentGame flag.`);
-      localStorage.removeItem('activeTournamentGame');
-      console.log(`[DEBUG activeTournamentGame] TournamentGame.ts: 'tournament-update' listener - activeTournamentGame flag REMOVED.`);
-      const winnerDisplay = document.getElementById('tournament-winner-display') as HTMLElement;
-      const winnerCloseBtn = document.getElementById('tournament-winner-close-btn') as HTMLButtonElement;
-
-      if (winnerDisplay && winnerCloseBtn) {
-        winnerDisplay.classList.remove('hidden');
-
-        winnerCloseBtn.onclick = () => {
-          winnerDisplay.classList.add('hidden');
-          hideTournamentGame();
-          navigate('home');
-        };
-      }
-    }
-  });
+  subscribeTournamentUpdates(details.id);
 
   // Initial render
-  displayRunningMatches(details);
-  show_brackets(details.id, tournamentBracketsContainer);
+  render(details);
 }
 
 export function hideTournamentGame() {
+<<<<<<< Updated upstream
   if (tournamentGameModal) {
     detachGameListeners();
     detachCanvas(); // Detach canvas FIRST
@@ -187,12 +278,30 @@ export function hideTournamentGame() {
       offTournamentUpdate();
       offTournamentUpdate = null;
     }
+=======
+  if (!tournamentGameModal) return;
+
+  detachGameListeners();
+  detachCanvas();
+  tournamentGameModal.classList.add('hidden');
+
+  // Unsubscribe
+  if (updateHandler) {
+    try {
+      off('tournament-update', updateHandler);
+    } catch {
+      // adapte si besoin
+    }
+    updateHandler = null;
+>>>>>>> Stashed changes
   }
+
+  currentTournamentId = null;
+  pendingDetails = null;
+  localStorage.removeItem('activeTournamentSession');
+  localStorage.removeItem('activeTournamentGame');
 }
 
 export function isTournamentActive() {
   return currentTournamentId !== null;
 }
-
-
-
