@@ -139,6 +139,14 @@ export class Game
        if (msg.type === 'forfeit') {
            this.state.isGameOver = true;
            this.state.winner = p.side === 'left' ? 'right' : 'left';
+           const [left, right] = this.state.players;
+           if (this.state.winner === 'left') {
+               left.score = 7;
+               right.score = 0;
+           } else {
+               right.score = 7;
+               left.score = 0;
+           }
            this.endGame();
            return;
        }
