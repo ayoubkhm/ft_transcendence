@@ -428,13 +428,13 @@ export default async function gamesRoutes (app: FastifyInstance)
     }
   });
 
-  app.get<{
-    Body: {username: string; 
-            userId: number;
-            isCustomOn: boolean; };
-    Reply:  {
-            success: boolean;
-            msg: string;
-            lobbyId?: string; }
-    }>('/api/lobby/ws', { websocket: true }, (connection, request) => {});
+  // app.get<{
+  //   Body: {username: string; 
+  //           userId: number;
+  //           isCustomOn: boolean; };
+  //   Reply:  {
+  //           success: boolean;
+  //           msg: string;
+  //           lobbyId?: string; }
+  //   }>('/api/lobby/ws', { websocket: true }, (connection, request) => {});
 }
