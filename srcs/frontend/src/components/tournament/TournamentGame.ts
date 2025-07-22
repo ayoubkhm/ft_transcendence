@@ -38,31 +38,39 @@ function displayRunningMatches(details: any) {
   console.log('[DisplayMatches] Received details:', details);
   if (!tournamentMatchesList) return;
 
-  if (!details.brackets || !Array.isArray(details.brackets)) {
+  if (!details.brackets || !Array.isArray(details.brackets) || details.brackets.length === 0) {
     console.log('[DisplayMatches] No brackets found in details object.');
     tournamentMatchesList.innerHTML = '<p class="text-white text-center">No bracket data available.</p>';
     return;
   }
 
-  const allMatches = details.brackets.flatMap((round: any) => (round && round.matchs ? round.matchs : []));
-  console.log('[DisplayMatches] Flattened allMatches:', JSON.stringify(allMatches, null, 2));
+  // Find the first round that is not completely over
+  const currentRound = details.brackets.find((round: any) =>
+    round && round.matchs && round.matchs.some((match: any) => match.state !== 'OVER')
+  );
 
-  const runningMatches = allMatches.filter((match: any) => match && match.state !== 'OVER' && match.p1_id && match.p2_id);
-  console.log('[DisplayMatches] Filtered for PLAYABLE runningMatches:', JSON.stringify(runningMatches, null, 2));
+  let runningMatches: any[] = [];
+  if (currentRound) {
+    // Filter for playable matches ONLY within the current round
+    runningMatches = currentRound.matchs.filter((match: any) =>
+      match && match.state !== 'OVER' && match.p1_id && match.p2_id
+    );
+    console.log(`[DisplayMatches] Current round is ${currentRound.round_nb}. Found ${runningMatches.length} playable matches.`);
+  } else {
+    console.log('[DisplayMatches] No current round found. All matches might be over.');
+  }
 
   tournamentMatchesList.innerHTML = ''; // Clear previous matches
 
   if (runningMatches.length === 0) {
-    console.log('[DisplayMatches] No playable matches found. Checking for pending matches...');
-    const pendingMatches = allMatches.filter((match: any) => match && match.state !== 'OVER');
-    console.log('[DisplayMatches] Filtered for ANY PENDING matches:', JSON.stringify(pendingMatches, null, 2));
-
-    if (pendingMatches.length > 0) {
-      console.log('[DisplayMatches] Pending matches found. Displaying "Waiting..." message.');
-      tournamentMatchesList.innerHTML = '<p class="text-white text-center">Waiting for other matches to finish...</p>';
-    } else {
+    if (!currentRound) {
+      // This means all matches in all rounds are 'OVER'.
       console.log('[DisplayMatches] No pending matches found. Displaying "No matches running." message.');
       tournamentMatchesList.innerHTML = '<p class="text-white text-center">No matches are currently running.</p>';
+    } else {
+      // This means there's a current round, but the matches in it are not ready (e.g., waiting for a player).
+      console.log('[DisplayMatches] Pending matches found in current round. Displaying "Waiting..." message.');
+      tournamentMatchesList.innerHTML = '<p class="text-white text-center">Waiting for other matches to finish...</p>';
     }
     return;
   }
