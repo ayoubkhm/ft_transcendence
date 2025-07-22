@@ -173,6 +173,8 @@ export function showGameUI(isWaiting = false, isLocal = false, isAI = false) {
   document.getElementById('logout-btn')?.setAttribute('disabled', 'true');
   document.getElementById('play-tourn-btn')?.setAttribute('disabled', 'true');
   document.getElementById('search-user')?.setAttribute('disabled', 'true');
+  document.getElementById('login-btn')?.setAttribute('disabled', 'true');
+  document.getElementById('signup-btn')?.setAttribute('disabled', 'true');
 }
 
 export function hideGameUI(gameOver = false) {
@@ -215,6 +217,8 @@ export function hideGameUI(gameOver = false) {
   document.getElementById('friends-btn')?.removeAttribute('disabled');
   document.getElementById('play-tourn-btn')?.removeAttribute('disabled');
   document.getElementById('search-user')?.removeAttribute('disabled');
+  document.getElementById('login-btn')?.removeAttribute('disabled');
+  document.getElementById('signup-btn')?.removeAttribute('disabled');
 }
 
 function localGameLoop() {
@@ -489,9 +493,11 @@ export function setupGame() {
   pvpModalJoinInput.addEventListener('input', () => {
     const value = parseInt(pvpModalJoinInput.value, 10);
     const max = 2147483647;
-    if (value > max) {
+    const min = -2147483648;
+    if (value > max)
       pvpModalJoinInput.value = max.toString();
-    }
+    else if(value < min)
+      pvpModalJoinInput.value = min.toString();
   });
 
   pvpModalLocalBtn.addEventListener('click', () => {
