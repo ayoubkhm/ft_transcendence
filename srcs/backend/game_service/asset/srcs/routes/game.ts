@@ -97,6 +97,17 @@ export default async function gamesRoutes (app: FastifyInstance)
       }
       const userId = userRes.rows[0].id;
 
+      // Check if the user is already in an active game
+      const activeGameRes = await pgClient.query(
+        "SELECT id FROM games WHERE (p1_id = $1 OR p2_id = $1) AND state != 'OVER'",
+        [userId]
+      );
+
+      if (activeGameRes.rows.length > 0) {
+        const activeGameId = activeGameRes.rows[0].id;
+        return reply.code(409).send({ error: 'You are already in an active game.', gameId: activeGameId });
+      }
+
       if (mode === 'ai') {
         const level = difficulty ?? 'medium';
         let sqlGameId: number | null = null;
