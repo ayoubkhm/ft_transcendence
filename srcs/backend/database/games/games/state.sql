@@ -187,7 +187,7 @@ CREATE OR REPLACE FUNCTION win_game (
 	_p1_score INTEGER DEFAULT NULL,
 	_p2_score INTEGER DEFAULT NULL
 )
-RETURNS TABLE(success BOOLEAN, msg TEXT, tid INTEGER) AS $$
+RETURNS TABLE(success BOOLEAN, msg TEXT, tround INTEGER) AS $$
 DECLARE
 	_state game_state;
 	_p1_id INTEGER;
@@ -198,7 +198,7 @@ DECLARE
 	_tournament_id INTEGER;
 BEGIN
 	IF _id IS NULL THEN
-		RETURN QUERY SELECT FALSE, 'Pls specify a id game not null', NULL::INTEGER AS tid;
+		RETURN QUERY SELECT FALSE, 'Pls specify a id game not null', NULL::INTEGER AS tround;
 		RETURN ;
 	END IF;
 	
@@ -208,12 +208,12 @@ BEGIN
 	WHERE id = _id;
 
 	IF NOT FOUND THEN
-		RETURN QUERY SELECT FALSE, FORMAT('Game with id %s not found', _id), NULL::INTEGER AS tid;
+		RETURN QUERY SELECT FALSE, FORMAT('Game with id %s not found', _id), NULL::INTEGER AS tround;
 		RETURN ;
 	END IF;
 
 	IF _state = 'OVER' THEN
-        RETURN QUERY SELECT FALSE, 'Can''t win game that is already over', NULL::INTEGER AS tid;
+        RETURN QUERY SELECT FALSE, 'Can''t win game that is already over', NULL::INTEGER AS tround;
         RETURN ;
     END IF;
 
@@ -258,13 +258,14 @@ BEGIN
 				AND tournament_round = _tournament_round
 		) THEN
 			PERFORM next_round(_tournament_id);
+			_tournament_round := _tournament_round + 1;
 		END IF;
 	END IF;
 
-	RETURN QUERY SELECT TRUE, 'Game successfully won', _tournament_id AS tid;
+	RETURN QUERY SELECT TRUE, 'Game successfully won', _tournament_round AS tround;
 	
 EXCEPTION
 	WHEN OTHERS THEN
-		RETURN QUERY SELECT FALSE, SQLERRM, NULL::INTEGER AS tid;
+		RETURN QUERY SELECT FALSE, SQLERRM, NULL::INTEGER AS tround;
 END;
 $$ LANGUAGE plpgsql;

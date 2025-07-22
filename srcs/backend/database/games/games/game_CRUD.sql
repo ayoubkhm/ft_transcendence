@@ -20,6 +20,8 @@ BEGIN
 		_p2_bot := TRUE;
 	END IF;
 
+	IF
+
 	IF (_p1_bot = TRUE OR _p2_bot = TRUE) AND _final_type != 'TOURNAMENT' THEN
 		_final_type := 'IA';
 	END IF;
