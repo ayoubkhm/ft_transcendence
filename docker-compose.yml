@@ -180,7 +180,7 @@ services:
       - user_service
       - frontend
     ports:
-      - "443:443"
+      - "4443:443"
       - "8080:80"
     networks:
       - router

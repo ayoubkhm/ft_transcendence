@@ -34,3 +34,5 @@ docker-compose-dev.yml
 
 # commitcitizen
 .cz.toml
+
+avatar_data/

@@ -239,20 +239,12 @@ async function startLocalPvPGame() {
 
 
 function handleGameOver(state: any) {
-<<<<<<< HEAD
-  const winnerSide = state.winner;
-  const winner = state.players.find((p: any) => p.side === winnerSide);
-  resultPre.textContent = `Game Over — winner: ${winner ? winner.id : 'Unknown'}`;
-  hideGameUI();
-  
-=======
   // Move canvas up for the end screen
   canvasWrapper.style.transform = 'translateY(-100px)';
   if (ctx) {
     drawEndScreen(ctx, state);
   }
   hideGameUI(true);
->>>>>>> 2cd37d85e40836cea07bbedd7e5719ce0c90d911
   // Additional logic for tournament game progression can be added here
 }
 
