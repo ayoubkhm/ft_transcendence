@@ -29,6 +29,7 @@ interface GameSession {
   interval?: IntervalRef;
   clients: Set<WebSocket>;
   forfeitTimer?: NodeJS.Timeout;
+  readyPlayers: Set<string>;
 }
 
 const sessions = new Map<string, GameSession>()
@@ -128,7 +129,7 @@ export default async function gamesRoutes (app: FastifyInstance)
           }
         }, 1000 / 60);
 
-        sessions.set(gameIdString, { game, interval, clients: new Set() });
+        sessions.set(gameIdString, { game, interval, clients: new Set(), readyPlayers: new Set() });
         return { gameId: gameIdString, playerId: username, token: genToken(gameIdString, username) };
       }
 
@@ -152,7 +153,7 @@ export default async function gamesRoutes (app: FastifyInstance)
 
         const game = new Game(username, '__PENDING__', userId, null, 'VS', level, isCustomOn, sqlGameId);
         const gameIdString = sqlGameId.toString();
-        sessions.set(gameIdString, { game, clients: new Set() });
+        sessions.set(gameIdString, { game, clients: new Set(), readyPlayers: new Set() });
         return { gameId: gameIdString, playerId: username, token: genToken(gameIdString, username) };
       }
 
@@ -201,7 +202,7 @@ export default async function gamesRoutes (app: FastifyInstance)
 
               if (p1Name) {
                 const game = new Game(p1Name, '__PENDING__', dbGame.p1_id, null, dbGame.type, 'medium', true, gameIdInt);
-                const newSession = { game, clients: new Set() };
+                const newSession = { game, clients: new Set(), readyPlayers: new Set() };
                 sessions.set(id, newSession);
                 session = newSession;
                 console.log(`[WS] Session for game ${id} reloaded from DB.`);
@@ -249,12 +250,7 @@ export default async function gamesRoutes (app: FastifyInstance)
             // Scenario 1: Player is already in the game (reconnecting)
             if (isPlayer1 || isPlayer2) {
               console.log(`[Game] Player '${username}' is reconnecting to game ${id}.`);
-              // If it's player 1 reconnecting and a forfeit timer is running, clear it.
-              if (isPlayer1 && session.forfeitTimer) {
-                console.log(`[Game] Player 1 reconnected. Clearing forfeit timer for game ${id}.`);
-                clearTimeout(session.forfeitTimer);
-                session.forfeitTimer = undefined;
-              }
+              session.readyPlayers.add(username);
             }
             // Scenario 2: Player 2 is joining a pending game
             else if (isPending) {
@@ -269,26 +265,7 @@ export default async function gamesRoutes (app: FastifyInstance)
 
                 console.log(`[Game] Player '${username}' (dbId: ${joiningUserDbId}) is joining as P2.`);
                 session.game.joinPlayer(username, joiningUserDbId);
-
-                // The second player has joined, so clear the forfeit timer and start the game.
-                if (session.forfeitTimer) {
-                  console.log(`[Game] Second player joined. Clearing forfeit timer for game ${id}.`);
-                  clearTimeout(session.forfeitTimer);
-                  session.forfeitTimer = undefined;
-                }
-
-                if (!session.interval) {
-                  console.log(`[Game] Both players present. Starting game loop for game ${id}.`);
-                  session.interval = setInterval(async () => {
-                    const pgClient = await app.pg.connect();
-                    try {
-                      await session.game.step(1 / 60, pgClient);
-                      broadcastGameState(id);
-                    } finally {
-                      pgClient.release();
-                    }
-                  }, 1000 / 60);
-                }
+                session.readyPlayers.add(username);
               } finally {
                 pgClient.release();
               }
@@ -300,9 +277,36 @@ export default async function gamesRoutes (app: FastifyInstance)
               return;
             }
 
+            // Check if both players are ready
+            const updatedGameState = session.game.getState();
+            const p1 = updatedGameState.players[0];
+            const p2 = updatedGameState.players[1];
+
+            if (session.readyPlayers.has(p1.id) && p2.id !== '__PENDING__' && session.readyPlayers.has(p2.id)) {
+                if (session.forfeitTimer) {
+                  console.log(`[Game] Both players ready. Clearing forfeit timer for game ${id}.`);
+                  clearTimeout(session.forfeitTimer);
+                  session.forfeitTimer = undefined;
+                }
+
+                if (!session.interval) {
+                  console.log(`[Game] Both players present and ready. Starting game loop for game ${id}.`);
+                  session.interval = setInterval(async () => {
+                    const pgClient = await app.pg.connect();
+                    try {
+                      await session.game.step(1 / 60, pgClient);
+                      broadcastGameState(id);
+                    } finally {
+                      pgClient.release();
+                    }
+                  }, 1000 / 60);
+                }
+            } else {
+                console.log(`[Game] Waiting for all players to be ready. P1 Ready: ${session.readyPlayers.has(p1.id)}, P2 Ready: ${session.readyPlayers.has(p2.id)}`);
+            }
+
             // After handling join/reconnect, check if a forfeit timer needs to be started.
             // This applies to the first player who is alone in a competitive match.
-            const updatedGameState = session.game.getState();
             if (
               (gameType === 'VS' || gameType === 'TOURNAMENT') &&
               updatedGameState.players[1].id === '__PENDING__' && // P2 hasn't joined yet

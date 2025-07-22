@@ -38,7 +38,30 @@ export function setupFriendsModal() {
         container.appendChild(statusIndicator);
         container.appendChild(nameSpan);
 
+        const removeBtn = document.createElement('button');
+        removeBtn.textContent = 'Remove';
+        removeBtn.className = 'px-2 py-1 bg-red-500 rounded text-white text-sm';
+        removeBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            try {
+                const res = await fetch(`/api/user/friends/${f.id}`, {
+                    method: 'DELETE',
+                    credentials: 'include'
+                });
+                if (res.ok) {
+                    li.remove();
+                } else {
+                    const resp = await res.json();
+                    alert(resp.error || 'Failed to remove friend');
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Error removing friend');
+            }
+        });
+
         li.appendChild(container);
+        li.appendChild(removeBtn);
         // Click to view friend profile
         li.addEventListener('click', (e) => {
             e.stopPropagation();

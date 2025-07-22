@@ -107,26 +107,28 @@ export default async function friendsRoutes(server: FastifyInstance, options: an
             const requestID = Number(request.params.id);
             const token = request.cookies['jwt_transcendence'];
             if (!token)
-                return reply.status(230).send({ error: "0403" });
+                return reply.status(401).send({ error: "Unauthorized" });
             const id = getTokenData(token).id;
             if (!id)
-                return reply.status(230).send({ error: "0404" });
+                return reply.status(400).send({ error: "Invalid user" });
             if (isNaN(requestID))
-                return reply.status(230).send({ error: "0404" });
-            const inviteRes = await server.pg.query(
-                'SELECT 1 FROM invites WHERE from_id = $1 AND to_id = $2 AND type = \'friend\'',
-                [requestID, id]
+                return reply.status(400).send({ error: "Invalid request ID" });
+
+            // This handles both rejecting a received request and canceling a sent request.
+            const result = await server.pg.query(
+                `DELETE FROM invites
+                 WHERE (from_id = $1 AND to_id = $2 AND type = 'friend') OR (from_id = $2 AND to_id = $1 AND type = 'friend')`,
+                [id, requestID]
             );
-            if ((inviteRes.rowCount ?? 0) === 0)
-                return reply.status(230).send({ error: "0404" });
-            await server.pg.query(
-                'DELETE FROM invites WHERE from_id = $1 AND to_id = $2 AND type = \'friend\'',
-                [requestID, id]
-            );
-            return reply.send({ success: true, msg: 'Friend request rejected' });
+    
+            if (result.rowCount === 0) {
+                return reply.status(404).send({ error: "Friend request not found" });
+            }
+    
+            return reply.send({ success: true, msg: 'Friend request action completed' });
         } catch (error) {
             request.log.error(error);
-            return reply.status(230).send({ error: "0500" });
+            return reply.status(500).send({ error: "Internal server error" });
         }
     });
 
