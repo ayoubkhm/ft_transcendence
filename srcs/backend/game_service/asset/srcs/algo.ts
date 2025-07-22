@@ -46,9 +46,9 @@ export class Game
         leftDbId: number | null,
         rightDbId: number | null,
         type: 'IA' | 'TOURNAMENT' | 'VS',
+        aiDifficulty: AIDifficulty = 'medium',
         customOn: boolean = true,
-		gameId: number,
-        aiDifficulty: AIDifficulty = 'medium'
+		gameId: number
 
     ) {
 		this.gameId = gameId;
