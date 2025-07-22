@@ -6,7 +6,7 @@ import {
   detachGameListeners,
   joinGame as joinPvPGame,
 } from '../game/GameController';
-import { on, off } from '../../lib/socket'; // <-- Assure-toi d’avoir un `off`. Sinon, adapte.
+import { on } from '../../lib/socket';
 import { navigate } from '../../lib/router';
 import { getCurrentUserId } from '../auth/Auth';
 
@@ -41,7 +41,7 @@ type TournamentDetails = {
 
 let currentTournamentId: number | null = null;
 let isPlayingGame = false;
-let updateHandler: ((d: TournamentDetails) => void) | null = null;
+let offTournamentUpdate: (() => void) | null = null; // To hold the unsubscribe function
 let pendingDetails: TournamentDetails | null = null;
 
 // ─── Utils ────────────────────────────────────────────────
@@ -65,16 +65,12 @@ function flushPendingIfAny() {
 // ─── Socket subscription management ───────────────────────
 function subscribeTournamentUpdates(tournamentId: number) {
   // Clean old handler if any
-  if (updateHandler) {
-    try {
-      off('tournament-update', updateHandler);
-    } catch {
-      // Si pas de off dispo, pense à implémenter dans ta lib socket.
-    }
-    updateHandler = null;
+  if (offTournamentUpdate) {
+    offTournamentUpdate();
+    offTournamentUpdate = null;
   }
 
-  updateHandler = (newDetails: TournamentDetails) => {
+  const handler = (newDetails: TournamentDetails) => {
     if (newDetails.id !== currentTournamentId) return;
 
     if (isPlayingGame || isModalHidden()) {
@@ -103,16 +99,12 @@ function subscribeTournamentUpdates(tournamentId: number) {
     }
   };
 
-  on('tournament-update', updateHandler);
+  offTournamentUpdate = on('tournament-update', handler);
 }
 
 // ─── Game join logic ──────────────────────────────────────
 function joinTournamentGame(gameId: string) {
   isPlayingGame = true;
-
-  // Optionnel : désabonner pour éviter toute fuite
-  // (Sinon on se contente de bufferiser)
-  // if (updateHandler) off('tournament-update', updateHandler);
 
   joinPvPGame(gameId, (state: any) => {
     const winnerSide = state.winner;
@@ -236,13 +228,9 @@ export function hideTournamentGame() {
   tournamentGameModal.classList.add('hidden');
 
   // Unsubscribe
-  if (updateHandler) {
-    try {
-      off('tournament-update', updateHandler);
-    } catch {
-      // adapte si besoin
-    }
-    updateHandler = null;
+  if (offTournamentUpdate) {
+    offTournamentUpdate();
+    offTournamentUpdate = null;
   }
 
   currentTournamentId = null;
