@@ -1,6 +1,8 @@
 // PublicProfileModal: handles displaying a user's public profile
 import { fetchJSON } from '../../lib/api';
 import { navigate, onRoute, getCurrentRoute } from '../../lib/router';
+import show_stats from '../../stats/show_stats';
+
 
 // Elements
 const publicProfileModal = document.getElementById('public-profile-modal') as HTMLElement | null;
@@ -9,6 +11,8 @@ const publicProfileName = document.getElementById('public-profile-name') as HTML
 const publicProfileEmail = document.getElementById('public-profile-email') as HTMLElement | null;
 const publicProfileAvatar = document.getElementById('public-profile-avatar') as HTMLImageElement | null;
 const publicProfileAddBtn = document.getElementById('public-profile-add-btn') as HTMLButtonElement | null;
+const publicProfileShowStatsBtn = document.getElementById('public-profile-show-stats-btn') as HTMLButtonElement | null;
+
 
 let currentProfileId: number | null = null;
 
@@ -16,7 +20,7 @@ let currentProfileId: number | null = null;
  * Sets up the event listeners for the public profile modal itself.
  */
 export function setupPublicProfileModal() {
-    if (!publicProfileModal || !publicProfileClose || !publicProfileAddBtn) {
+    if (!publicProfileModal || !publicProfileClose || !publicProfileAddBtn || !publicProfileShowStatsBtn) {
         return;
     }
 
@@ -171,4 +175,12 @@ export function setupPublicProfileModal() {
             navigate('friends');
         }
     });
+    publicProfileShowStatsBtn.addEventListener('click', () => {
+    if (currentProfileId)
+    {
+        show_stats(currentProfileId);
+        navigate('stats');
+    }
+    });
+
 }

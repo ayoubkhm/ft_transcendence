@@ -1,7 +1,15 @@
 import renderStats from './render/renderStats.js';
+import { getCurrentUserId } from '../components/auth/Auth';
+
+export const statsState = {
+	isMyOwnStats: false,
+};
 
 export default async function show_stats(userId: number)
 {
+    const myId = getCurrentUserId();
+	statsState.isMyOwnStats = (userId === myId);
+
     const statsGames = document.getElementById('stats-container') as HTMLDivElement | null;
     if (!statsGames)
         return null;

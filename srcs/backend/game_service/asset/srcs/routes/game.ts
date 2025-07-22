@@ -10,7 +10,15 @@ const HMAC_SECRET = process.env.GAME_SECRET ?? 'dev-secret'
 /**
  * Generate an auth token for the given gameId and playerId
  */
-function genToken(gameId: string, playerId: string): string {
+
+export function genGameToken(gameId: number, playerId: string): string
+{
+  return createHmac('sha256', HMAC_SECRET)
+    .update(`${gameId}:${playerId}`)
+    .digest('hex')
+}
+
+export function genToken(gameId: string, playerId: string): string {
   return createHmac('sha256', HMAC_SECRET)
     .update(`${gameId}:${playerId}`)
     .digest('hex')
@@ -419,4 +427,14 @@ export default async function gamesRoutes (app: FastifyInstance)
       console.log(`[Game End] DB client released for game ${gameId}.`);
     }
   });
+
+  app.get<{
+    Body: {username: string; 
+            userId: number;
+            isCustomOn: boolean; };
+    Reply:  {
+            success: boolean;
+            msg: string;
+            lobbyId?: string; }
+    }>('/api/lobby/ws', { websocket: true }, (connection, request) => {});
 }

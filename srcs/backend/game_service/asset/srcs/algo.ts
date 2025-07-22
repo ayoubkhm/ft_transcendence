@@ -46,9 +46,9 @@ export class Game
         leftDbId: number | null,
         rightDbId: number | null,
         type: 'IA' | 'TOURNAMENT' | 'VS',
-        aiDifficulty: AIDifficulty = 'medium',
         customOn: boolean = true,
 		gameId: number,
+        aiDifficulty: AIDifficulty = 'medium'
 
     ) {
 		this.gameId = gameId;
@@ -111,6 +111,7 @@ export class Game
 		};
 	}
 	getGameId(): number {return this.gameId;}
+	setGameId(gameId: number): void { this.gameId = gameId; }
 
 
 	async addScore(pgClient: PoolClient, scorerIsLeft: boolean): Promise<void>
