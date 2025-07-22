@@ -6,6 +6,22 @@ import { navigate, onRoute } from '../../lib/router';
  * Sets up the 2FA setup modal and handlers.
  * Returns an object with open2faSetupModal() to trigger the setup flow.
  */
+export function closeTwoFASetup() {
+  const setup2faModal = document.getElementById('2fa-setup-modal') as HTMLElement | null;
+  const setup2faTestCodeDiv = document.getElementById('2fa-setup-testcode') as HTMLElement | null;
+  if (setup2faModal) {
+    hide(setup2faModal);
+  }
+  if (setup2faTestCodeDiv) {
+    hide(setup2faTestCodeDiv);
+  }
+  // Clear any previous QR code
+  const setup2faQr = document.getElementById('2fa-setup-qr') as HTMLImageElement | null;
+  if (setup2faQr) {
+    setup2faQr.src = '';
+  }
+}
+
 export function setupTwoFASetup() {
   const setup2faModal = document.getElementById('2fa-setup-modal') as HTMLElement | null;
   const setup2faCloseBtn = document.getElementById('2fa-setup-close') as HTMLButtonElement | null;
@@ -93,6 +109,7 @@ export function setupTwoFASetup() {
       alert('Error verifying 2FA code');
     }
   });
+  onRoute('profile', closeTwoFASetup);
 }
 
 /**

@@ -183,13 +183,17 @@ $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION win_game (
 	_id INTEGER,
-	winner_is_p1 BOOLEAN DEFAULT TRUE
+	winner_is_p1 BOOLEAN DEFAULT TRUE,
+	_p1_score INTEGER DEFAULT NULL,
+	_p2_score INTEGER DEFAULT NULL
 )
 RETURNS TABLE(success BOOLEAN, msg TEXT, tid INTEGER) AS $$
 DECLARE
 	_state game_state;
 	_p1_id INTEGER;
 	_p2_id INTEGER;
+	old_p1_score INTEGER;
+	old_p2_score INTEGER;
 	_tournament_round INTEGER;
 	_tournament_id INTEGER;
 BEGIN
@@ -198,8 +202,8 @@ BEGIN
 		RETURN ;
 	END IF;
 	
-	SELECT state, p1_id, p2_id, tournament_round, tournament_id
-	INTO _state, _p1_id, _p2_id, _tournament_round, _tournament_id
+	SELECT state, p1_id, p2_id, tournament_round, tournament_id, p1_score, p2_score
+	INTO _state, _p1_id, _p2_id, _tournament_round, _tournament_id, old_p1_score, old_p2_score
 	FROM games
 	WHERE id = _id;
 
@@ -213,14 +217,21 @@ BEGIN
         RETURN ;
     END IF;
 
+	IF _p1_score IS NULL THEN
+		_p1_score = old_p1_score;
+	END IF;
+	IF _p2_score IS NULL THEN
+		_p2_score = old_p2_score;
+	END IF;
 
+	UPDATE games
+	SET state = 'OVER',
+		winner = winner_is_p1,
+		p1_score = _p1_score,
+		p2_score = _p2_score
+	WHERE id = _id;
 	
 	IF winner_is_p1 THEN
-		UPDATE games
-    	SET state = 'OVER',
-			winner = TRUE
-		WHERE id = _id;
-
 		UPDATE games
 		SET p1_id = _p1_id
 		WHERE p1_winnerof = _id;
@@ -229,11 +240,6 @@ BEGIN
 		SET p2_id = _p1_id
 		WHERE p2_winnerof = _id;
 	ELSE
-		UPDATE games
-    	SET state = 'OVER',
-			winner = FALSE
-		WHERE id = _id;
-
 		UPDATE games
 		SET p1_id = _p2_id
 		WHERE p1_winnerof = _id;
