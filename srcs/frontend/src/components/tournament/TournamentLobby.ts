@@ -218,6 +218,7 @@ function renderLobby(details: any) {
 }
 
 export async function showTournamentLobby(tournamentId: number, tournamentName: string) {
+  document.getElementById('tournament-lobby-close')?.remove();
   initializeLobbyEventListeners();
 
   currentTournamentId = tournamentId;
