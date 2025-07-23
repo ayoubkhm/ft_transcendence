@@ -321,7 +321,7 @@ export async function startGame(mode: 'ai' | 'pvp', isCustomOn: boolean, difficu
   }
 }
 
-export async function joinGame(gameIdToJoin: string, onGameOver?: (state: any) => void) {
+export async function joinGame(gameIdToJoin: string, onGameOver?: (state: any) => void, gameType?: string) {
   try {
     const pvpModal = document.getElementById('pvp-modal') as HTMLElement;
     if (pvpModal) {
@@ -340,6 +340,11 @@ export async function joinGame(gameIdToJoin: string, onGameOver?: (state: any) =
     playerId = username; // Tentatively set playerId
 
     showGameUI();
+    if (gameType === 'TOURNAMENT') {
+      forfeitBtn.classList.add('hidden');
+    } else {
+      forfeitBtn.classList.remove('hidden');
+    }
     
     // Connect to the WebSocket, then send the join message
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -406,7 +411,7 @@ export async function joinGame(gameIdToJoin: string, onGameOver?: (state: any) =
   } catch (err) {
     console.error('[joinGame]', err);
     alert(`Error joining game: ${err.message}`);
-    hideGameUI();
+    hideGame.UI();
   }
 }
 
@@ -530,9 +535,10 @@ export function setupGame() {
   onRoute('game', (params) => {
     const gameIdFromUrl = params?.id;
     if (gameIdFromUrl) {
-      // joinGame is now safe to call because it doesn't navigate, preventing loops.
+      const urlParams = new URLSearchParams(window.location.hash.split('?')[1]);
+      const gameType = urlParams.get('type');
       // It will handle all the necessary cleanup and setup.
-      joinGame(gameIdFromUrl);
+      joinGame(gameIdFromUrl, undefined, gameType ?? undefined);
     } else {
       // If we somehow navigate to #game without an ID, go home.
       console.warn('Navigated to #game without a game ID.');

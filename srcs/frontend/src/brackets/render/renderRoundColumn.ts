@@ -24,6 +24,12 @@ export default function renderRoundColumn(matches: BracketMatch[], round: number
 
 		const matchDiv = renderMatch(match, userId);
 
+		if (match.state !== 'WAITING') {
+			matchDiv.addEventListener('click', () => {
+				window.location.hash = `#game/${match.id}?type=TOURNAMENT`;
+			});
+		}
+
 		wrapper.appendChild(matchDiv);
 		container.appendChild(wrapper);
 		i ++;
