@@ -113,7 +113,7 @@ export function setupTwoFALogin() {
   const twofaLoginForm = document.getElementById('2fa-login-form') as HTMLFormElement | null;
   const twofaLoginCodeInput = document.getElementById('2fa-login-code') as HTMLInputElement | null;
   if (!twofaLoginModal || !twofaLoginClose || !twofaLoginForm || !twofaLoginCodeInput) {
-    return;
+    return { show2faLogin: false };
   }
 
   onRoute('login-2fa', () => {
@@ -163,4 +163,6 @@ export function setupTwoFALogin() {
       alert('Error verifying 2FA login');
     }
   });
+
+  return { show2faLogin: true };
 }

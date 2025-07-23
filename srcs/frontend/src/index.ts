@@ -115,5 +115,3 @@ document.addEventListener('DOMContentLoaded', main);
 // Initialize 2FA setup and login handlers
 setupTwoFASetup();
 const { show2faLogin } = setupTwoFALogin();
-
-setupTwoFALogin();
