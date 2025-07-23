@@ -90,9 +90,15 @@ export function setupFriendsModal() {
               method: 'PUT', credentials: 'include'
             });
             const resp = await res.json();
-            if (res.ok && resp.success) { li.remove(); updateFriendsBadge(); }
-            else alert(resp.error || resp.msg || 'Failed to accept friend request');
-          } catch (err) { console.error(err); alert('Error accepting request'); }
+            if (res.ok && resp.success) {
+              openFriends();
+            } else {
+              alert(resp.error || resp.msg || 'Failed to accept friend request');
+            }
+          } catch (err) {
+            console.error(err);
+            alert('Error accepting request');
+          }
         });
         const rejectBtn = document.createElement('button');
         rejectBtn.textContent = 'Reject';
