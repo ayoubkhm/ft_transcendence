@@ -211,6 +211,7 @@ export function hideGameUI(gameOver = false) {
   authToken = null;
   lastInput = null;
   localGame = null;
+  window.onpopstate = null;
   
   document.getElementById('profile-btn')?.removeAttribute('disabled');
   document.getElementById('logout-btn')?.removeAttribute('disabled');
@@ -245,6 +246,10 @@ async function startLocalPvPGame() {
     localGame = new Game('Player 1', 'Player 2', null, null, 'VS', 'medium', isCustomOn, 0);
     navigate('local-game');
     localGameLoop();
+    history.pushState(null, '', location.href);
+    window.onpopstate = function () {
+        history.go(1);
+    };
   } catch (err) {
     console.error('[startLocalPvPGame]', err);
     alert(`Error starting local game: ${err.message}`);
