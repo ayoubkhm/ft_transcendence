@@ -36,7 +36,7 @@ export default function renderMatch(match:BracketMatch, userId: number | null): 
 		${player1Name}
 	  	</div>
 		
-	${match.winner === true ? ` <div class="text-yellow-400 px-1 flex items-center justify-center text-base">🏆</div>` : ''}
+	${match.winner === true ? ` <div class="text-yellow-400 px-1 flex items-center justify-center text-base">&#127942;</div>` : ''}
 
 	  	<div class="text-zinc-300 tracking-wide bg-zinc-600 px-1 flex items-center justify-center w-11 text-[12px] font-bold font-mono">
 	  		<span>#</span>${tag1String}
@@ -49,7 +49,7 @@ export default function renderMatch(match:BracketMatch, userId: number | null): 
 		${player2Name}
 	  	</div>
 		
-	${match.winner === false ? ` <div class="text-yellow-400 px-1 flex items-center justify-center text-base">🏆</div>` : ''}
+	${match.winner === false ? ` <div class="text-yellow-400 px-1 flex items-center justify-center text-base">&#127942;</div>` : ''}
 
 	  	<div class="text-zinc-300 tracking-wide bg-zinc-600 px-1 flex items-center justify-center w-11 text-[12px] font-bold font-mono">
 	  		<span>#</span>${tag2String}
