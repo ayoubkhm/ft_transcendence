@@ -9,7 +9,7 @@ import { setupFriendsModal } from './components/friends/FriendsModal';
 import { setupUserSearch } from './components/search/user-search';
 import { setupSignupModal } from './components/auth/SignupModal';
 import { setupTwoFASetup, setupTwoFALogin } from './components/twofa/TwoFASetup';
-import { setupChangePasswordModal } from './components/auth/ChangePasswordModal';
+import { setupChangePasswordModal } from './components/profile/ChangePasswordModal';
 import { initializeAuth } from './components/auth/Auth';
 import { setupGame } from './components/game/GameController';
 import { setupProfileModal } from './components/profile/ProfileModal';
