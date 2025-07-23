@@ -60,6 +60,14 @@ onRoute('home', () => {
     if (tournamentModal) tournamentModal.classList.add('hidden');
     const statsPopup = document.getElementById('stats-popup');
     if (statsPopup) statsPopup.classList.add('hidden');
+    
+    const pLeft = document.getElementById('player-left-name');
+    if (pLeft) pLeft.classList.add('hidden');
+    const pRight = document.getElementById('player-right-name');
+    if (pRight) pRight.classList.add('hidden');
+    const winner = document.getElementById('game-result');
+    if (winner) winner.classList.add('hidden');
+    
 });
 
 onRoute('stats', () => {
@@ -105,21 +113,26 @@ export function onRoute(view: View, handler: RouteHandler) {
 }
 
 export function navigate(view: View, params?: any) {
+  console.log(`[ROUTER] navigate() called for view: "${view}"`, params || '');
   const url = params && params.id ? `#${view}/${params.id}` : `#${view}`;
   history.pushState({ view, params }, '', url);
   dispatch(view, params);
 }
 
 function dispatch(view: View, params?: any) {
+  console.log(`[ROUTER] dispatch() called for view: "${view}"`);
   // First, run the specific handlers for the view
   const handlers = routes[view] || [];
+  console.log(`[ROUTER] Found ${handlers.length} specific handlers for "${view}".`);
   handlers.forEach((h) => h(params));
   // Then, run all wildcard handlers
   const wildcardHandlers = routes['*'] || [];
+  console.log(`[ROUTER] Found ${wildcardHandlers.length} wildcard handlers.`);
   wildcardHandlers.forEach((h) => h(view)); // Pass the view name to the wildcard handler
 }
 
 window.addEventListener('popstate', (e) => {
+  console.log('[ROUTER] popstate event triggered.', e.state);
   if (isTournamentActive()) {
     history.forward();
     alert("YOU DECIDED TO PLAY A TOURNAMENT, YOU CANNOT NAVIGATE AWAY. CHEH");
@@ -130,7 +143,10 @@ window.addEventListener('popstate', (e) => {
     // It returns true if the user confirms, false otherwise.
     if (leaveTournamentLobby()) {
       const state = e.state as { view: View; params?: any } | null;
-      if (state) dispatch(state.view, state.params);
+      if (state) {
+        console.log('[ROUTER] popstate: dispatching for view:', state.view);
+        dispatch(state.view, state.params);
+      }
     } else {
       // If the user clicks "Cancel", prevent navigation.
       history.forward();
@@ -138,7 +154,10 @@ window.addEventListener('popstate', (e) => {
     return;
   }
   const state = e.state as { view: View; params?: any } | null;
-  if (state) dispatch(state.view, state.params);
+  if (state) {
+    console.log('[ROUTER] popstate: dispatching for view:', state.view);
+    dispatch(state.view, state.params);
+  }
 });
 
 // Handle initial page load
