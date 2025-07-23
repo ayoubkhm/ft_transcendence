@@ -144,6 +144,7 @@ export function toggleReadyStatus(tournament_id: number, user_id: number) {
  * @param tournamentId The ID of the tournament.
  */
 export function getTournamentDetails(tournamentId: number) {
+  console.log(`[DEBUG] socket.ts: getTournamentDetails() called for tournament ID: ${tournamentId}`);
   send({
     type: 'get_tournament_details',
     tournament_id: tournamentId,

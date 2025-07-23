@@ -1,5 +1,5 @@
-// Simple SPA router based on history API and hash
-import { isTournamentActive } from '../components/tournament/TournamentGame.js';
+import { getTournamentDetails, on } from './socket.js';
+import { showTournamentGame, isTournamentActive } from '../components/tournament/TournamentGame.js';
 import { isTournamentLobbyActive, leaveTournamentLobby } from '../components/tournament/TournamentLobby.js';
 export type View = '*' | 'home' | 'login' | 'game' | 'tournament' | 'friends' | 'profile' | 'play-ai' | 'play-pvp' | 'change-password' | 'publicProfile' | 'signup' | 'setup-2fa' | 'local-game' | 'login-2fa' | 'edit-username' | 'edit-email' | 'stats';
 
@@ -77,6 +77,26 @@ onRoute('profile', () => {
   if (statsPopup) {
     statsPopup.classList.add('hidden');
   }
+});
+
+onRoute('tournament', (params) => {
+    if (params && params.id) {
+        const tournamentId = parseInt(params.id, 10);
+
+        // Set up a one-time listener to wait for the tournament details.
+        const unsubscribe = on('tournament-update', (details) => {
+            // Ensure this is the correct tournament and it's running.
+            if (details && details.id === tournamentId && details.state === 'RUNNING') {
+                // Unsubscribe immediately after receiving the data.
+                unsubscribe();
+                // Now, show the game view with the data we just received.
+                showTournamentGame(details);
+            }
+        });
+
+        // Request the tournament details from the server.
+        getTournamentDetails(tournamentId);
+    }
 });
 
 export function onRoute(view: View, handler: RouteHandler) {

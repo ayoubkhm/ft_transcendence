@@ -244,28 +244,27 @@ export async function showTournamentLobby(tournamentId: number, tournamentName: 
   leaveTournamentBtn.classList.remove('hidden');
   tournamentLobbyModal.classList.remove('hidden');
 
-  on('tournament-update', (details) => {
+  const unsubscribe = on('tournament-update', (details) => {
     if (!details || details.id !== currentTournamentId) return;
     
     currentTournamentDetails = details;
     renderLobby(details);
 
     if (details.state === 'RUNNING' || details.state === 'OVER') {
+        // This listener has done its job. Unsubscribe to prevent it from ever running again.
+        unsubscribe();
+
         if (details.state === 'RUNNING') {
-            console.log(`[DEBUG activeTournamentGame] TournamentLobby.ts: 'tournament-update' listener - Tournament state is RUNNING. Setting activeTournamentGame flag for ID: ${details.id}`);
+            console.log(`[DEBUG] TournamentLobby.ts: Tournament state is RUNNING. Setting activeTournamentGame flag for ID: ${details.id} and navigating.`);
             localStorage.setItem('activeTournamentGame', JSON.stringify({ id: details.id }));
-            console.log("[DEBUG activeTournamentGame] TournamentLobby.ts: 'tournament-update' listener - activeTournamentGame flag SET.");
-        }
-        const lobbyModal = document.getElementById('tournament-lobby-modal');
-        const gameModal = document.getElementById('tournament-game-modal');
-
-        if (lobbyModal) {
-            lobbyModal.classList.add('hidden');
-        }
-
-        if (gameModal) {
-            showTournamentGame(details);
-            gameModal.classList.remove('hidden');
+            
+            const lobbyModal = document.getElementById('tournament-lobby-modal');
+            if (lobbyModal) {
+                lobbyModal.classList.add('hidden');
+            }
+    
+            // Navigate to the tournament game view, letting the router handle the state transition.
+            navigate('tournament', { id: details.id });
         }
     }
   });
