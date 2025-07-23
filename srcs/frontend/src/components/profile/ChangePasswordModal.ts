@@ -57,7 +57,7 @@ export function setupChangePasswordModal(): void {
       if (res.ok) {
         alert(data.message || 'Password changed successfully');
         changePasswordModal.classList.add('hidden');
-        navigate('home');
+        history.back();
       } else {
         alert(data.error || 'Failed to change password');
       }
