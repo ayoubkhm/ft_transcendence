@@ -16,13 +16,6 @@ export function close_stats()
 		winrateText.textContent = 'N/A';
 	if (winrateCircle)
 		winrateCircle.setAttribute('stroke-dasharray', '0 251.2');
-
-	const blockrateText = document.getElementById("stats-blockrate-text");
-	const blockrateCircle = document.getElementById("stats-blockrate");
-	if (blockrateText)
-		blockrateText.textContent = 'N/A';
-	if (blockrateCircle)
-		blockrateCircle.setAttribute('stroke-dasharray', '0 251.2');
 }
 
 
