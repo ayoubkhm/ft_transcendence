@@ -34,16 +34,21 @@ export async function loadProfileData() {
     profileEmail.textContent = user.email;
     profileId.textContent = user.id.toString();
     profileOnlineStatus.textContent = user.online ? 'true' : 'false';
-    if (user.twofa_secret && user.twofa_validated) {
+    if (user.type === 'oauth') {
+      profileSetup2FABtn.classList.add('hidden');
+      profileDisable2FABtn.classList.add('hidden');
+      profileNa2FABtn.classList.remove('hidden');
+    } else if (user.twofa_secret && user.twofa_validated) {
       profile2FAStatus.textContent = 'true';
       profileSetup2FABtn.classList.add('hidden');
       profileDisable2FABtn.classList.remove('hidden');
+      profileNa2FABtn.classList.add('hidden');
     } else {
       profile2FAStatus.textContent = 'false';
       profileSetup2FABtn.classList.remove('hidden');
       profileDisable2FABtn.classList.add('hidden');
+      profileNa2FABtn.classList.add('hidden');
     }
-    profileNa2FABtn.classList.add('hidden');
     // Display avatar if present
     if (profileAvatar) {
       if (user.avatar) {
