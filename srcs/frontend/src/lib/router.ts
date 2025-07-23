@@ -60,6 +60,14 @@ onRoute('home', () => {
     if (tournamentModal) tournamentModal.classList.add('hidden');
     const statsPopup = document.getElementById('stats-popup');
     if (statsPopup) statsPopup.classList.add('hidden');
+    
+    const pLeft = document.getElementById('player-left-name');
+    if (pLeft) pLeft.classList.add('hidden');
+    const pRight = document.getElementById('player-right-name');
+    if (pRight) pRight.classList.add('hidden');
+    const winner = document.getElementById('game-result');
+    if (winner) winner.classList.add('hidden');
+    
 });
 
 onRoute('stats', () => {
