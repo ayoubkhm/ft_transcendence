@@ -8,9 +8,14 @@ async function getUser(username: string) {
     return null;
   }
   try {
-    const data = await fetchJSON<{ success: boolean; profile: any }>(`/api/user/search/${username}`);
-    if (data.success) {
-      return data.profile;
+    const res = await fetch(`/api/user/lookup/${encodeURIComponent(username)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    if (res.ok) {
+      const user = await res.json();
+      return user;
     }
   } catch (error) {
     console.error(`Failed to get user ${username}`, error);
