@@ -157,7 +157,7 @@ export function setupProfileModal(): void {
             const data = await res.json();
             if (res.ok && data.success) {
               alert(data.message || 'Profile deleted successfully. You will be logged out.');
-              localStorage.clear();
+              navigate('home');
               window.location.reload();
             } else {
               alert(data.error || 'Failed to delete profile.');
