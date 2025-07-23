@@ -1,6 +1,7 @@
 import { getTournamentDetails, on } from './socket.js';
 import { showTournamentGame, isTournamentActive } from '../components/tournament/TournamentGame.js';
 import { isTournamentLobbyActive, leaveTournamentLobby } from '../components/tournament/TournamentLobby.js';
+import { loadProfileData } from '../components/profile/ProfileModal.js';
 export type View = '*' | 'home' | 'login' | 'game' | 'tournament' | 'friends' | 'profile' | 'play-ai' | 'play-pvp' | 'change-password' | 'publicProfile' | 'signup' | 'setup-2fa' | 'local-game' | 'login-2fa' | 'edit-username' | 'edit-email' | 'stats';
 
 type RouteHandler = (params?: any) => void;
@@ -148,6 +149,9 @@ document.addEventListener('DOMContentLoaded', () => {
     return;
   }
   const [view, id] = hash.split('/');
+  if (view === 'profile') {
+    loadProfileData();
+  }
   const params = id ? { id } : undefined;
   dispatch(view as View, params);
 });

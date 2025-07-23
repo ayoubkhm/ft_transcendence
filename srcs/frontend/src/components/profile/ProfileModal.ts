@@ -3,7 +3,7 @@ import { navigate, onRoute } from '../../lib/router';
 import show_stats from '../../stats/show_stats';
 import { getCurrentUserId } from '../auth/Auth';
 
-async function loadProfileData() {
+export async function loadProfileData() {
   const profileUsername = document.getElementById('profile-username') as HTMLElement | null;
   const profileEmail = document.getElementById('profile-email') as HTMLElement | null;
   const profileAvatar = document.getElementById('profile-avatar') as HTMLImageElement | null;
