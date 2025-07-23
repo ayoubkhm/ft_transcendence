@@ -495,17 +495,20 @@ export function setupGame() {
     startGame('pvp', isCustomOn);
   });
   pvpModalJoinConfirmBtn.addEventListener('click', () => {
-    const gameIdRaw = pvpModalJoinInput.value.trim();
-    if (gameIdRaw) {
-      const gameIdParsed = parseInt(gameIdRaw, 10);
-      if (!isNaN(gameIdParsed)) {
-        navigate('game', { id: gameIdParsed.toString() });
-      } else {
-        alert('Please enter a valid Game ID.');
-      }
-    } else {
+    let gameIdToJoin = pvpModalJoinInput.value.trim();
+    // Parse en nombre pour enlever les zéros en trop
+    if (!gameIdToJoin) {
       alert('Please enter a Game ID to join.');
+      return;
     }
+    const parsedId = parseInt(gameIdToJoin, 10);
+    if (isNaN(parsedId) || parsedId <= 0) {
+      alert('Invalid Game ID.');
+      return;
+    }
+    // Mets à jour l’input pour enlever les zéros à gauche (optionnel)
+    pvpModalJoinInput.value = parsedId.toString();
+    navigate('game', { id: parsedId });
   });
 
   pvpModalJoinInput.addEventListener('input', () => {
