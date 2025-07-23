@@ -112,8 +112,17 @@ export function setupTwoFALogin() {
   const twofaLoginClose = document.getElementById('2fa-login-close') as HTMLButtonElement | null;
   const twofaLoginForm = document.getElementById('2fa-login-form') as HTMLFormElement | null;
   const twofaLoginCodeInput = document.getElementById('2fa-login-code') as HTMLInputElement | null;
+
+  function show2faLogin() {
+    navigate('login-2fa');
+  }
+
   if (!twofaLoginModal || !twofaLoginClose || !twofaLoginForm || !twofaLoginCodeInput) {
-    return;
+    return {
+      show2faLogin: () => {
+        /* do nothing */
+      },
+    };
   }
 
   onRoute('login-2fa', () => {
@@ -136,7 +145,7 @@ export function setupTwoFALogin() {
   });
   onRoute('home', () => {
     if (twofaLoginModal && !twofaLoginModal.classList.contains('hidden')) {
-        hide(twofaLoginModal);
+      hide(twofaLoginModal);
     }
   });
 
@@ -163,4 +172,6 @@ export function setupTwoFALogin() {
       alert('Error verifying 2FA login');
     }
   });
+
+  return { show2faLogin };
 }
