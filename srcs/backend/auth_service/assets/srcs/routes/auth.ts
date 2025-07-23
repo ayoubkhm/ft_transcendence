@@ -103,7 +103,7 @@ export default function authRoutes(app: FastifyInstance, options: any, done: any
   });
 
     function generateRandomName(lenght: number = 5): string {
-      const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!()*+,-./:;<=>?@[]^_`{|}~';
+      const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
       let result = '';
       for (let i = 0; i<lenght; i++)
         result += chars.charAt(Math.floor(Math.random() * chars.length));

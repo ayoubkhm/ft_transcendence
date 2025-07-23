@@ -67,7 +67,7 @@ export function setupTournamentDashboard() {
   // --- ROUTE HANDLING ---
   onRoute('tournament', (params) => {
     // Only show the dashboard modal if we are on the main tournament list view
-    if (!params || !params.id) {
+    if(!params || !params.id) {
       tournamentModal.classList.remove('hidden');
     }
   });
