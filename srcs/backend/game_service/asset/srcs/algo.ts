@@ -5,6 +5,7 @@ import {
   POWER_UPV, POWER_UPB
 } from './types.js';
 import { predictBallY, movePaddleToTarget } from './ai/index.js';
+import { RateLimiter } from './ai/pid_controller.js';
 import { PoolClient } from 'pg';
 
 const BALL_XLR = 1.05;
@@ -28,6 +29,7 @@ export class Game
     // AI state
     // private aiReactionTimer: number = 0;
     private aiTargetY: number;
+    private aiRateLimiter: RateLimiter;
     // Whether custom power-ups/features are enabled
     private readonly customOn: boolean;
     // cumulative stats per player
@@ -54,6 +56,7 @@ export class Game
 		this.gameId = gameId;
         this.aiSettings = aiDifficultySettings[aiDifficulty];
         this.aiTargetY = GAME_HEIGHT / 2 - PADDLE_H / 2; // Initial target
+        this.aiRateLimiter = new RateLimiter(1000); // 1000ms = 1 second
         this.customOn = customOn;
         // initialize cumulative stats
         this.powerUpsUsed = { [leftName]: 0, [rightName]: 0 };
@@ -282,13 +285,9 @@ export class Game
         }
         // 2) AI paddle movement (right side)
         if (right.id === 'AI') {
-            // this.aiReactionTimer = Math.max(0, this.aiReactionTimer - dt);
-
-            // Decide on a new target Y when the timer is up
-            // if (this.aiReactionTimer <= 0) {
+            if (this.aiRateLimiter.shouldExecute()) {
                 // If ball is coming towards AI, predict its path
                 if (ball.v.x > 0) {
-                    // this.aiReactionTimer = this.aiSettings.reactionTime; // Reset timer
                     this.aiTargetY = predictBallY(ball, { predictionError: this.aiSettings.predictionError });
                 }
                 // If ball is moving away, decide whether to return to center
@@ -298,7 +297,7 @@ export class Game
                     }
                     // Otherwise, the paddle stays put (aiTargetY is not updated)
                 }
-            // }
+            }
 
             // Always move towards the current target Y
             const oldY = right.paddle.y;
