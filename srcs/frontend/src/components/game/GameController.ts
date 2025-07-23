@@ -148,7 +148,11 @@ export function showGameUI(isWaiting = false, isLocal = false, isAI = false) {
   canvas.classList.remove('hidden');
   // Set canvas to default centered position for gameplay
   canvasWrapper.style.transform = 'translateY(0)';
-  forfeitBtn.classList.remove('hidden');
+  if (window.location.href.includes('tournament')) {
+    forfeitBtn.classList.add('hidden');
+  } else {
+    forfeitBtn.classList.remove('hidden');
+  }
   playAIBtn.disabled = true;
   playPVPBtn.disabled = true;
   if (isLocal) {
@@ -340,11 +344,6 @@ export async function joinGame(gameIdToJoin: string, onGameOver?: (state: any) =
     playerId = username; // Tentatively set playerId
 
     showGameUI();
-    if (gameType === 'TOURNAMENT') {
-      forfeitBtn.classList.add('hidden');
-    } else {
-      forfeitBtn.classList.remove('hidden');
-    }
     
     // Connect to the WebSocket, then send the join message
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
