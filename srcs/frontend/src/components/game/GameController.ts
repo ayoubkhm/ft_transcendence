@@ -323,6 +323,10 @@ export async function startGame(mode: 'ai' | 'pvp', isCustomOn: boolean, difficu
 
 export async function joinGame(gameIdToJoin: string, onGameOver?: (state: any) => void) {
   try {
+    const pvpModal = document.getElementById('pvp-modal') as HTMLElement;
+    if (pvpModal) {
+      pvpModal.classList.add('hidden');
+    }
     hideGameUI(); // Reset any existing game state before joining
     await loadImages(); // Preload all game images
     let username = localStorage.getItem('username');
