@@ -38,16 +38,19 @@ export async function loadProfileData() {
       profileSetup2FABtn.classList.add('hidden');
       profileDisable2FABtn.classList.add('hidden');
       profileNa2FABtn.classList.remove('hidden');
+      (document.getElementById('profile-change-password-btn') as HTMLButtonElement).classList.add('hidden');
     } else if (user.twofa_secret && user.twofa_validated) {
       profile2FAStatus.textContent = 'true';
       profileSetup2FABtn.classList.add('hidden');
       profileDisable2FABtn.classList.remove('hidden');
       profileNa2FABtn.classList.add('hidden');
+      (document.getElementById('profile-change-password-btn') as HTMLButtonElement).classList.remove('hidden');
     } else {
       profile2FAStatus.textContent = 'false';
       profileSetup2FABtn.classList.remove('hidden');
       profileDisable2FABtn.classList.add('hidden');
       profileNa2FABtn.classList.add('hidden');
+      (document.getElementById('profile-change-password-btn') as HTMLButtonElement).classList.remove('hidden');
     }
     // Display avatar if present
     if (profileAvatar) {
