@@ -1,114 +1,84 @@
-# Services backend : auth_service et game_service
+# ft_transcendence
 
-Ce dépôt contient deux services backend développés en TypeScript avec Fastify :
+A full-stack web application featuring a real-time multiplayer Pong game, user authentication, chat, and a tournament system. This project is built with a microservices architecture and is designed to be run with Docker.
 
-- **auth_service** : gestion de l’authentification via OAuth2 (Google) et gestion de session par cookies.
-- **game_service** : serveur de logique de jeu Pong, simulant une partie solo contre l’IA.
+## ✨ Features
 
----
+- **Real-time Multiplayer Pong:** Play Pong against other users.
+- **User Authentication:** Secure login using OAuth2 with 42.
+- **Social Features:** Friends list and real-time chat.
+- **Tournaments:** Create and participate in Pong tournaments.
+- **User Profiles:** View user stats and match history.
 
-## Prérequis
+## 🛠️ Technology Stack
 
-- Node.js (>= 16)
-- pnpm (pour `auth_service`) ou npm
-- (Optionnel) Docker pour déployer `auth_service` en production
+- **Frontend:** TypeScript, Vite, Tailwind CSS
+- **Backend:** Node.js, TypeScript, Fastify
+- **Database:** PostgreSQL
+- **Containerization:** Docker, Docker Compose
+- **Reverse Proxy:** Nginx
+- **Security:** Vault for secrets management
 
----
+## 🚀 Getting Started
 
-## 1) auth_service
+### Prerequisites
 
-### Installation
+- [Docker](https://docs.docker.com/get-docker/)
+- [Docker Compose](https://docs.docker.com/compose/install/)
 
-```bash
-cd srcs/backend/auth_service
-pnpm install         # installe les dépendances (ou npm install)
-```
+### Installation & Running
 
-### Configuration
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/your-username/ft_transcendence.git
+    cd ft_transcendence
+    ```
 
-Copy `.env.example` to `.env` in the `srcs/backend/auth_service` folder and fill in your own values:
-```dotenv
-# OAuth2 credentials from Google Cloud Console
-GOOGLE_CLIENT_ID=your_google_client_id
-GOOGLE_CLIENT_SECRET=your_google_client_secret
-# The redirect URI you registered in Google (must match exactly)
-CALLBACK_URL=http://localhost:3000/api/auth/google/callback
-# Secret to sign session cookies
-COOKIE_SECRET=some_random_string
-```
-Note: Place this `.env` file in the same directory as the `Dockerfile` (`srcs/backend/auth_service`) so that it is included in the Docker build.
+2.  **Create the environment file:**
+    Copy the example environment file and fill in the required values.
+    ```bash
+    cp .env.example .env
+    ```
+    You will need to provide credentials for the 42 API, PostgreSQL, and other services in the `.env` file.
 
-### Lancement
+3.  **Build and run the application:**
+    Use Docker Compose to build the images and start all the services.
+    ```bash
+    docker compose up --build
+    ```
+    The `--build` flag is only necessary the first time or when you make changes to the Dockerfiles.
 
-- **Mode développement** :
+4.  **Access the application:**
+    Once all the services are running, you can access the application in your browser at:
+    [**https://localhost:4443**](https://localhost:4443)
+
+### Useful Docker Commands
+
+- **Stop all services:**
   ```bash
-  pnpm dev         # ou npm run dev
+  docker compose down
   ```
-  Le service écoute sur le port `3000`.
-
-- **Mode production (Docker)** :
+- **View logs for a specific service:**
   ```bash
-  docker build -t auth_service .
-  docker run -d --name auth_service -p 3000:3000 \
-    -e ENV=prod auth_service
+  docker compose logs -f <service_name>
   ```
-  Le container expose le port `3000`.
-
-### Endpoints disponibles
-
-- `GET  /api/auth/login/google`    : démarre le flux OAuth2 Google
-- `GET  /api/auth/google/callback` : callback OAuth2, création de session et cookie
-- `POST /api/auth/login`            : authentification par email/mot de passe (exemple)
-
----
-
-## 2) game_service
-
-### Installation
-
-```bash
-cd srcs/backend/game_service/asset
-npm install         # ou pnpm install
-```
-
-### Configuration
-
-Les variables d’environnement (facultatives) :
-- `PORT` : port d’écoute (par défaut `3001`)
-- `HOST` : adresse d’écoute (par défaut `0.0.0.0`)
-
-### Lancement
-
-- **Mode développement** :
+  (e.g., `docker compose logs -f frontend`)
+- **Access a running container's shell:**
   ```bash
-  npm run dev       # lance en TS sans compilation
+  docker exec -it <service_name> /bin/sh
   ```
 
-- **Mode production** :
-  ```bash
-  npm run build     # compile en JavaScript
-  npm start         # démarre le service
-  ```
+## 🏛️ Architecture
 
-Le service expose les endpoints principaux sous `/api` et un endpoint de métriques :
+This project follows a microservices architecture. Each service is a separate container managed by Docker Compose.
 
-- `POST   /api/game`              : démarre une nouvelle partie solo, renvoie `{ gameId, playerId }`
-- `POST   /api/game/:id/input`    : envoie une action du joueur (`move_up`, `move_down`, `stop`)
-- `GET    /api/game/:id/state`    : récupère l’état courant du jeu
-- `GET    /metrics`               : retourne des métriques JSON (nombre de requêtes, cookies, etc.)
+- **`nginx`**: The reverse proxy that routes traffic to the appropriate backend service or serves the frontend application. This is the main entry point for all incoming traffic.
+- **`frontend`**: The user interface built with Vite and TypeScript.
+- **`database`**: The PostgreSQL database that stores all application data.
+- **`auth_service`**: Handles user authentication, registration, and session management.
+- **`user_service`**: Manages user profiles, friends, and other user-related data.
+- **`game_service`**: Contains the core logic for the Pong game.
+- **`tournament_service`**: Manages the creation and flow of tournaments.
+- **`vault_service`**: A service for securely storing and managing secrets like API keys and database credentials.
 
----
-
-## Structure du projet
-
-```
-srcs/
-├─ backend/
-│  ├─ auth_service/      # service d’authentification OAuth2
-│  └─ game_service/      # service de jeu Pong solo contre IA
-└─ frontend/             # code front-end (non documenté ici)
-```
-
----
-
-Pour toute question ou contribution, merci d’ouvrir une issue ou un pull request.
+All services communicate with each other over a private Docker network.
