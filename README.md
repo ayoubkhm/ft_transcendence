@@ -1,12 +1,12 @@
 # ft_transcendence
 
-A full-stack web application featuring a real-time multiplayer Pong game, user authentication, chat, and a tournament system. This project is built with a microservices architecture and is designed to be run with Docker.
+A full-stack web application featuring a real-time multiplayer Pong game, user authentication, and a tournament system. This project is built with a microservices architecture and is designed to be run with Docker.
 
 ## ✨ Features
 
 - **Real-time Multiplayer Pong:** Play Pong against other users.
-- **User Authentication:** Secure login using OAuth2 with 42.
-- **Social Features:** Friends list and real-time chat.
+- **User Authentication:** Secure login using OAuth2 with Google.
+- **Social Features:** Friends list.
 - **Tournaments:** Create and participate in Pong tournaments.
 - **User Profiles:** View user stats and match history.
 
@@ -35,11 +35,27 @@ A full-stack web application featuring a real-time multiplayer Pong game, user a
     ```
 
 2.  **Create the environment file:**
-    Copy the example environment file and fill in the required values.
-    ```bash
-    cp .env.example .env
+    Create a file named `.env` in the root of the project and add the following variables. You will need to provide your own credentials for Google OAuth and the database.
+
+    ```env
+    # Google OAuth Credentials
+    GOOGLE_CLIENT_ID=your_google_client_id
+    GOOGLE_CLIENT_SECRET=your_google_client_secret
+    CALLBACK_URL=https://localhost:4443/api/auth/google/callback
+
+    # PostgreSQL Database Credentials
+    DB_SUPERUSER=superuser
+    DB_SUPERPASS=superpassword
+    DB_USER=user
+    DB_PASS=password
+    DB_NAME=transcendence
+    DB_PORT=5432
+
+    # Secrets for JWT and Cookies
+    COOKIE_SECRET=yourcookiesecret
+    JWT_SECRET=yourjwtsecret
+    API_CREDENTIAL=yourapicredential
     ```
-    You will need to provide credentials for the 42 API, PostgreSQL, and other services in the `.env` file.
 
 3.  **Build and run the application:**
     Use Docker Compose to build the images and start all the services.
